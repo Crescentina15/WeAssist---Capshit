@@ -4,7 +4,7 @@
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="match_parent"
-  android:background="@drawable/Background"
+  android:background="@drawable/background"
   tools:context=".Login">
 
   <ImageView
@@ -23,7 +23,7 @@
     android:layout_height="wrap_content"
     android:text="Email or Username"
     android:textSize="20sp"
-    android:fontFamily="@font/InriaSerif_bold"
+    android:fontFamily="@font/inria_serif_bold"
     android:textColor="@android:color/black"
     app:layout_constraintTop_toBottomOf="@id/logoImageView"
     app:layout_constraintStart_toStartOf="parent"
@@ -52,7 +52,7 @@
     android:layout_height="wrap_content"
     android:text="Password"
     android:textSize="20sp"
-    android:fontFamily="@font/InriaSerif_bold"
+    android:fontFamily="@font/inria_serif_bold"
     android:textColor="@android:color/black"
     app:layout_constraintTop_toBottomOf="@id/emailInput"
     app:layout_constraintStart_toStartOf="parent"

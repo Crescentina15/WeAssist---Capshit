@@ -1,4 +1,4 @@
-package com.registration.register
+package com.remedio.weassist
 
 import android.content.Intent
 import android.os.Bundle
