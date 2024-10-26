@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="@drawable/Background"
+  tools:context=".Login">
+
+  <ImageView
+    android:id="@+id/logoImageView"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:src="@drawable/logo"
+    app:layout_constraintTop_toTopOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_marginTop="160dp" />
+
+  <TextView
+    android:id="@+id/emailLabel"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Email or Username"
+    android:textSize="20sp"
+    android:fontFamily="@font/InriaSerif_bold"
+    android:textColor="@android:color/black"
+    app:layout_constraintTop_toBottomOf="@id/logoImageView"
+    app:layout_constraintStart_toStartOf="parent"
+    android:layout_marginStart="32dp"
+    android:layout_marginTop="30dp" />
+
+  <EditText
+    android:id="@+id/emailInput"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:hint="Enter email or username"
+    android:background="@drawable/edittext_container"
+    android:padding="15dp"
+    android:textColor="@android:color/black"
+    android:textSize="16sp"
+    app:layout_constraintTop_toBottomOf="@id/emailLabel"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_marginStart="32dp"
+    android:layout_marginEnd="32dp" />
+
+
+  <TextView
+    android:id="@+id/passwordLabel"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Password"
+    android:textSize="20sp"
+    android:fontFamily="@font/InriaSerif_bold"
+    android:textColor="@android:color/black"
+    app:layout_constraintTop_toBottomOf="@id/emailInput"
+    app:layout_constraintStart_toStartOf="parent"
+    android:layout_marginStart="32dp"
+    android:layout_marginTop="10dp" />
+
+
+  <EditText
+    android:id="@+id/passwordInput"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:hint="Enter password"
+    android:background="@drawable/edittext_container"
+    android:padding="15dp"
+    android:textColor="@android:color/black"
+    android:textSize="16sp"
+    android:inputType="textPassword"
+    app:layout_constraintTop_toBottomOf="@id/passwordLabel"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintEnd_toEndOf="parent"
+    android:layout_marginStart="32dp"
+    android:layout_marginEnd="32dp" />
+
+
+  <CheckBox
+    android:id="@+id/rememberMeCheckbox"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="152dp"
+    android:layout_marginTop="4dp"
+    android:text="Remember Me"
+
+    android:textColor="@android:color/black"
+    android:textSize="14sp"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/passwordInput" />
+
+
+  <Button
+    android:id="@+id/loginButton"
+    android:layout_width="179dp"
+    android:layout_height="47dp"
+    android:layout_marginStart="32dp"
+    android:layout_marginTop="8dp"
+    android:layout_marginEnd="32dp"
+    android:background="@drawable/buttons_background"
+    android:text="Login"
+    android:textColor="@android:color/white"
+    android:textStyle="bold"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/rememberMeCheckbox" />
+
+
+
+  <TextView
+    android:id="@+id/forgotPasswordText"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:text="Forgot password"
+    android:textColor="@color/black"
+    android:textSize="14sp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.567"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/loginButton" />
+
+  <TextView
+    android:id="@+id/signUpText"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="40dp"
+    android:text="Don't have an account?"
+    android:textColor="@android:color/black"
+    android:textSize="14sp"
+    app:layout_constraintEnd_toEndOf="parent"
+    app:layout_constraintHorizontal_bias="0.94"
+    app:layout_constraintStart_toStartOf="parent"
+    app:layout_constraintTop_toBottomOf="@id/forgotPasswordText" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
