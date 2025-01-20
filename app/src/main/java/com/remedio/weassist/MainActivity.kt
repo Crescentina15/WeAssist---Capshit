@@ -18,7 +18,7 @@ class MainActivity : AppCompatActivity() {
         // Using Handler to delay the transition
         Handler().postDelayed({
             // Start the next activity
-            val mainIntent = Intent(this, registerSelection::class.java)
+            val mainIntent = Intent(this, Login::class.java)
             startActivity(mainIntent)
             finish() // Close the splash activity so the user won't go back to it
         }, SPLASH_DISPLAY_LENGTH.toLong())

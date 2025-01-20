@@ -10,14 +10,11 @@
 
   <ImageView
     android:id="@+id/imageView"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="300sp"
+    android:layout_height="200sp"
     android:layout_gravity="center"
-    android:layout_marginLeft="90sp"
-
+    android:layout_marginStart="50sp"
     app:srcCompat="@drawable/logo" />
-
-
 
 
 </LinearLayout>
