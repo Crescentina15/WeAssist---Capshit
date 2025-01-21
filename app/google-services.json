@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "792842654133",
+    "project_id": "weassist-f2a77",
+    "storage_bucket": "weassist-f2a77.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:792842654133:android:33d72516682befb25089fc",
+        "android_client_info": {
+          "package_name": "com.remedio.weassist"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlmpEgftmT63paDZOu8D9PG2xJbIW4yV4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
