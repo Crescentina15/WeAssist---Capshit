@@ -1,5 +1,6 @@
 package com.remedio.weassist
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -52,6 +53,11 @@ class registerSelection : AppCompatActivity() {
             database.child(userId).setValue(user).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     Toast.makeText(this, "Registration successful", Toast.LENGTH_SHORT).show()
+
+                    // Redirect to Login activity
+                    val intent = Intent(this@registerSelection, Login::class.java)
+                    startActivity(intent)
+                    finish() // Optional: Prevent user from returning to this activity
                 } else {
                     Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
