@@ -47,7 +47,7 @@
       android:textColor="@color/black"
       android:padding="10dp" />
     <EditText
-      android:id="@+id/fullName"
+      android:id="@+id/firstName"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginLeft="50dp"
@@ -55,10 +55,25 @@
       android:layout_marginRight="50dp"
       android:ems="10"
       android:fontFamily="@font/inria_serif_bold"
-      android:hint="Full Name"
+      android:hint="First Name"
       android:background="@drawable/edittext_container"
       android:textColor="@color/black"
       android:padding="10dp" />
+
+    <EditText
+      android:id="@+id/lastName"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginLeft="50dp"
+      android:layout_marginTop="10dp"
+      android:layout_marginRight="50dp"
+      android:ems="10"
+      android:fontFamily="@font/inria_serif_bold"
+      android:hint="Last Name"
+      android:background="@drawable/edittext_container"
+      android:textColor="@color/black"
+      android:padding="10dp" />
+
     <EditText
       android:id="@+id/location"
       android:layout_width="match_parent"

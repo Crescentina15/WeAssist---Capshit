@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+  <item
+    android:id="@+id/nav_home"
+    android:icon="@drawable/home"
+    android:title="Home" />
+  <item
+    android:id="@+id/nav_appointments"
+    android:icon="@drawable/appointment"
+    android:title="Appointments" />
+  <item
+    android:id="@+id/nav_notifications"
+    android:icon="@drawable/message"
+    android:title="Message" />
+  <item
+    android:id="@+id/nav_profile"
+    android:icon="@drawable/profile"
+    android:title="Profile" />
+</menu>
