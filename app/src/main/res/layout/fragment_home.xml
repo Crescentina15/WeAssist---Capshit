@@ -6,7 +6,7 @@
   android:layout_width="match_parent"
   android:layout_height="match_parent"
   android:background="@color/white"
-  tools:context=".DashboardActivity">
+  tools:context=".HomeFragment">
 
 
   <LinearLayout
@@ -101,6 +101,7 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:text="See all"
+    android:clickable="true"
     android:textSize="14sp"
     android:layout_marginTop="5dp"
     android:textColor="@color/black"
@@ -225,8 +226,8 @@
   <com.google.android.material.bottomnavigation.BottomNavigationView
     android:id="@+id/bottom_navigation"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@color/white"
+    android:layout_height="70dp"
+    android:background="#cecbe4"
     android:layout_gravity="bottom"
     app:menu="@menu/bottom_nav"
     app:layout_constraintBottom_toBottomOf="parent" />
