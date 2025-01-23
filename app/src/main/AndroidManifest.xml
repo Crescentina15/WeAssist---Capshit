@@ -33,6 +33,7 @@
     <activity
       android:name=".registerSelection"
       android:exported="false" />
+
   </application>
 
 </manifest>

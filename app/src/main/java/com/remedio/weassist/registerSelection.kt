@@ -18,7 +18,8 @@ class registerSelection : AppCompatActivity() {
         setContentView(R.layout.activity_register_selection)
 
         val userName = findViewById<EditText>(R.id.userName)
-        val fullName = findViewById<EditText>(R.id.fullName)
+        val firstName = findViewById<EditText>(R.id.firstName)
+        val lastName = findViewById<EditText>(R.id.lastName)
         val location = findViewById<EditText>(R.id.location)
         val passWord = findViewById<EditText>(R.id.passWord)
         val conPassword = findViewById<EditText>(R.id.conPassword)
@@ -30,14 +31,15 @@ class registerSelection : AppCompatActivity() {
 
         registerButton.setOnClickListener {
             val username = userName.text.toString().trim()
-            val fullname = fullName.text.toString().trim()
+            val firstName = firstName.text.toString().trim()
+            val lastName = lastName.text.toString().trim()
             val address = location.text.toString().trim()
             val password = passWord.text.toString().trim()
             val confirmPassword = conPassword.text.toString().trim()
             val userEmail = email.text.toString().trim()
             val phoneNumber = number.text.toString().trim()
 
-            if (username.isEmpty() || fullname.isEmpty() || address.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || userEmail.isEmpty() || phoneNumber.isEmpty()) {
+            if (username.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || address.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || userEmail.isEmpty() || phoneNumber.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -48,7 +50,7 @@ class registerSelection : AppCompatActivity() {
             }
 
             val userId = database.push().key ?: return@setOnClickListener
-            val user = User(userId, username, fullname, address, password, userEmail, phoneNumber)
+            val user = User(userId, username, firstName,lastName, address, password, userEmail, phoneNumber)
 
             database.child(userId).setValue(user).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -68,7 +70,8 @@ class registerSelection : AppCompatActivity() {
     data class User(
         val userId: String,
         val username: String,
-        val fullName: String,
+        val firstName: String,
+        val lastName: String,
         val location: String,
         val password: String,
         val email: String,

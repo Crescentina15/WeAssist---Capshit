@@ -9,12 +9,13 @@
 
 
   <ImageView
-    android:id="@+id/imageView"
-    android:layout_width="300sp"
-    android:layout_height="200sp"
-    android:layout_gravity="center"
-    android:layout_marginStart="50sp"
-    app:srcCompat="@drawable/logo" />
+      android:id="@+id/imageView"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:layout_marginStart="16dp"
+      android:adjustViewBounds="true"
+      app:srcCompat="@drawable/logo" />
 
 
 </LinearLayout>

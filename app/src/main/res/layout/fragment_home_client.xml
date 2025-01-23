@@ -6,7 +6,7 @@
   android:layout_width="match_parent"
   android:layout_height="match_parent"
   android:background="@color/white"
-  tools:context=".HomeFragment">
+  tools:context=".ClientHomeFragment">
 
 
   <LinearLayout
@@ -46,7 +46,7 @@
       android:layout_height="30dp"
       android:layout_marginTop="8dp"
       android:src="@drawable/notifications"
-      android:tint="@android:color/white" />
+        app:tint="@android:color/white" />
   </LinearLayout>
 
 
@@ -80,7 +80,7 @@
       android:layout_alignParentEnd="true"
       android:layout_centerVertical="true"
       android:src="@drawable/arrow"
-      android:tint="@android:color/black" />
+        app:tint="@android:color/black" />
   </RelativeLayout>
 
 
