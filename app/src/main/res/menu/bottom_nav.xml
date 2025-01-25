@@ -1,4 +1,5 @@
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
   <item
     android:id="@+id/nav_home"
     android:icon="@drawable/home"
@@ -13,6 +14,7 @@
     android:title="Message" />
   <item
     android:id="@+id/nav_profile"
+    app:tint="@color/black"
     android:icon="@drawable/profile"
     android:title="Profile" />
 </menu>
