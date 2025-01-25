@@ -45,8 +45,7 @@
       android:layout_width="30dp"
       android:layout_height="30dp"
       android:layout_marginTop="8dp"
-      android:src="@drawable/notifications"
-        app:tint="@android:color/white" />
+      android:src="@drawable/notifications" app:tint="@android:color/white" />
   </LinearLayout>
 
 
