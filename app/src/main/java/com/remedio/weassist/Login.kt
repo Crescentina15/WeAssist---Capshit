@@ -59,7 +59,7 @@ class Login : AppCompatActivity() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                                 // Redirect to the main screen or dashboard
-                                startActivity(Intent(this@Login, ClientDashboard::class.java))
+                                startActivity(Intent(this@Login, ClientFrontPage::class.java))
                                 finish()
                                 return
                             }
@@ -83,7 +83,7 @@ class Login : AppCompatActivity() {
                                                 startActivity(
                                                     Intent(
                                                         this@Login,
-                                                        ClientDashboard::class.java
+                                                        ClientFrontPage::class.java
                                                     )
                                                 )
                                                 finish()
