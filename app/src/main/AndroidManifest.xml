@@ -13,11 +13,29 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
+            android:name=".ReportActivity"
+            android:exported="false" />
+        <activity
+            android:name=".PrivacyActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SecurityActivity"
+            android:exported="false" />
+        <activity
+            android:name=".EditProfileActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".ClientFrontPage"
             android:exported="false" />
         <activity
             android:name=".ChatmessagesActivity"
-            android:exported="true"/>
+            android:exported="true" />
         <activity
             android:name=".AssistanceActivity"
             android:exported="false" />
