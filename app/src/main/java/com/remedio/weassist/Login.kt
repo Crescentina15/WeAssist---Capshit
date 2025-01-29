@@ -1,8 +1,10 @@
 package com.remedio.weassist
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -12,17 +14,30 @@ import com.google.firebase.database.*
 class Login : AppCompatActivity() {
 
     private lateinit var database: DatabaseReference
+    private lateinit var emailInput: EditText
+    private lateinit var passwordInput: EditText
+    private lateinit var rememberMeCheckbox: CheckBox
+
+    // SharedPreferences keys
+    private val PREFS_NAME = "LoginPrefs"
+    private val KEY_EMAIL = "email"
+    private val KEY_PASSWORD = "password"
+    private val KEY_REMEMBER = "rememberMe"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_login)
 
-        val emailInput = findViewById<EditText>(R.id.emailInput)
-        val passwordInput = findViewById<EditText>(R.id.passwordInput)
+        emailInput = findViewById(R.id.emailInput)
+        passwordInput = findViewById(R.id.passwordInput)
+        rememberMeCheckbox = findViewById(R.id.rememberMeCheckbox)
         val loginButton = findViewById<Button>(R.id.loginButton)
         val signUpText = findViewById<TextView>(R.id.signUpText)
 
         database = FirebaseDatabase.getInstance().getReference("Users")
+
+        // Load saved credentials if "Remember Me" was checked
+        loadSavedCredentials()
 
         // Handle login button click
         loginButton.setOnClickListener {
@@ -34,6 +49,13 @@ class Login : AppCompatActivity() {
                 return@setOnClickListener
             }
 
+            // Save credentials if "Remember Me" is checked
+            if (rememberMeCheckbox.isChecked) {
+                saveCredentials(emailOrUsername, password)
+            } else {
+                clearCredentials()
+            }
+
             loginUser(emailOrUsername, password)
         }
 
@@ -41,6 +63,35 @@ class Login : AppCompatActivity() {
         signUpText.setOnClickListener {
             val intent = Intent(this, registerSelection::class.java)
             startActivity(intent)
+        }
+    }
+
+    private fun saveCredentials(email: String, password: String) {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString(KEY_EMAIL, email)
+        editor.putString(KEY_PASSWORD, password)
+        editor.putBoolean(KEY_REMEMBER, true)
+        editor.apply()
+    }
+
+    private fun clearCredentials() {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.clear()
+        editor.apply()
+    }
+
+    private fun loadSavedCredentials() {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedEmail = sharedPreferences.getString(KEY_EMAIL, "")
+        val savedPassword = sharedPreferences.getString(KEY_PASSWORD, "")
+        val rememberMe = sharedPreferences.getBoolean(KEY_REMEMBER, false)
+
+        if (rememberMe) {
+            emailInput.setText(savedEmail)
+            passwordInput.setText(savedPassword)
+            rememberMeCheckbox.isChecked = true
         }
     }
 

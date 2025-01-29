@@ -14,7 +14,7 @@
       app:iconSize="24dp"/> <!-- Adjust icon size if needed -->
 
   <item
-      android:id="@+id/nav_notifications"
+      android:id="@+id/nav_message"
       android:icon="@drawable/message"
       android:title="Message"
       app:iconSize="24dp"/> <!-- Adjust icon size if needed -->

@@ -26,7 +26,7 @@ class ClientFrontPage : AppCompatActivity() {
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_home -> ClientHomeFragment()
                 R.id.nav_appointments -> AppointmentsFragment()
-
+                R.id.nav_message -> MessageFragment()
                 R.id.nav_profile -> ProfileFragment()
                 else -> ClientHomeFragment()
             }
