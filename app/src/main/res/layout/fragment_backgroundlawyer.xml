@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Background"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Education: Juris Doctor, Harvard Law School, 2009\nYears of Experience: 15\nSpecialization: Corporate Law, Intellectual Property Law"
+            android:textSize="14sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cases Won:\n\n1. XYZ Corporation vs. GlobalTech Inc.\n- Recovered a multi-million dollar intellectual property lawsuit.\n\n2. ABC Corp vs. Unsecured Investors\n- Defended ABC Corp against a fraudulent claim and secured a $10 million settlement."
+            android:textSize="14sp" />
+    </LinearLayout>
+</ScrollView>

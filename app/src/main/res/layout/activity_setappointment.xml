@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EDE7F6"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageButton
+                android:id="@+id/back_arrow"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/arrow_back"
+                android:background="null"
+                android:tint="@color/black" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Set Appointment"
+                android:textSize="20sp"
+                android:fontFamily="@font/vesper_libre_bold"
+                android:textColor="@android:color/black"
+                android:layout_marginStart="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="February, 2025"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/black" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:id="@+id/date_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/date_13"
+                    android:layout_width="50dp"
+                    android:layout_height="70dp"
+                    android:text="13\nMON"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/rounded_bottom"
+                    android:gravity="center"
+                    android:padding="5dp"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/date_14"
+                    android:layout_width="50dp"
+                    android:layout_height="70dp"
+                    android:text="14\nTUE"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/rounded_bottom"
+                    android:gravity="center"
+                    android:padding="5dp"
+                    android:layout_marginEnd="8dp"/>
+
+                <Button
+                    android:id="@+id/date_15"
+                    android:layout_width="50dp"
+                    android:layout_height="70dp"
+                    android:text="15\nWED"
+                    android:textSize="14sp"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/rounded_bottom"
+                    android:gravity="center"
+                    android:padding="5dp"
+                    android:layout_marginEnd="8dp"/>
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Available Time"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/black" />
+
+        <GridLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:columnCount="3"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:layout_width="100dp"
+                android:layout_height="40dp"
+                android:text="12:30 PM"
+                android:textSize="14sp"
+                android:background="@drawable/rounded_bottom"
+                android:textColor="@android:color/white"/>
+
+        </GridLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Client Details"
+            android:textSize="18sp"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/black" />
+
+        <EditText
+            android:id="@+id/edit_full_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Full name"
+            android:padding="10dp"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="8dp" />
+
+        <Spinner
+            android:id="@+id/spinner_age"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <EditText
+            android:id="@+id/edit_problem"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:hint="Write your problem"
+            android:padding="10dp"
+            android:gravity="top"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="8dp" />
+
+
+        <Button
+            android:id="@+id/btn_set_appointment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Set Appointment"
+            android:textSize="16sp"
+            android:background="@drawable/button_background"
+            android:textColor="@android:color/white"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+</ScrollView>

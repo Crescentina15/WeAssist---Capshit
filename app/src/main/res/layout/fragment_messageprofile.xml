@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <!-- Chat Messages -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="User Message"
+            android:background="#E1BEE7"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_gravity="start" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lawyer Response"
+            android:background="#B39DDB"
+            android:padding="8dp"
+            android:layout_marginBottom="8dp"
+            android:layout_gravity="end" />
+    </LinearLayout>
+
+
+    <EditText
+        android:id="@+id/message_input"
+        android:layout_width="400dp"
+        android:layout_height="50dp"
+        android:layout_alignParentBottom="true"
+        android:layout_toStartOf="@+id/send_button"
+        android:hint="Enter message"
+        android:padding="8dp"
+        android:background="@drawable/edittext_container" />
+
+    <Button
+        android:id="@+id/send_button"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:background="@drawable/baseline_send_24"
+        android:contentDescription="Send Message" />
+</RelativeLayout>
