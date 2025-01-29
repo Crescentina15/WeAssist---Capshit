@@ -25,7 +25,7 @@
         android:id="@+id/emailLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Email or Username"
+        android:text="Username"
         android:textSize="20sp"
         android:fontFamily="@font/inria_serif_bold"
         android:textColor="@android:color/black"

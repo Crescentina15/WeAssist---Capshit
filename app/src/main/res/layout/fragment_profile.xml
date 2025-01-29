@@ -41,7 +41,7 @@
         android:id="@+id/headername"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="James King"
+        android:text=""
         android:textSize="30sp"
         android:textStyle="bold"
         android:textColor="@color/black"
