@@ -9,11 +9,12 @@ import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.google.firebase.database.*
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 
 class Login : AppCompatActivity() {
 
-    private lateinit var database: DatabaseReference
+    private lateinit var auth: FirebaseAuth
     private lateinit var emailInput: EditText
     private lateinit var passwordInput: EditText
     private lateinit var rememberMeCheckbox: CheckBox
@@ -34,29 +35,29 @@ class Login : AppCompatActivity() {
         val loginButton = findViewById<Button>(R.id.loginButton)
         val signUpText = findViewById<TextView>(R.id.signUpText)
 
-        database = FirebaseDatabase.getInstance().getReference("Users")
+        auth = FirebaseAuth.getInstance()
 
         // Load saved credentials if "Remember Me" was checked
         loadSavedCredentials()
 
         // Handle login button click
         loginButton.setOnClickListener {
-            val emailOrUsername = emailInput.text.toString().trim()
+            val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
 
-            if (emailOrUsername.isEmpty() || password.isEmpty()) {
+            if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
             // Save credentials if "Remember Me" is checked
             if (rememberMeCheckbox.isChecked) {
-                saveCredentials(emailOrUsername, password)
+                saveCredentials(email, password)
             } else {
                 clearCredentials()
             }
 
-            loginUser(emailOrUsername, password)
+            loginUser(email, password)
         }
 
         // Handle sign-up text click
@@ -95,80 +96,23 @@ class Login : AppCompatActivity() {
         }
     }
 
-    private fun loginUser(emailOrUsername: String, password: String) {
-        // Query the database for the email or username
-        database.orderByChild("email").equalTo(emailOrUsername)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        for (userSnapshot in snapshot.children) {
-                            val userPassword = userSnapshot.child("password").value.toString()
-                            if (userPassword == password) {
-                                Toast.makeText(
-                                    this@Login,
-                                    "Login successful!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                // Redirect to the main screen or dashboard
-                                startActivity(Intent(this@Login, ClientFrontPage::class.java))
-                                finish()
-                                return
-                            }
+    private fun loginUser(email: String, password: String) {
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val user: FirebaseUser? = auth.currentUser
+                    if (user != null) {
+                        if (user.isEmailVerified) {
+                            Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(this, ClientFrontPage::class.java))
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Please verify your email before logging in.", Toast.LENGTH_LONG).show()
                         }
-                        Toast.makeText(this@Login, "Incorrect password", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // Check for username instead of email
-                        database.orderByChild("username").equalTo(emailOrUsername)
-                            .addListenerForSingleValueEvent(object : ValueEventListener {
-                                override fun onDataChange(snapshot: DataSnapshot) {
-                                    if (snapshot.exists()) {
-                                        for (userSnapshot in snapshot.children) {
-                                            val userPassword =
-                                                userSnapshot.child("password").value.toString()
-                                            if (userPassword == password) {
-                                                Toast.makeText(
-                                                    this@Login,
-                                                    "Login successful!",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                startActivity(
-                                                    Intent(
-                                                        this@Login,
-                                                        ClientFrontPage::class.java
-                                                    )
-                                                )
-                                                finish()
-                                                return
-                                            }
-                                        }
-                                        Toast.makeText(
-                                            this@Login,
-                                            "Incorrect password",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    } else {
-                                        Toast.makeText(
-                                            this@Login,
-                                            "Account not found",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-
-                                override fun onCancelled(error: DatabaseError) {
-                                    Toast.makeText(
-                                        this@Login,
-                                        "Database error: ${error.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            })
                     }
+                } else {
+                    Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(this@Login, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
-                }
-            })
+            }
     }
 }

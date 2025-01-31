@@ -6,12 +6,15 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 
 class registerSelection : AppCompatActivity() {
 
     private lateinit var database: DatabaseReference
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,6 +30,7 @@ class registerSelection : AppCompatActivity() {
         val number = findViewById<EditText>(R.id.number)
         val registerButton = findViewById<Button>(R.id.RegisterButton)
 
+        auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("Users")
 
         registerButton.setOnClickListener {
@@ -49,22 +53,36 @@ class registerSelection : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val userId = database.push().key ?: return@setOnClickListener
-            val user = User(userId, username, firstName,lastName, address, password, userEmail, phoneNumber)
+            // Register user in Firebase Authentication
+            auth.createUserWithEmailAndPassword(userEmail, password)
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful) {
+                        val firebaseUser: FirebaseUser? = auth.currentUser
+                        firebaseUser?.let { user ->
+                            user.sendEmailVerification().addOnCompleteListener { verifyTask ->
+                                if (verifyTask.isSuccessful) {
+                                    saveUserData(user.uid, username, firstName, lastName, address, userEmail, phoneNumber)
+                                    Toast.makeText(this, "Registration successful. Please verify your email.", Toast.LENGTH_LONG).show()
 
-            database.child(userId).setValue(user).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(this, "Registration successful", Toast.LENGTH_SHORT).show()
-
-                    // Redirect to Login activity
-                    val intent = Intent(this@registerSelection, Login::class.java)
-                    startActivity(intent)
-                    finish() // Optional: Prevent user from returning to this activity
-                } else {
-                    Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                                    // Redirect to Login activity
+                                    val intent = Intent(this@registerSelection, Login::class.java)
+                                    startActivity(intent)
+                                    finish()
+                                } else {
+                                    Toast.makeText(this, "Failed to send verification email.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    } else {
+                        Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
         }
+    }
+
+    private fun saveUserData(userId: String, username: String, firstName: String, lastName: String, address: String, email: String, phone: String) {
+        val user = User(userId, username, firstName, lastName, address, email, phone)
+        database.child(userId).setValue(user)
     }
 
     data class User(
@@ -73,7 +91,6 @@ class registerSelection : AppCompatActivity() {
         val firstName: String,
         val lastName: String,
         val location: String,
-        val password: String,
         val email: String,
         val phone: String
     )
