@@ -20,30 +20,30 @@ class registerSelection : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_register_selection)
 
-        val userName = findViewById<EditText>(R.id.userName)
-        val firstName = findViewById<EditText>(R.id.firstName)
-        val lastName = findViewById<EditText>(R.id.lastName)
-        val location = findViewById<EditText>(R.id.location)
-        val passWord = findViewById<EditText>(R.id.passWord)
-        val conPassword = findViewById<EditText>(R.id.conPassword)
-        val email = findViewById<EditText>(R.id.Email)
-        val number = findViewById<EditText>(R.id.number)
+        val usernameInput = findViewById<EditText>(R.id.userName)
+        val firstNameInput = findViewById<EditText>(R.id.firstName)
+        val lastNameInput = findViewById<EditText>(R.id.lastName)
+        val locationInput = findViewById<EditText>(R.id.location)
+        val passwordInput = findViewById<EditText>(R.id.passWord)
+        val confirmPasswordInput = findViewById<EditText>(R.id.conPassword)
+        val emailInput = findViewById<EditText>(R.id.Email)
+        val phoneInput = findViewById<EditText>(R.id.number)
         val registerButton = findViewById<Button>(R.id.RegisterButton)
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("Users")
 
         registerButton.setOnClickListener {
-            val username = userName.text.toString().trim()
-            val firstName = firstName.text.toString().trim()
-            val lastName = lastName.text.toString().trim()
-            val address = location.text.toString().trim()
-            val password = passWord.text.toString().trim()
-            val confirmPassword = conPassword.text.toString().trim()
-            val userEmail = email.text.toString().trim()
-            val phoneNumber = number.text.toString().trim()
+            val username = usernameInput.text.toString().trim()
+            val firstName = firstNameInput.text.toString().trim()
+            val lastName = lastNameInput.text.toString().trim()
+            val location = locationInput.text.toString().trim()
+            val password = passwordInput.text.toString().trim()
+            val confirmPassword = confirmPasswordInput.text.toString().trim()
+            val email = emailInput.text.toString().trim()
+            val phone = phoneInput.text.toString().trim()
 
-            if (username.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || address.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || userEmail.isEmpty() || phoneNumber.isEmpty()) {
+            if (username.isEmpty() || firstName.isEmpty() || lastName.isEmpty() || location.isEmpty() || password.isEmpty() || confirmPassword.isEmpty() || email.isEmpty() || phone.isEmpty()) {
                 Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
@@ -53,25 +53,13 @@ class registerSelection : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Register user in Firebase Authentication
-            auth.createUserWithEmailAndPassword(userEmail, password)
+            // Create User in Firebase Authentication
+            auth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
                         val firebaseUser: FirebaseUser? = auth.currentUser
                         firebaseUser?.let { user ->
-                            user.sendEmailVerification().addOnCompleteListener { verifyTask ->
-                                if (verifyTask.isSuccessful) {
-                                    saveUserData(user.uid, username, firstName, lastName, address, userEmail, phoneNumber)
-                                    Toast.makeText(this, "Registration successful. Please verify your email.", Toast.LENGTH_LONG).show()
-
-                                    // Redirect to Login activity
-                                    val intent = Intent(this@registerSelection, Login::class.java)
-                                    startActivity(intent)
-                                    finish()
-                                } else {
-                                    Toast.makeText(this, "Failed to send verification email.", Toast.LENGTH_SHORT).show()
-                                }
-                            }
+                            saveUserData(user.uid, username, firstName, lastName, location, email, phone)
                         }
                     } else {
                         Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
@@ -80,18 +68,27 @@ class registerSelection : AppCompatActivity() {
         }
     }
 
-    private fun saveUserData(userId: String, username: String, firstName: String, lastName: String, address: String, email: String, phone: String) {
-        val user = User(userId, username, firstName, lastName, address, email, phone)
+    private fun saveUserData(userId: String, username: String, firstName: String, lastName: String, location: String, email: String, phone: String) {
+        val user = User(userId, username, firstName, lastName, location, email, phone)
+
         database.child(userId).setValue(user)
+            .addOnSuccessListener {
+                Toast.makeText(this, "User registered successfully!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this, Login::class.java))
+                finish()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to save user data: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
 
     data class User(
-        val userId: String,
-        val username: String,
-        val firstName: String,
-        val lastName: String,
-        val location: String,
-        val email: String,
-        val phone: String
+        val userId: String = "",
+        val username: String = "",
+        val firstName: String = "",
+        val lastName: String = "",
+        val location: String = "",
+        val email: String = "",
+        val phone: String = ""
     )
 }
