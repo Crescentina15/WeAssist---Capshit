@@ -46,45 +46,33 @@ class ProfileFragment : Fragment() {
         reportProblemButton = view.findViewById(R.id.report_problem)
         logoutButton = view.findViewById(R.id.log_out)
 
-        // Fetch user data using auth.uid
+        return view
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Fetch user data after the fragment is attached
         val currentUser = auth.currentUser
         if (currentUser != null) {
             fetchUserData(currentUser.uid)
         } else {
-            Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
+            showToast("User not logged in")
         }
 
-        // Edit Profile button click
-        editProfileButton.setOnClickListener {
-            startActivity(Intent(activity, EditProfileActivity::class.java))
-        }
-
-        // Security button click
-        securityButton.setOnClickListener {
-            startActivity(Intent(activity, SecurityActivity::class.java))
-        }
-
-        // Privacy button click
-        privacyButton.setOnClickListener {
-            startActivity(Intent(activity, PrivacyActivity::class.java))
-        }
-
-        // Report Problem button click
-        reportProblemButton.setOnClickListener {
-            startActivity(Intent(activity, ReportActivity::class.java))
-        }
-
-        // Logout button click
-        logoutButton.setOnClickListener {
-            logoutUser()
-        }
-
-        return view
+        // Set button click listeners safely
+        editProfileButton.setOnClickListener { openActivity(EditProfileActivity::class.java) }
+        securityButton.setOnClickListener { openActivity(SecurityActivity::class.java) }
+        privacyButton.setOnClickListener { openActivity(PrivacyActivity::class.java) }
+        reportProblemButton.setOnClickListener { openActivity(ReportActivity::class.java) }
+        logoutButton.setOnClickListener { logoutUser() }
     }
 
     private fun fetchUserData(userId: String) {
         database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                if (!isAdded) return // Prevent crash if fragment is detached
+
                 if (snapshot.exists()) {
                     val firstName = snapshot.child("firstName").getValue(String::class.java) ?: "N/A"
                     val email = snapshot.child("email").getValue(String::class.java) ?: "N/A"
@@ -93,26 +81,42 @@ class ProfileFragment : Fragment() {
                     usernameTextView.text = firstName
                     emailTextView.text = email
                 } else {
-                    Toast.makeText(context, "User data not found!", Toast.LENGTH_SHORT).show()
+                    showToast("User data not found!")
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(context, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                if (isAdded) {
+                    showToast("Database error: ${error.message}")
+                }
             }
         })
     }
 
     private fun logoutUser() {
+        if (!isAdded) return // Prevent crash if fragment is detached
+
         // Clear stored login credentials
-        val sharedPreferences = activity?.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        sharedPreferences?.edit()?.clear()?.apply()
+        val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPreferences.edit().clear().apply()
 
         auth.signOut()
-        Toast.makeText(context, "You have been logged out", Toast.LENGTH_SHORT).show()
+        showToast("You have been logged out")
 
         // Redirect to Login screen
-        startActivity(Intent(activity, Login::class.java))
-        activity?.finish()
+        startActivity(Intent(requireActivity(), Login::class.java))
+        requireActivity().finish()
+    }
+
+    private fun openActivity(activityClass: Class<*>) {
+        if (isAdded) {
+            startActivity(Intent(requireActivity(), activityClass))
+        }
+    }
+
+    private fun showToast(message: String) {
+        if (isAdded) {
+            Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+        }
     }
 }

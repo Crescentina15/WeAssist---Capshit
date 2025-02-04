@@ -59,7 +59,18 @@ class registerSelection : AppCompatActivity() {
                     if (task.isSuccessful) {
                         val firebaseUser: FirebaseUser? = auth.currentUser
                         firebaseUser?.let { user ->
-                            saveUserData(user.uid, username, firstName, lastName, location, email, phone)
+                            user.sendEmailVerification()
+                                .addOnCompleteListener { verificationTask ->
+                                    if (verificationTask.isSuccessful) {
+                                        saveUserData(user.uid, username, firstName, lastName, location, email, phone)
+                                        Toast.makeText(this, "Verification email sent. Please check your inbox.", Toast.LENGTH_LONG).show()
+                                        auth.signOut() // Log the user out after registration
+                                        startActivity(Intent(this, Login::class.java))
+                                        finish()
+                                    } else {
+                                        Toast.makeText(this, "Failed to send verification email: ${verificationTask.exception?.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                         }
                     } else {
                         Toast.makeText(this, "Registration failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
@@ -74,8 +85,6 @@ class registerSelection : AppCompatActivity() {
         database.child(userId).setValue(user)
             .addOnSuccessListener {
                 Toast.makeText(this, "User registered successfully!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, Login::class.java))
-                finish()
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Failed to save user data: ${it.message}", Toast.LENGTH_SHORT).show()
