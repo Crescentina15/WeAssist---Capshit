@@ -34,6 +34,7 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/vesper_libre_bold"
                 android:text="Privacy Settings"
+                android:layout_marginStart="10dp"
                 android:textColor="@color/black"
                 android:textSize="20sp"
                 android:textStyle="bold" />

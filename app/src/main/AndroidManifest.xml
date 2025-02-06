@@ -13,13 +13,29 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
-            android:name=".SetappointmentActivity"
+            android:name=".AddbalanceActivity"
             android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
         <activity
-            android:name=".LawyersprofileActivity"
+            android:name=".AddavailabilityActivity"
             android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
+        <activity
+            android:name=".SetappointmentActivity"
+            android:exported="true" />
+        <activity
+            android:name=".LawyersprofileActivity"
+            android:exported="true" />
         <activity
             android:name=".ReportActivity"
             android:exported="false" />
