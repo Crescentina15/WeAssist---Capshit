@@ -8,7 +8,7 @@ const App = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [secretary, setSecretary] = useState({ name: "", email: "", phone: "" });
-  const [lawyer, setLawyer] = useState({ name: "", services: "", contact: "" });
+  const [lawyer, setLawyer] = useState({ name: "", specialization: "", lawFirm: "", licenseNumber: "", experience: "", contact: { phone: "", email: "", address: "" } });
   const [lawyers, setLawyers] = useState([]);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ const App = () => {
     const newRef = push(ref(db, "lawyers"));
     set(newRef, lawyer).then(() => {
       alert("Lawyer added successfully!");
-      setLawyer({ name: "", services: "", contact: "" });
+      setLawyer({ name: "", specialization: "", lawFirm: "", licenseNumber: "", experience: "", contact: { phone: "", email: "", address: "" } });
     }).catch(error => alert("Error: " + error.message));
   };
 
@@ -88,15 +88,22 @@ const App = () => {
 
       <h2>Add Lawyer</h2>
       <input placeholder="Name" value={lawyer.name} onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} />
-      <input placeholder="Services" value={lawyer.services} onChange={(e) => setLawyer({ ...lawyer, services: e.target.value })} />
-      <input placeholder="Contact" value={lawyer.contact} onChange={(e) => setLawyer({ ...lawyer, contact: e.target.value })} />
+      <input placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} />
+      <input placeholder="Law Firm" value={lawyer.lawFirm} onChange={(e) => setLawyer({ ...lawyer, lawFirm: e.target.value })} />
+      <input placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} />
+      <input placeholder="Experience (years)" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} />
+      <input placeholder="Phone" value={lawyer.contact.phone} onChange={(e) => setLawyer({ ...lawyer, contact: { ...lawyer.contact, phone: e.target.value } })} />
+      <input placeholder="Email" value={lawyer.contact.email} onChange={(e) => setLawyer({ ...lawyer, contact: { ...lawyer.contact, email: e.target.value } })} />
+      <input placeholder="Address" value={lawyer.contact.address} onChange={(e) => setLawyer({ ...lawyer, contact: { ...lawyer.contact, address: e.target.value } })} />
       <button onClick={addLawyer}>Add Lawyer</button>
 
       <h2>View Lawyers</h2>
       <button onClick={fetchLawyers}>Refresh Lawyers List</button>
       <ul>
         {lawyers.map((lawyer, index) => (
-          <li key={index}>{lawyer.name} - {lawyer.services}</li>
+          <li key={index}>
+            {lawyer.name} - {lawyer.specialization} - {lawyer.lawFirm} - License: {lawyer.licenseNumber} - {lawyer.experience} years - {lawyer.contact.phone} - {lawyer.contact.email} - {lawyer.contact.address}
+          </li>
         ))}
       </ul>
     </div>
