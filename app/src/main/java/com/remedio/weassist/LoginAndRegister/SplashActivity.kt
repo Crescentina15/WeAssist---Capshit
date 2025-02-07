@@ -1,9 +1,10 @@
-package com.remedio.weassist
+package com.remedio.weassist.LoginAndRegister
 
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import androidx.appcompat.app.AppCompatActivity
+import com.remedio.weassist.R
 
 class SplashActivity : AppCompatActivity() {
 

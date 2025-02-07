@@ -1,4 +1,4 @@
-package com.remedio.weassist;
+package com.remedio.weassist.Clients;
 
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
@@ -7,10 +7,10 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.NavigationUI;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.remedio.weassist.R;
 
 public class ClientDashboard extends AppCompatActivity {
 

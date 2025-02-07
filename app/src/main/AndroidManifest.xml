@@ -24,22 +24,22 @@
             android:name=".SetappointmentActivity"
             android:exported="true" />
         <activity
-            android:name=".LawyersprofileActivity"
+            android:name=".Lawyers.LawyersprofileActivity"
             android:exported="true" />
         <activity
-            android:name=".ReportActivity"
+            android:name=".Miscellaneous.ReportActivity"
             android:exported="false" />
         <activity
-            android:name=".PrivacyActivity"
+            android:name=".Miscellaneous.PrivacyActivity"
             android:exported="false" />
         <activity
-            android:name=".SecurityActivity"
+            android:name=".Miscellaneous.SecurityActivity"
             android:exported="false" />
         <activity
-            android:name=".EditProfileActivity"
+            android:name=".Profile.EditProfileActivity"
             android:exported="true" />
         <activity
-            android:name=".ClientFrontPage"
+            android:name=".Clients.ClientFrontPage"
             android:exported="false" />
         <activity
             android:name=".ChatmessagesActivity"
@@ -48,10 +48,10 @@
             android:name=".AssistanceActivity"
             android:exported="false" />
         <activity
-            android:name=".ClientDashboard"
+            android:name=".Clients.ClientDashboard"
             android:exported="false" />
         <activity
-            android:name=".SplashActivity"
+            android:name=".LoginAndRegister.SplashActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -60,10 +60,10 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".Login"
+            android:name=".LoginAndRegister.Login"
             android:exported="false" />
         <activity
-            android:name=".registerSelection"
+            android:name=".LoginAndRegister.registerSelection"
             android:exported="false" />
     </application>
 

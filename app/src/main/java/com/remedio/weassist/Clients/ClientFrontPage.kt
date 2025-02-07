@@ -1,10 +1,14 @@
-package com.remedio.weassist
+package com.remedio.weassist.Clients
 
 import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
+import com.remedio.weassist.AppointmentsFragment
+import com.remedio.weassist.MessageFragment
+import com.remedio.weassist.Profile.ProfileFragment
+import com.remedio.weassist.R
 
 class ClientFrontPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

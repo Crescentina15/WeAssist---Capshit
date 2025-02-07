@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Profile
 
 import android.content.Context
 import android.content.Intent
@@ -12,6 +12,11 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.LoginAndRegister.Login
+import com.remedio.weassist.Miscellaneous.PrivacyActivity
+import com.remedio.weassist.R
+import com.remedio.weassist.Miscellaneous.ReportActivity
+import com.remedio.weassist.Miscellaneous.SecurityActivity
 
 class ProfileFragment : Fragment() {
 

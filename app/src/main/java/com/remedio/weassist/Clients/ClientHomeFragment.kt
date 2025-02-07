@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Clients
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.R
 
 class ClientHomeFragment : Fragment() {
 
