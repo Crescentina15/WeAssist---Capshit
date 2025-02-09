@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/light_gray">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/lawyersProfile"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@drawable/account_circle_24"
+                android:scaleType="centerCrop"
+                android:background="@drawable/baseline_circle_24"/>
+
+            <Button
+                android:id="@+id/updateProfile"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Update Profile Picture"
+                android:background="@drawable/button_background" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/lawyerName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Atty. Josh Gonzalez"
+            android:fontFamily="@font/inria_serif_bold"
+            android:textSize="20sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="16dp"/>
+        <!-- Kaning Name kay sa Lawyer na giclicks sa secretary ha  -->
+        <EditText
+            android:id="@+id/lawSchool"
+            android:layout_width="match_parent"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:padding="8dp"
+            android:layout_marginTop="15dp"
+            android:layout_height="wrap_content"
+            android:hint="Law School Attended"/>
+
+        <EditText
+            android:id="@+id/graduationYear"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:hint="Graduation Year"
+            android:inputType="number"/>
+
+        <EditText
+            android:id="@+id/certifications"
+            android:layout_width="match_parent"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:layout_height="wrap_content"
+            android:hint="Additional Certifications"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Professional Information"
+            android:textSize="20sp"
+            android:fontFamily="@font/inria_serif_bold"
+            android:textColor="@color/black"
+            android:layout_marginTop="8dp"/>
+
+        <EditText
+            android:id="@+id/licenseNumber"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:padding="8dp"
+            android:layout_marginTop="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="License Number"/>
+
+        <EditText
+            android:id="@+id/jurisdiction"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Jurisdiction"/>
+
+        <EditText
+            android:id="@+id/experience"
+            android:layout_width="match_parent"
+            android:fontFamily="@font/inria_serif_bold"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/edittext_container"
+            android:padding="8dp"
+            android:layout_height="wrap_content"
+            android:hint="Years of Experience"
+            android:inputType="number"/>
+
+        <EditText
+            android:id="@+id/employer"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Current Employer or Law Firm"/>
+
+        <EditText
+            android:id="@+id/bio"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Professional Biography"/>
+
+        <EditText
+            android:id="@+id/rate"
+            android:layout_width="match_parent"
+            android:fontFamily="@font/inria_serif_bold"
+            android:background="@drawable/edittext_container"
+            android:layout_marginTop="5dp"
+            android:padding="8dp"
+            android:layout_height="wrap_content"
+            android:hint="Starting Professional Rate"
+            android:inputType="number"/>
+
+        <Button
+            android:id="@+id/submitButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Submit"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

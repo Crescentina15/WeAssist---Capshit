@@ -14,6 +14,7 @@
         android:orientation="horizontal"
         android:padding="10dp">
 
+        <!-- Lawyer Profile Image -->
         <ImageView
             android:id="@+id/lawyer_profile_image"
             android:layout_width="80dp"
@@ -23,6 +24,7 @@
             android:scaleType="centerCrop"
             android:src="@drawable/account_circle_24" />
 
+        <!-- Appointment Details -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -36,7 +38,7 @@
                 android:id="@+id/appointment_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Appointment with John Doe"
+                android:text="Appointment with Atty. John Doe"
                 android:textColor="#000000"
                 android:textSize="14sp"
                 android:textStyle="bold" />
@@ -59,5 +61,20 @@
                 android:textColor="#666666"
                 android:textSize="12sp" />
         </LinearLayout>
+
+        <!-- End Session Button -->
+        <Button
+            android:id="@+id/btn_end_session"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:text="End Session"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#FF5252"
+            android:paddingHorizontal="12dp"
+            android:layout_marginTop="8dp"
+            android:paddingVertical="6dp" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>
+    <!-- Makita sa dashboard -->
+

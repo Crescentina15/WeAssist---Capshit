@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F5F5F5"
+    android:padding="16dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/lawyers_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Lawyers List"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#333333"
+        android:gravity="center"
+        android:padding="8dp" />
+
+    <ListView
+        android:id="@+id/lawyers_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="1dp"
+        android:padding="8dp" />
+
+</LinearLayout>
+    <!-- Directed from Add Balance, Add Availability and Background -->

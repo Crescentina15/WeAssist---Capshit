@@ -38,3 +38,4 @@ android:clipToPadding="false"
 android:padding="15dp"/>
 
     </LinearLayout>
+    <!--Client -->

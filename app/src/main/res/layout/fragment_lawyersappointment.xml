@@ -26,7 +26,7 @@
             android:id="@+id/appointment_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Appointment with John Doe"
+            android:text="Appointment with Atty. John Doe"
             android:textSize="14sp"
             android:gravity="center_horizontal"
             android:layout_marginTop="8dp"
@@ -38,7 +38,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:gravity="center_horizontal"
+            android:gravity="center"
+            android:layout_marginStart="45dp"
             android:text="October 24, 2024"
             android:textColor="#666666"
             android:textSize="12sp" />
@@ -47,41 +48,14 @@
             android:id="@+id/appointment_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1:00 PM"
-            android:textSize="12sp"
-            android:gravity="center_horizontal"
             android:layout_marginTop="4dp"
-            android:textColor="#666666" />
+            android:gravity="center"
+            android:layout_marginStart="45dp"
+            android:text="1:00 PM"
+            android:textColor="#666666"
+            android:textSize="12sp" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="8dp"
-            android:gravity="center">
 
-            <Button
-                android:id="@+id/start_session_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:backgroundTint="#4CAF50"
-                android:padding="6dp"
-                android:text="Start Session"
-                android:textColor="@android:color/white"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/end_session_button"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:backgroundTint="#F44336"
-                android:padding="6dp"
-                android:text="End Session"
-                android:textColor="@android:color/white"
-                android:textSize="12sp"
-                android:layout_marginStart="8dp" />
-        </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
+    <!-- For Secretary's End na sa appointment makita nga bottomnav -->

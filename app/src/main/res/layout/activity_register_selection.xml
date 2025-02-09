@@ -41,8 +41,8 @@
       android:layout_marginTop="20dp"
       android:layout_marginRight="50dp"
       android:ems="10"
-      android:fontFamily="@font/inria_serif_bold"
       android:hint="Username"
+        android:fontFamily="@font/inria_serif_bold"
       android:background="@drawable/edittext_container"
       android:textColor="@color/black"
       android:padding="10dp" />

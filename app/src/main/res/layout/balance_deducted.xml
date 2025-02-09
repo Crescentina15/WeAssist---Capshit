@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="10dp"
+    android:gravity="center"
+    android:background="@drawable/dialog_bg">
+
+    <!-- Notice Title -->
+    <TextView
+        android:id="@+id/notice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Notice"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"
+        android:gravity="center"/>
+
+    <!-- Green Check Icon -->
+    <ImageView
+        android:id="@+id/check"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@drawable/ic_check_circle"
+        android:tint="#00FF00"
+        android:contentDescription="Check Icon"
+        android:layout_marginTop="8dp"/>
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/notice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="10% of the recent fee has been deducted from your balance"
+        android:textSize="16sp"
+        android:textColor="@color/black"
+        android:gravity="center"
+        android:layout_marginTop="12dp"/>
+
+    <Button
+        android:id="@+id/okay"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Okay"
+        android:background="@drawable/button_background"
+        android:textColor="@color/white"
+        android:padding="8dp"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>
+    <!-- mogawas ni after iend session ni secretary katung naas dashboard -->

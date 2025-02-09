@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    android:cardCornerRadius="16dp"
+    android:cardElevation="8dp"
+    android:background="@color/light_pink">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@color/light_pink">
+
+        <TextView
+            android:id="@+id/recentTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Recent"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"/>
+
+        <TextView
+            android:id="@+id/recentNotification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Your appointment with Atty. Kalix Jace Martinez has been approved"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/recentTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="October 24, 2024 12:45 PM"
+            android:textSize="12sp"
+            android:textColor="@color/gray"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/earlierTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Earlier"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/black"
+            android:layout_marginTop="8dp"/>
+
+        <TextView
+            android:id="@+id/earlierNotification"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Your appointment with Atty. Kalix Jace Martinez has been accepted"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="4dp"/>
+
+        <TextView
+            android:id="@+id/earlierTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="October 24, 2024 12:30 PM"
+            android:textSize="12sp"
+            android:textColor="@color/gray"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/markAsReadButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mark All as Read"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:gravity="center"
+            android:paddingTop="12dp"
+            android:clickable="true"
+            android:focusable="true"/>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>
+    <!-- mogawas ig click sa notification icon  -->
+    <!-- ang backend ani kay sagul ra sa dashboard both users kay mura nig pop-up -->
