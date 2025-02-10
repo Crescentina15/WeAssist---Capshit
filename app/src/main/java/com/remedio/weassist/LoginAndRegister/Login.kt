@@ -13,6 +13,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.ClientFrontPage
 import com.remedio.weassist.R
+import com.remedio.weassist.Secretary.SecretaryDashboardActivity
 import com.remedio.weassist.Secretary.SecretaryDashboardFragment
 
 
@@ -52,7 +53,7 @@ class Login : AppCompatActivity() {
         }
 
         signUpText.setOnClickListener {
-            startActivity(Intent(this, registerSelection::class.java))
+            startActivity(Intent(this, RegisterSelection::class.java))
         }
     }
 
@@ -73,32 +74,45 @@ class Login : AppCompatActivity() {
     }
 
     private fun fetchAndRedirectUser(uid: String) {
-        database.child(uid).get()
-            .addOnSuccessListener {
-                if (it.exists()) {
-                    val role = it.child("role").value.toString()
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(uid)
+        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(uid)
 
-                    val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-                    val editor = sharedPreferences.edit()
-                    editor.putString("role", role)
-                    editor.apply()
+        userRef.get().addOnSuccessListener { userSnapshot ->
+            if (userSnapshot.exists()) {
+                val role = userSnapshot.child("role").value.toString()
+                saveUserRole(role)
 
-                    Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
-
-                    // Redirect based on role
-                    val intent = if (role == "secretary") {
-                        Intent(this, SecretaryDashboardFragment::class.java)
-                    } else {
-                        Intent(this, ClientFrontPage::class.java)
-                    }
-                    startActivity(intent)
-                    finish()
+                // Redirect based on role
+                val intent = if (role == "secretary") {
+                    Intent(this, SecretaryDashboardActivity::class.java)
                 } else {
-                    Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
+                    Intent(this, ClientFrontPage::class.java)
+                }
+                startActivity(intent)
+                finish()
+            } else {
+                // If not found in Users, check in Secretaries
+                secretaryRef.get().addOnSuccessListener { secSnapshot ->
+                    if (secSnapshot.exists()) {
+                        saveUserRole("secretary")
+                        startActivity(Intent(this, SecretaryDashboardActivity::class.java))
+                        finish()
+                    } else {
+                        Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
+                        auth.signOut()
+                    }
                 }
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Database error: ${it.message}", Toast.LENGTH_SHORT).show()
-            }
+        }.addOnFailureListener {
+            Toast.makeText(this, "Database error: ${it.message}", Toast.LENGTH_SHORT).show()
+        }
     }
+
+    private fun saveUserRole(role: String) {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("role", role)
+        editor.apply()
+    }
+
 }

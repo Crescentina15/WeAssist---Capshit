@@ -25,13 +25,13 @@
             android:name=".AddbalanceActivity"
             android:exported="true" />
         <activity
-            android:name=".AddavailabilityActivity"
+            android:name=".AddAvailabilityActivity"
             android:exported="true" />
         <activity
             android:name=".SetappointmentActivity"
             android:exported="true" />
         <activity
-            android:name=".Secretary.LawyersprofileActivity"
+            android:name=".Secretary.SecretaryProfileActivity"
             android:exported="true" />
         <activity
             android:name=".Miscellaneous.ReportActivity"
@@ -57,6 +57,9 @@
         <activity
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
+        <activity android:name=".Secretary.SecretaryDashboardActivity"
+            android:exported="false"/>
+
         <activity
             android:name=".LoginAndRegister.SplashActivity"
             android:exported="true">
@@ -70,7 +73,7 @@
             android:name=".LoginAndRegister.Login"
             android:exported="false" />
         <activity
-            android:name=".LoginAndRegister.registerSelection"
+            android:name=".LoginAndRegister.RegisterSelection"
             android:exported="false" />
     </application>
 
