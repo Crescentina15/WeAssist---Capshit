@@ -31,7 +31,7 @@
             android:name=".SetappointmentActivity"
             android:exported="true" />
         <activity
-            android:name=".Lawyers.LawyersprofileActivity"
+            android:name=".Secretary.LawyersprofileActivity"
             android:exported="true" />
         <activity
             android:name=".Miscellaneous.ReportActivity"
