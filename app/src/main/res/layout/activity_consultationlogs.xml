@@ -1,0 +1,53 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/consultation_summary_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Consultation Summary"
+        android:textSize="20sp"
+        android:fontFamily="@font/vesper_libre_bold"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp"/>
+
+    <TextView
+        android:id="@+id/client_name_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Client: Jessalyn Sadili"
+        android:textSize="16sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/consultation_date_log"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Date: October 24, 2024"
+        android:textSize="14sp"
+        android:textColor="#666666"/>
+
+    <TextView
+        android:id="@+id/consultation_notes_log"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="#A9A9A9"
+        android:layout_marginTop="20dp"
+        android:padding="10dp"
+        android:textSize="16sp"/>
+    <!-- kani na text view mao ni nasuwat s lawyer sa consultation  -->
+
+    <Button
+        android:id="@+id/btn_save_log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save and Exit"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#00008B"/>
+</LinearLayout>
+ <!-- After ni sya sa consulation kanang ganotes na lawyer bale summary rani -->
+ <!-- para confirm or double check bali then save dayun mabalik balikan ra -->

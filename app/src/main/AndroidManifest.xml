@@ -13,14 +13,23 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
+            android:name=".ConsultationlogsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ConsultationActivity"
+            android:exported="true" />
+        <activity
+            android:name=".LawyersdashboardActivity"
+            android:exported="false" />
+        <activity
             android:name=".GiveratingsActivity"
-            android:exported="true"/>
+            android:exported="true" />
         <activity
             android:name=".AddbackgroundActivity"
-            android:exported="true"/>
+            android:exported="true" />
         <activity
             android:name=".LawyerslistActivity"
-            android:exported="true"/>
+            android:exported="true" />
         <activity
             android:name=".AddbalanceActivity"
             android:exported="true" />
@@ -57,9 +66,9 @@
         <activity
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
-        <activity android:name=".Secretary.SecretaryDashboardActivity"
-            android:exported="false"/>
-
+        <activity
+            android:name=".Secretary.SecretaryDashboardActivity"
+            android:exported="false" />
         <activity
             android:name=".LoginAndRegister.SplashActivity"
             android:exported="true">

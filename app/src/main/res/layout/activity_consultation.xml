@@ -1,0 +1,45 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/client_name_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Consultation with Jessalyn Sadili"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/consultation_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="4:00 PM - 5:00 PM"
+        android:textSize="14sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="12dp"/>
+
+    <EditText
+        android:id="@+id/consultation_notes"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:hint="Write notes here..."
+        android:background="#A9A9A9"
+        android:padding="10dp"
+        android:inputType="textLongMessage"
+        android:textSize="16sp"
+        android:gravity="top|start"/>
+
+    <Button
+        android:id="@+id/btn_end_session"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="End Session"
+        android:layout_marginTop="16dp"
+        android:backgroundTint="#FF0000"/>
+</LinearLayout>
+<!-- While ga consulation ari isuwat sa lawyers ang logs with the client -->
+<!-- Directed from the list na mapislit gikan sa dashboard -->
