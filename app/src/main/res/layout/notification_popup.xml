@@ -4,8 +4,6 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="16dp"
-    android:cardCornerRadius="16dp"
-    android:cardElevation="8dp"
     android:background="@color/light_pink">
 
     <LinearLayout
