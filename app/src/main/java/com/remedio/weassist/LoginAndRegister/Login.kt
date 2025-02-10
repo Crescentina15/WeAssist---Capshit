@@ -13,6 +13,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.ClientFrontPage
 import com.remedio.weassist.R
+import com.remedio.weassist.Secretary.SecretaryDashboardFragment
+
 
 class Login : AppCompatActivity() {
 
@@ -60,10 +62,7 @@ class Login : AppCompatActivity() {
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     if (user != null && user.isEmailVerified) {
-                        fetchAndSaveUserDetails(user.uid)
-                        Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
-                        startActivity(Intent(this, ClientFrontPage::class.java))
-                        finish()
+                        fetchAndRedirectUser(user.uid)
                     } else {
                         Toast.makeText(this, "Please verify your email before logging in.", Toast.LENGTH_LONG).show()
                     }
@@ -73,28 +72,33 @@ class Login : AppCompatActivity() {
             }
     }
 
-    private fun fetchAndSaveUserDetails(uid: String) {
-        val user = auth.currentUser
-        if (user != null) {
-            database.child(user.uid).get()
-                .addOnSuccessListener {
-                    if (it.exists()) {
-                        val email = it.child("email").value.toString()
-                        val username = it.child("username").value.toString()
+    private fun fetchAndRedirectUser(uid: String) {
+        database.child(uid).get()
+            .addOnSuccessListener {
+                if (it.exists()) {
+                    val role = it.child("role").value.toString()
 
-                        val sharedPreferences = getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
-                        val editor = sharedPreferences.edit()
-                        editor.putString("email", email)
-                        editor.putString("username", username)
-                        editor.apply()
+                    val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                    val editor = sharedPreferences.edit()
+                    editor.putString("role", role)
+                    editor.apply()
+
+                    Toast.makeText(this, "Login successful!", Toast.LENGTH_SHORT).show()
+
+                    // Redirect based on role
+                    val intent = if (role == "secretary") {
+                        Intent(this, SecretaryDashboardFragment::class.java)
                     } else {
-                        Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
+                        Intent(this, ClientFrontPage::class.java)
                     }
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
                 }
-                .addOnFailureListener {
-                    Toast.makeText(this, "Database error: ${it.message}", Toast.LENGTH_SHORT).show()
-                }
-        }
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Database error: ${it.message}", Toast.LENGTH_SHORT).show()
+            }
     }
-
 }
