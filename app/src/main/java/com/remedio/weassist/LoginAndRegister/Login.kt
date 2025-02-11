@@ -12,10 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.ClientFrontPage
+import com.remedio.weassist.LawyersDashboardActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.SecretaryDashboardActivity
-import com.remedio.weassist.Secretary.SecretaryDashboardFragment
-
 
 class Login : AppCompatActivity() {
 
@@ -76,6 +75,7 @@ class Login : AppCompatActivity() {
     private fun fetchAndRedirectUser(uid: String) {
         val userRef = FirebaseDatabase.getInstance().getReference("Users").child(uid)
         val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(uid)
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(uid)
 
         userRef.get().addOnSuccessListener { userSnapshot ->
             if (userSnapshot.exists()) {
@@ -83,23 +83,33 @@ class Login : AppCompatActivity() {
                 saveUserRole(role)
 
                 // Redirect based on role
-                val intent = if (role == "secretary") {
-                    Intent(this, SecretaryDashboardActivity::class.java)
-                } else {
-                    Intent(this, ClientFrontPage::class.java)
+                val intent = when (role) {
+                    "secretary" -> Intent(this, SecretaryDashboardActivity::class.java)
+                    "lawyer" -> Intent(this, LawyersDashboardActivity::class.java) // Updated reference
+                    else -> Intent(this, ClientFrontPage::class.java)
                 }
+
                 startActivity(intent)
                 finish()
             } else {
-                // If not found in Users, check in Secretaries
+                // Check if the user is a secretary
                 secretaryRef.get().addOnSuccessListener { secSnapshot ->
                     if (secSnapshot.exists()) {
                         saveUserRole("secretary")
                         startActivity(Intent(this, SecretaryDashboardActivity::class.java))
                         finish()
                     } else {
-                        Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
-                        auth.signOut()
+                        // Check if the user is a lawyer
+                        lawyerRef.get().addOnSuccessListener { lawyerSnapshot ->
+                            if (lawyerSnapshot.exists()) {
+                                saveUserRole("lawyer")
+                                startActivity(Intent(this, LawyersDashboardActivity::class.java))
+                                finish()
+                            } else {
+                                Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
+                                auth.signOut()
+                            }
+                        }
                     }
                 }
             }
@@ -114,5 +124,4 @@ class Login : AppCompatActivity() {
         editor.putString("role", role)
         editor.apply()
     }
-
 }
