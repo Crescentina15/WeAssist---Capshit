@@ -13,6 +13,9 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
+            android:name=".Lawyer.Lawyer_FrontPage"
+            android:exported="false" />
+        <activity
             android:name=".ConsultationLogsActivity"
             android:exported="false" />
         <activity

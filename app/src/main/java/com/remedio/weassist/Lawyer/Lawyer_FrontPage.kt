@@ -7,18 +7,17 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.remedio.weassist.AppointmentsFragment
 import com.remedio.weassist.Clients.ClientHomeFragment
 import com.remedio.weassist.MessageFragment
-import com.remedio.weassist.Profile.ProfileFragment
 import com.remedio.weassist.R
 
-class LawyersDashboardActivity : AppCompatActivity() {
+class Lawyer_FrontPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_lawyers_dashboard)
+        setContentView(R.layout.activity_lawyer_front_page)
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
 
         // Set default fragment
-        loadFragment(AppointmentsFragment())
+        loadFragment(ClientHomeFragment())
 
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
@@ -27,7 +26,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
                 R.id.nav_appointments -> AppointmentsFragment()
                 R.id.nav_message -> MessageFragment()
 
-                else -> ClientHomeFragment()
+                else -> AppointmentsFragment()
             }
             loadFragment(selectedFragment)
             true
