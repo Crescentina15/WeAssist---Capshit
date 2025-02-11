@@ -19,25 +19,25 @@
             android:name=".ConsultationActivity"
             android:exported="true" />
         <activity
-            android:name=".LawyersDashboardActivity"
+            android:name=".Lawyer.LawyersDashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".GiveRatingsActivity"
+            android:name=".Miscellaneous.GiveRatingsActivity"
             android:exported="true" />
         <activity
             android:name=".AddBackgroundActivity"
             android:exported="true" />
         <activity
-            android:name=".LawyersListActivity"
+            android:name=".Lawyer.LawyersListActivity"
             android:exported="true" />
         <activity
-            android:name=".AddBalanceActivity"
+            android:name=".Miscellaneous.AddBalanceActivity"
             android:exported="true" />
         <activity
             android:name=".AddAvailabilityActivity"
             android:exported="true" />
         <activity
-            android:name=".SetAppointmentActivity"
+            android:name=".Secretary.SetAppointmentActivity"
             android:exported="true" />
         <activity
             android:name=".Secretary.SecretaryProfileActivity"
@@ -61,7 +61,7 @@
             android:name=".ChatMessagesActivity"
             android:exported="true" />
         <activity
-            android:name=".AssistanceActivity"
+            android:name=".Clients.AssistanceActivity"
             android:exported="false" />
         <activity
             android:name=".Clients.ClientDashboard"

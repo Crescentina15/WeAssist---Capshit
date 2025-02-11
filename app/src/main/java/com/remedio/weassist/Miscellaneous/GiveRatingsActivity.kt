@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Miscellaneous
 
 import android.os.Bundle
 import android.util.Log
@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import com.remedio.weassist.R
 
 class GiveRatingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

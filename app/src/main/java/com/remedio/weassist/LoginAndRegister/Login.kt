@@ -12,7 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.ClientFrontPage
-import com.remedio.weassist.LawyersDashboardActivity
+import com.remedio.weassist.Lawyer.LawyersDashboardActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.SecretaryDashboardActivity
 
