@@ -5,13 +5,7 @@
     app:startDestination="@id/fragment_appointments">
 
 
-    <!-- Message Fragment -->
-    <fragment
-        android:id="@+id/fragment_message"
-        android:label="Message"
-        tools:layout="@layout/fragment_message">
-        <!-- Define the actions and navigation here if needed -->
-    </fragment>
+
 
     <!-- Appointments Fragment -->
     <fragment

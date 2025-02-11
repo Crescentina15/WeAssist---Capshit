@@ -24,7 +24,7 @@ class Lawyer_FrontPage : AppCompatActivity() {
             val selectedFragment: Fragment = when (item.itemId) {
 
                 R.id.nav_appointments -> AppointmentsFragment()
-                R.id.nav_message -> MessageFragment()
+
 
                 else -> AppointmentsFragment()
             }

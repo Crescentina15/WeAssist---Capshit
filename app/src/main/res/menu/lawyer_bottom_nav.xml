@@ -8,11 +8,5 @@
         android:title="Appointments"
         app:iconSize="24dp" />
 
-    <item
-        android:id="@+id/nav_message"
-        android:icon="@drawable/message"
-        android:title="Message"
-        app:iconSize="24dp" />
-
 
 </menu>
