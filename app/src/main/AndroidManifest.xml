@@ -13,31 +13,31 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
-            android:name=".ConsultationlogsActivity"
+            android:name=".ConsultationLogsActivity"
             android:exported="false" />
         <activity
             android:name=".ConsultationActivity"
             android:exported="true" />
         <activity
-            android:name=".LawyersdashboardActivity"
+            android:name=".LawyersDashboardActivity"
             android:exported="false" />
         <activity
-            android:name=".GiveratingsActivity"
+            android:name=".GiveRatingsActivity"
             android:exported="true" />
         <activity
-            android:name=".AddbackgroundActivity"
+            android:name=".AddBackgroundActivity"
             android:exported="true" />
         <activity
-            android:name=".LawyerslistActivity"
+            android:name=".LawyersListActivity"
             android:exported="true" />
         <activity
-            android:name=".AddbalanceActivity"
+            android:name=".AddBalanceActivity"
             android:exported="true" />
         <activity
             android:name=".AddAvailabilityActivity"
             android:exported="true" />
         <activity
-            android:name=".SetappointmentActivity"
+            android:name=".SetAppointmentActivity"
             android:exported="true" />
         <activity
             android:name=".Secretary.SecretaryProfileActivity"
@@ -58,7 +58,7 @@
             android:name=".Clients.ClientFrontPage"
             android:exported="false" />
         <activity
-            android:name=".ChatmessagesActivity"
+            android:name=".ChatMessagesActivity"
             android:exported="true" />
         <activity
             android:name=".AssistanceActivity"
