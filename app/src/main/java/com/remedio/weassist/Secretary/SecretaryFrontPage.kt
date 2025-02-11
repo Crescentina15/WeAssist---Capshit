@@ -1,6 +1,7 @@
 package com.remedio.weassist.Secretary
 
 import android.os.Bundle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -9,19 +10,21 @@ import com.remedio.weassist.MessageFragment
 import com.remedio.weassist.Profile.ProfileFragment
 import com.remedio.weassist.R
 
-class SecretaryDashboardActivity : AppCompatActivity() {
+class SecretaryFrontPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_secretary_dashboard)
+        enableEdgeToEdge()
+        setContentView(R.layout.activity_secretary_front_page)
+
+
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.bottomNavigationView)
 
-        // Load the default fragment when the activity starts
-        if (savedInstanceState == null) {
-            loadFragment(SecretaryDashboardFragment())
-        }
+        // Set default fragment
+        loadFragment(SecretaryDashboardFragment())
 
-        bottomNavigationView.setOnItemSelectedListener { item ->
+        // Set up navigation item selection
+        bottomNavigationView.setOnNavigationItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_home -> SecretaryDashboardFragment()
                 R.id.nav_appointments -> AppointmentsFragment()
@@ -36,7 +39,7 @@ class SecretaryDashboardActivity : AppCompatActivity() {
 
     private fun loadFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container1, fragment)
+            .replace(R.id.flFragment, fragment)
             .commit()
     }
 }

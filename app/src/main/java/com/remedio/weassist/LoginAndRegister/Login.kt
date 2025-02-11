@@ -15,6 +15,7 @@ import com.remedio.weassist.Clients.ClientFrontPage
 import com.remedio.weassist.Lawyer.LawyersDashboardActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.SecretaryDashboardActivity
+import com.remedio.weassist.Secretary.SecretaryFrontPage
 
 class Login : AppCompatActivity() {
 
@@ -84,7 +85,7 @@ class Login : AppCompatActivity() {
 
                 // Redirect based on role
                 val intent = when (role) {
-                    "secretary" -> Intent(this, SecretaryDashboardActivity::class.java)
+                    "secretary" -> Intent(this, SecretaryFrontPage::class.java)
                     "lawyer" -> Intent(this, LawyersDashboardActivity::class.java) // Updated reference
                     else -> Intent(this, ClientFrontPage::class.java)
                 }
