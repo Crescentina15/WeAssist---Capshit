@@ -13,7 +13,7 @@ class GiveRatingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContentView(R.layout.activity_giveratings)
+        setContentView(R.layout.activity_give_ratings)
 
         val mainLayout = findViewById<View>(R.id.mainLayout)  // Use correct ID
         if (mainLayout != null) {

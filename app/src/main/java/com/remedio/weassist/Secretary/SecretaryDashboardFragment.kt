@@ -16,7 +16,7 @@ class SecretaryDashboardFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_secretarydashboard, container, false)
+        val view = inflater.inflate(R.layout.fragment_secretary_dashboard, container, false)
 
         // Find ImageButton and set click listener
         val manageButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
