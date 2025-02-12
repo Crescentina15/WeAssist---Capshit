@@ -40,6 +40,9 @@ class Login : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("Users")
 
+        // Load saved credentials if Remember Me was checked
+        loadLoginDetails()
+
         loginButton.setOnClickListener {
             val email = emailInput.text.toString().trim()
             val password = passwordInput.text.toString().trim()
@@ -63,6 +66,11 @@ class Login : AppCompatActivity() {
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     if (user != null && user.isEmailVerified) {
+                        if (rememberMeCheckbox.isChecked) {
+                            saveLoginDetails(email, password)
+                        } else {
+                            clearLoginDetails()
+                        }
                         fetchAndRedirectUser(user.uid)
                     } else {
                         Toast.makeText(this, "Please verify your email before logging in.", Toast.LENGTH_LONG).show()
@@ -86,7 +94,7 @@ class Login : AppCompatActivity() {
                 // Redirect based on role
                 val intent = when (role) {
                     "secretary" -> Intent(this, SecretaryFrontPage::class.java)
-                    "lawyer" -> Intent(this, LawyersDashboardActivity::class.java) // Updated reference
+                    "lawyer" -> Intent(this, LawyersDashboardActivity::class.java)
                     else -> Intent(this, ClientFrontPage::class.java)
                 }
 
@@ -123,6 +131,37 @@ class Login : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.putString("role", role)
+        editor.apply()
+    }
+
+    private fun saveLoginDetails(email: String, password: String) {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("email", email)
+        editor.putString("password", password)
+        editor.putBoolean("rememberMe", true)
+        editor.apply()
+    }
+
+    private fun loadLoginDetails() {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val savedEmail = sharedPreferences.getString("email", "")
+        val savedPassword = sharedPreferences.getString("password", "")
+        val isRemembered = sharedPreferences.getBoolean("rememberMe", false)
+
+        if (isRemembered) {
+            emailInput.setText(savedEmail)
+            passwordInput.setText(savedPassword)
+            rememberMeCheckbox.isChecked = true
+        }
+    }
+
+    private fun clearLoginDetails() {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.remove("email")
+        editor.remove("password")
+        editor.putBoolean("rememberMe", false)
         editor.apply()
     }
 }
