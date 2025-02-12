@@ -35,7 +35,7 @@ class SecretaryAppointmentFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_secretaryappointment, container, false)
+        return inflater.inflate(R.layout.fragment_secretary_appointment, container, false)
     }
 
     companion object {

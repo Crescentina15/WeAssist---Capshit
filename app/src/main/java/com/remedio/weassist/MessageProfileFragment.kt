@@ -34,7 +34,7 @@ class MessageProfileFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_messageprofile, container, false)
+        return inflater.inflate(R.layout.fragment_profile_message, container, false)
     }
 
     companion object {
