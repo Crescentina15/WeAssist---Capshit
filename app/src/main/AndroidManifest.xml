@@ -90,6 +90,8 @@
         <activity
             android:name=".LoginAndRegister.RegisterSelection"
             android:exported="false" />
+        <activity android:name=".ChatbotActivity" />
+
     </application>
 
 </manifest>

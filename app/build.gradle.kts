@@ -45,6 +45,8 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth.ktx)
+    implementation(libs.generativeai)
+    implementation(libs.common)
     testImplementation(libs.junit)
 
     // Navigation Component dependencies

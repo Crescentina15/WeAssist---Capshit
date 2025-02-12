@@ -1,14 +1,19 @@
 package com.remedio.weassist.Clients
 
+
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.navigation.Navigation
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.ChatbotActivity
 import com.remedio.weassist.R
 
 class ClientHomeFragment : Fragment() {
@@ -29,6 +34,7 @@ class ClientHomeFragment : Fragment() {
 
         // Initialize UI elements
         welcomeMessageTextView = view.findViewById(R.id.welcome_message)
+        val searchButton: Button = view.findViewById(R.id.search_button)
 
         // Fetch user's first name from Firebase
         val currentUser = auth.currentUser
@@ -37,6 +43,13 @@ class ClientHomeFragment : Fragment() {
         } else {
             Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
         }
+
+        // Navigate to ChatbotFragment when clicking the search button
+        searchButton.setOnClickListener {
+            val intent = Intent(requireContext(), ChatbotActivity::class.java)
+            startActivity(intent)
+        }
+
 
         return view
     }
