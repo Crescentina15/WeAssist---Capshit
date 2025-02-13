@@ -107,7 +107,9 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Family Lawyer" />
+          android:text="Family Lawyer"
+          android:clickable="true"
+          android:focusable="true"/>
 
       <Button
           android:id="@+id/button_notary_lawyer"
@@ -115,7 +117,9 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Notary Lawyer" />
+          android:text="Notary Lawyer"
+          android:clickable="true"
+          android:focusable="true"/>
 
       <Button
           android:id="@+id/button_constitutional"
@@ -123,7 +127,9 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Constitutional" />
+          android:text="Constitutional"
+          android:clickable="true"
+          android:focusable="true"/>
 
       <Button
           android:id="@+id/button_intellectual_property"
@@ -131,7 +137,9 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Intellectual Property" />
+          android:text="Intellectual Property"
+          android:clickable="true"
+          android:focusable="true"/>
 
       <Button
           android:id="@+id/button_criminal_defense"
@@ -139,7 +147,9 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Criminal Defense" />
+          android:text="Criminal Defense"
+          android:clickable="true"
+          android:focusable="true"/>
 
       <Button
           android:id="@+id/button_bankruptcy"
@@ -147,7 +157,10 @@
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
           android:layout_margin="8dp"
-          android:text="Bankruptcy" />
+          android:text="Bankruptcy"
+          android:clickable="true"
+          android:focusable="true"
+          />
     </GridLayout>
 
     <!-- Top Lawyer Section -->

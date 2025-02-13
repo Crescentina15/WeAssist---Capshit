@@ -17,7 +17,7 @@ class ChatbotActivity : AppCompatActivity() {
     private lateinit var userInputEditText: EditText
     private lateinit var sendButton: Button
 
-    private val apiKey = "AIzaSyBRl6O2lWWcU41qb7MOzcRgeeHekzsjq4k"  // 🔹 Replace with your Google Gemini API key
+    private val apiKey = "AIzaSyAdbLaB4lv39wPSnNAj5G8Ono0_BpGSPlM"  // 🔹 Replace with your Google Gemini API key
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

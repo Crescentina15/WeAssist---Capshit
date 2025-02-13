@@ -35,6 +35,10 @@ class ClientHomeFragment : Fragment() {
         // Initialize UI elements
         welcomeMessageTextView = view.findViewById(R.id.welcome_message)
         val searchButton: Button = view.findViewById(R.id.search_button)
+        val profileSection: View = view.findViewById(R.id.profile_section)
+        val profileImage: View = view.findViewById(R.id.profile_image)
+        val notificationIcon: View = view.findViewById(R.id.notification_icon)
+        val specializationLayout: ViewGroup = view.findViewById(R.id.specializations_layout)
 
         // Fetch user's first name from Firebase
         val currentUser = auth.currentUser
@@ -44,15 +48,35 @@ class ClientHomeFragment : Fragment() {
             Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
         }
 
-        // Navigate to ChatbotFragment when clicking the search button
+        // Click listeners for different elements
         searchButton.setOnClickListener {
             val intent = Intent(requireContext(), ChatbotActivity::class.java)
             startActivity(intent)
         }
 
+        profileSection.setOnClickListener {
+            Toast.makeText(requireContext(), "Profile Section Clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        profileImage.setOnClickListener {
+            Toast.makeText(requireContext(), "Profile Image Clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        notificationIcon.setOnClickListener {
+            Toast.makeText(requireContext(), "Notifications Clicked", Toast.LENGTH_SHORT).show()
+        }
+
+        // Make all specialization buttons clickable
+        for (i in 0 until specializationLayout.childCount) {
+            val child = specializationLayout.getChildAt(i)
+            child.setOnClickListener {
+                Toast.makeText(requireContext(), "${(child as Button).text} Clicked", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         return view
     }
+
 
     private fun fetchUserFirstName(userId: String) {
         database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
