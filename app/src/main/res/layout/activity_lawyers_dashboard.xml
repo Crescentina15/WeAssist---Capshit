@@ -47,7 +47,7 @@
                 android:id="@+id/lawyer_name"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Atty. John Doe"
+                android:text="Atty. "
                 android:textSize="20sp"
                 android:textColor="@color/black"
                 android:fontFamily="sans-serif" />

@@ -83,7 +83,6 @@ class Login : AppCompatActivity() {
 
     private fun fetchAndRedirectUser(uid: String) {
         val userRef = FirebaseDatabase.getInstance().getReference("Users").child(uid)
-        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(uid)
         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(uid)
 
         userRef.get().addOnSuccessListener { userSnapshot ->
@@ -91,34 +90,34 @@ class Login : AppCompatActivity() {
                 val role = userSnapshot.child("role").value.toString()
                 saveUserRole(role)
 
-                // Redirect based on role
                 val intent = when (role) {
-                    "secretary" -> Intent(this, SecretaryFrontPage::class.java)
-                    "lawyer" -> Intent(this, LawyersDashboardActivity::class.java)
+                    "lawyer" -> {
+                        // Fetch lawyer details and save name
+                        lawyerRef.get().addOnSuccessListener { lawyerSnapshot ->
+                            if (lawyerSnapshot.exists()) {
+                                val name = lawyerSnapshot.child("name").value.toString()
+                                saveLawyerName(name)
+                            }
+                        }
+                        Intent(this, LawyersDashboardActivity::class.java)
+                    }
                     else -> Intent(this, ClientFrontPage::class.java)
                 }
 
                 startActivity(intent)
                 finish()
             } else {
-                // Check if the user is a secretary
-                secretaryRef.get().addOnSuccessListener { secSnapshot ->
-                    if (secSnapshot.exists()) {
-                        saveUserRole("secretary")
-                        startActivity(Intent(this, SecretaryDashboardActivity::class.java))
+                // Check if the user is a lawyer
+                lawyerRef.get().addOnSuccessListener { lawyerSnapshot ->
+                    if (lawyerSnapshot.exists()) {
+                        val name = lawyerSnapshot.child("name").value.toString()
+                        saveUserRole("lawyer")
+                        saveLawyerName(name)
+                        startActivity(Intent(this, LawyersDashboardActivity::class.java))
                         finish()
                     } else {
-                        // Check if the user is a lawyer
-                        lawyerRef.get().addOnSuccessListener { lawyerSnapshot ->
-                            if (lawyerSnapshot.exists()) {
-                                saveUserRole("lawyer")
-                                startActivity(Intent(this, LawyersDashboardActivity::class.java))
-                                finish()
-                            } else {
-                                Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
-                                auth.signOut()
-                            }
-                        }
+                        Toast.makeText(this, "User data not found!", Toast.LENGTH_SHORT).show()
+                        auth.signOut()
                     }
                 }
             }
@@ -126,6 +125,14 @@ class Login : AppCompatActivity() {
             Toast.makeText(this, "Database error: ${it.message}", Toast.LENGTH_SHORT).show()
         }
     }
+
+    private fun saveLawyerName(name: String) {
+        val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.putString("lawyer_name", name)
+        editor.apply()
+    }
+
 
     private fun saveUserRole(role: String) {
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
