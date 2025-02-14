@@ -6,8 +6,10 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.remedio.weassist.AppointmentsFragment
 import com.remedio.weassist.MessageFragment
-import com.remedio.weassist.Profile.ProfileFragment
 import com.remedio.weassist.R
+import com.remedio.weassist.Secretary.SecretaryDashboardFragment
+import com.remedio.weassist.SecretaryProfileFragment
+
 
 class SecretaryDashboardActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +28,7 @@ class SecretaryDashboardActivity : AppCompatActivity() {
                 R.id.nav_home -> SecretaryDashboardFragment()
                 R.id.nav_appointments -> AppointmentsFragment()
                 R.id.nav_message -> MessageFragment()
-                R.id.nav_profile -> ProfileFragment()
+                R.id.nav_profile -> SecretaryProfileFragment()
                 else -> SecretaryDashboardFragment()
             }
             loadFragment(selectedFragment)

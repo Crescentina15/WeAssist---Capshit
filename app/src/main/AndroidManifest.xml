@@ -67,14 +67,11 @@
             android:name=".ChatMessagesActivity"
             android:exported="true" />
         <activity
-            android:name=".Clients.AssistanceActivity"
-            android:exported="false" />
-        <activity
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
         <activity
             android:name=".Secretary.SecretaryDashboardActivity"
-            android:exported="false" />
+            android:exported="true" />
         <activity
             android:name=".LoginAndRegister.SplashActivity"
             android:exported="true">
@@ -91,6 +88,8 @@
             android:name=".LoginAndRegister.RegisterSelection"
             android:exported="false" />
         <activity android:name=".ChatbotActivity" />
+        <activity android:name=".EditSecretaryProfileActivity" />
+
 
     </application>
 

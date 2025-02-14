@@ -15,7 +15,7 @@ import com.remedio.weassist.Clients.ClientFrontPage
 import com.remedio.weassist.Lawyer.LawyersDashboardActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.SecretaryDashboardActivity
-import com.remedio.weassist.Secretary.SecretaryFrontPage
+
 
 class Login : AppCompatActivity() {
 
