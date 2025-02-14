@@ -37,7 +37,8 @@ class SecretaryDashboardFragment : Fragment() {
         loadSecretaryName()
 
         // Find and set click listeners for all buttons
-        val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
+        val manageAvailabilityButton =
+            view.findViewById<ImageButton>(R.id.manage_availability_button)
         val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
         val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
 
@@ -76,7 +77,9 @@ class SecretaryDashboardFragment : Fragment() {
                 }
             })
         }
+
     }
+
 
     private fun fetchLawFirmAndOpenLawyersList(action: String) {
         val userId = auth.currentUser?.uid
@@ -87,16 +90,24 @@ class SecretaryDashboardFragment : Fragment() {
                     if (snapshot.exists()) {
                         val lawFirm = snapshot.value.toString()
                         val intent = Intent(requireContext(), LawyersListActivity::class.java)
-                        intent.putExtra("LAW_FIRM", lawFirm) // Pass law firm to next activity
-                        intent.putExtra("ACTION_TYPE", action) // Indicate which button triggered it
+                        intent.putExtra("LAW_FIRM", lawFirm)
+                        intent.putExtra("ACTION_TYPE", action)
+
+                        // Set flag only for Manage Availability action
+                        if (action == "manage_availability") {
+                            intent.putExtra("FROM_MANAGE_AVAILABILITY", true)
+                        }
+
                         startActivity(intent)
                     } else {
-                        Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT)
+                            .show()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(requireContext(), "Error fetching law firm.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Error fetching law firm.", Toast.LENGTH_SHORT)
+                        .show()
                 }
             })
         }

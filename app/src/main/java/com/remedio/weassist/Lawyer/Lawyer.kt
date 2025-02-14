@@ -1,6 +1,7 @@
 package com.remedio.weassist.Lawyer
 
 data class Lawyer(
+    val id: String = "",
     val name: String = "",
     val specialization: String = "",
     val lawFirm: String = "",

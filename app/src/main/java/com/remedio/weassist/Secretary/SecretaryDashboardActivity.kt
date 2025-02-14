@@ -1,10 +1,13 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.remedio.weassist.AppointmentsFragment
+import com.remedio.weassist.Lawyer.LawyersListActivity
 import com.remedio.weassist.MessageFragment
 import com.remedio.weassist.R
 
@@ -20,6 +23,7 @@ class SecretaryDashboardActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             loadFragment(SecretaryDashboardFragment())
         }
+
 
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
