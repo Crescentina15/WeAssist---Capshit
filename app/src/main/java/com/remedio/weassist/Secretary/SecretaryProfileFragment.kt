@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Secretary
 
 import android.content.Context
 import android.content.Intent
@@ -15,8 +15,8 @@ import com.google.firebase.database.*
 
 import com.remedio.weassist.LoginAndRegister.Login
 import com.remedio.weassist.Miscellaneous.PrivacyActivity
-import com.remedio.weassist.Miscellaneous.ReportActivity
 import com.remedio.weassist.Miscellaneous.SecurityActivity
+import com.remedio.weassist.R
 
 class SecretaryProfileFragment : Fragment() {
 

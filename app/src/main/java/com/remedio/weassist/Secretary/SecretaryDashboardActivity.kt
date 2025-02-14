@@ -7,8 +7,6 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.remedio.weassist.AppointmentsFragment
 import com.remedio.weassist.MessageFragment
 import com.remedio.weassist.R
-import com.remedio.weassist.Secretary.SecretaryDashboardFragment
-import com.remedio.weassist.SecretaryProfileFragment
 
 
 class SecretaryDashboardActivity : AppCompatActivity() {

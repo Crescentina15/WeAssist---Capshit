@@ -36,10 +36,21 @@ class SecretaryDashboardFragment : Fragment() {
         // Load the secretary's name
         loadSecretaryName()
 
-        // Find ImageButton and set click listener for managing availability
-        val manageButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
-        manageButton.setOnClickListener {
-            fetchLawFirmAndOpenLawyersList()
+        // Find and set click listeners for all buttons
+        val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
+        val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
+        val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
+
+        manageAvailabilityButton.setOnClickListener {
+            fetchLawFirmAndOpenLawyersList("manage_availability")
+        }
+
+        addBackgroundButton.setOnClickListener {
+            fetchLawFirmAndOpenLawyersList("add_background")
+        }
+
+        addBalanceButton.setOnClickListener {
+            fetchLawFirmAndOpenLawyersList("add_balance")
         }
 
         return view
@@ -67,7 +78,7 @@ class SecretaryDashboardFragment : Fragment() {
         }
     }
 
-    private fun fetchLawFirmAndOpenLawyersList() {
+    private fun fetchLawFirmAndOpenLawyersList(action: String) {
         val userId = auth.currentUser?.uid
         if (userId != null) {
             databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
@@ -76,7 +87,8 @@ class SecretaryDashboardFragment : Fragment() {
                     if (snapshot.exists()) {
                         val lawFirm = snapshot.value.toString()
                         val intent = Intent(requireContext(), LawyersListActivity::class.java)
-                        intent.putExtra("LAW_FIRM", lawFirm) // Pass law firm to the next activity
+                        intent.putExtra("LAW_FIRM", lawFirm) // Pass law firm to next activity
+                        intent.putExtra("ACTION_TYPE", action) // Indicate which button triggered it
                         startActivity(intent)
                     } else {
                         Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT).show()
