@@ -7,8 +7,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
+import com.remedio.weassist.Miscellaneous.AddBalanceActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.AddAvailabilityActivity
+import com.remedio.weassist.Secretary.AddBackgroundActivity
 
 class LawyersListActivity : AppCompatActivity() {
 
@@ -16,7 +18,10 @@ class LawyersListActivity : AppCompatActivity() {
     private lateinit var lawyerAdapter: LawyerAdapter
     private lateinit var databaseReference: DatabaseReference
     private var lawyerList = ArrayList<Lawyer>()
-    private var fromManageAvailability: Boolean = false // Flag to track navigation source
+
+    private var fromManageAvailability = false
+    private var fromAddBackgroundActivity = false
+    private var fromAddBalanceActivity = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -25,8 +30,10 @@ class LawyersListActivity : AppCompatActivity() {
         val specialization = intent.getStringExtra("SPECIALIZATION")
         val lawFirm = intent.getStringExtra("LAW_FIRM")
 
-        // Check if this activity was accessed via the Manage Availability button
+        // Retrieve intent flags
         fromManageAvailability = intent.getBooleanExtra("FROM_MANAGE_AVAILABILITY", false)
+        fromAddBackgroundActivity = intent.getBooleanExtra("FROM_ADD_BACKGROUND", false)
+        fromAddBalanceActivity = intent.getBooleanExtra("FROM_ADD_BALANCE", false)
 
         recyclerView = findViewById(R.id.lawyerlist)
         recyclerView.layoutManager = LinearLayoutManager(this)
@@ -45,9 +52,9 @@ class LawyersListActivity : AppCompatActivity() {
                 for (lawyerSnapshot in snapshot.children) {
                     val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
                     if (lawyer != null) {
-                        if (specialization != null && lawyer.specialization == specialization) {
-                            lawyerList.add(lawyer)
-                        } else if (lawFirm != null && lawyer.lawFirm == lawFirm) {
+                        if ((specialization != null && lawyer.specialization == specialization) ||
+                            (lawFirm != null && lawyer.lawFirm == lawFirm)
+                        ) {
                             lawyerList.add(lawyer)
                         }
                     }
@@ -55,18 +62,20 @@ class LawyersListActivity : AppCompatActivity() {
 
                 // Set adapter with click event
                 lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
-                    if (fromManageAvailability) { // Ensure Manage Availability was clicked
-                        val intent = Intent(this@LawyersListActivity, AddAvailabilityActivity::class.java)
+                    val intent = when {
+                        fromManageAvailability -> Intent(this@LawyersListActivity, AddAvailabilityActivity::class.java)
+                        fromAddBackgroundActivity -> Intent(this@LawyersListActivity, AddBackgroundActivity::class.java)
+                        fromAddBalanceActivity -> Intent(this@LawyersListActivity, AddBalanceActivity::class.java)
+                        else -> null
+                    }
+
+                    if (intent != null) {
                         intent.putExtra("LAWYER_ID", selectedLawyer.id)
                         intent.putExtra("LAWYER_NAME", selectedLawyer.name)
                         intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
                         startActivity(intent)
                     } else {
-                        Toast.makeText(
-                            this@LawyersListActivity,
-                            "You must click 'Manage Availability' first!",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(this@LawyersListActivity, "Invalid action!", Toast.LENGTH_SHORT).show()
                     }
                 }
 

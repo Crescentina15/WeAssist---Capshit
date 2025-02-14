@@ -26,90 +26,64 @@ class SecretaryDashboardFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_secretary_dashboard, container, false)
 
-        // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         databaseReference = FirebaseDatabase.getInstance().getReference("secretaries")
 
-        // Find TextView for secretary's name
         secretaryNameTextView = view.findViewById(R.id.secretary_fname)
 
-        // Load the secretary's name
         loadSecretaryName()
 
-        // Find and set click listeners for all buttons
-        val manageAvailabilityButton =
-            view.findViewById<ImageButton>(R.id.manage_availability_button)
+        val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
         val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
         val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
 
-        manageAvailabilityButton.setOnClickListener {
-            fetchLawFirmAndOpenLawyersList("manage_availability")
-        }
-
-        addBackgroundButton.setOnClickListener {
-            fetchLawFirmAndOpenLawyersList("add_background")
-        }
-
-        addBalanceButton.setOnClickListener {
-            fetchLawFirmAndOpenLawyersList("add_balance")
-        }
+        manageAvailabilityButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("manage_availability") }
+        addBackgroundButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_background") }
+        addBalanceButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_balance") }
 
         return view
     }
 
     private fun loadSecretaryName() {
-        val userId = auth.currentUser?.uid
+        val userId = auth.currentUser?.uid ?: return
 
-        if (userId != null) {
-            databaseReference.child(userId).child("name").addListenerForSingleValueEvent(object :
-                ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val secretaryName = snapshot.value.toString()
-                        secretaryNameTextView.text = secretaryName
-                    } else {
-                        secretaryNameTextView.text = "Secretary"
-                    }
-                }
+        databaseReference.child(userId).child("name").addListenerForSingleValueEvent(object :
+            ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                secretaryNameTextView.text = snapshot.value?.toString() ?: "Secretary"
+            }
 
-                override fun onCancelled(error: DatabaseError) {
-                    secretaryNameTextView.text = "Error loading name"
-                }
-            })
-        }
-
+            override fun onCancelled(error: DatabaseError) {
+                secretaryNameTextView.text = "Error loading name"
+            }
+        })
     }
 
-
     private fun fetchLawFirmAndOpenLawyersList(action: String) {
-        val userId = auth.currentUser?.uid
-        if (userId != null) {
-            databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
-                ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val lawFirm = snapshot.value.toString()
-                        val intent = Intent(requireContext(), LawyersListActivity::class.java)
-                        intent.putExtra("LAW_FIRM", lawFirm)
-                        intent.putExtra("ACTION_TYPE", action)
+        val userId = auth.currentUser?.uid ?: return
 
-                        // Set flag only for Manage Availability action
-                        if (action == "manage_availability") {
-                            intent.putExtra("FROM_MANAGE_AVAILABILITY", true)
+        databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
+            ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val lawFirm = snapshot.value.toString()
+                    val intent = Intent(requireContext(), LawyersListActivity::class.java).apply {
+                        putExtra("LAW_FIRM", lawFirm)
+                        when (action) {
+                            "manage_availability" -> putExtra("FROM_MANAGE_AVAILABILITY", true)
+                            "add_background" -> putExtra("FROM_ADD_BACKGROUND", true)
+                            "add_balance" -> putExtra("FROM_ADD_BALANCE", true)
                         }
-
-                        startActivity(intent)
-                    } else {
-                        Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT)
-                            .show()
                     }
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT).show()
                 }
+            }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(requireContext(), "Error fetching law firm.", Toast.LENGTH_SHORT)
-                        .show()
-                }
-            })
-        }
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(requireContext(), "Error fetching law firm.", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 }
