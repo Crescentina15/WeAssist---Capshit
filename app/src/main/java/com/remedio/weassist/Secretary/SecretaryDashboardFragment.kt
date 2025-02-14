@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -35,23 +36,10 @@ class SecretaryDashboardFragment : Fragment() {
         // Load the secretary's name
         loadSecretaryName()
 
-        // Find ImageButton and set click listeners
+        // Find ImageButton and set click listener for managing availability
         val manageButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
         manageButton.setOnClickListener {
-            val intent = Intent(requireContext(), LawyersListActivity::class.java)
-            startActivity(intent)
-        }
-
-        val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
-        addBackgroundButton.setOnClickListener {
-            val intent = Intent(requireContext(), LawyersListActivity::class.java)
-            startActivity(intent)
-        }
-
-        val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
-        addBalanceButton.setOnClickListener {
-            val intent = Intent(requireContext(), LawyersListActivity::class.java)
-            startActivity(intent)
+            fetchLawFirmAndOpenLawyersList()
         }
 
         return view
@@ -61,7 +49,6 @@ class SecretaryDashboardFragment : Fragment() {
         val userId = auth.currentUser?.uid
 
         if (userId != null) {
-            // Fetch secretary name from Realtime Database
             databaseReference.child(userId).child("name").addListenerForSingleValueEvent(object :
                 ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -75,6 +62,29 @@ class SecretaryDashboardFragment : Fragment() {
 
                 override fun onCancelled(error: DatabaseError) {
                     secretaryNameTextView.text = "Error loading name"
+                }
+            })
+        }
+    }
+
+    private fun fetchLawFirmAndOpenLawyersList() {
+        val userId = auth.currentUser?.uid
+        if (userId != null) {
+            databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
+                ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val lawFirm = snapshot.value.toString()
+                        val intent = Intent(requireContext(), LawyersListActivity::class.java)
+                        intent.putExtra("LAW_FIRM", lawFirm) // Pass law firm to the next activity
+                        startActivity(intent)
+                    } else {
+                        Toast.makeText(requireContext(), "Law firm not found.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(requireContext(), "Error fetching law firm.", Toast.LENGTH_SHORT).show()
                 }
             })
         }
