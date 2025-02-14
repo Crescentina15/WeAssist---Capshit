@@ -19,8 +19,9 @@ class LawyersListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lawyers_list)
 
-        // Get law firm from Intent
-        val lawFirm = intent.getStringExtra("LAW_FIRM") ?: ""
+        // Get specialization or law firm from Intent
+        val specialization = intent.getStringExtra("SPECIALIZATION")
+        val lawFirm = intent.getStringExtra("LAW_FIRM")
 
         // Initialize RecyclerView
         recyclerView = findViewById(R.id.lawyerlist)
@@ -31,18 +32,22 @@ class LawyersListActivity : AppCompatActivity() {
         // Initialize Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference("lawyers")
 
-        // Load lawyers in real time
-        loadLawyers(lawFirm)
+        // Load lawyers based on specialization or law firm
+        loadLawyers(specialization, lawFirm)
     }
 
-    private fun loadLawyers(lawFirm: String) {
-        databaseReference.addValueEventListener(object : ValueEventListener {
+    private fun loadLawyers(specialization: String?, lawFirm: String?) {
+        databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 lawyerList.clear()
                 for (lawyerSnapshot in snapshot.children) {
                     val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
-                    if (lawyer != null && lawyer.lawFirm == lawFirm) {
-                        lawyerList.add(lawyer)
+                    if (lawyer != null) {
+                        if (specialization != null && lawyer.specialization == specialization) {
+                            lawyerList.add(lawyer)
+                        } else if (lawFirm != null && lawyer.lawFirm == lawFirm) {
+                            lawyerList.add(lawyer)
+                        }
                     }
                 }
                 lawyerAdapter.notifyDataSetChanged()
@@ -54,4 +59,3 @@ class LawyersListActivity : AppCompatActivity() {
         })
     }
 }
-
