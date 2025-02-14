@@ -12,16 +12,18 @@
         android:orientation="vertical"
         android:gravity="center">
 
+        <!-- Back Button -->
         <ImageButton
             android:id="@+id/back_arrow"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginEnd="8dp"
-            android:contentDescription="Back Arrow"
-            android:layout_gravity="left"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="start"
             android:src="@drawable/arrow_back"
-            app:tint="@color/black" />
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:tint="@color/black"
+            android:contentDescription="Back" />
 
+        <!-- Profile Image -->
         <ImageView
             android:id="@+id/profile_picture"
             android:layout_width="120dp"
@@ -32,103 +34,139 @@
             android:background="@drawable/baseline_circle_24"
             android:contentDescription="Profile Picture" />
 
-        <Button
+        <!-- Change Picture Button -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_change_picture"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Change Picture"
             android:layout_marginTop="8dp"
-            android:background="@drawable/rounded_button"
-            android:textColor="#FFFFFF" />
+            android:textColor="@color/black"
+            app:strokeColor="@color/purple_500"
+            app:strokeWidth="2dp"
+            app:cornerRadius="20dp" />
 
-
-        <EditText
-            android:id="@+id/edit_username"
+        <!-- Text Fields with Floating Labels -->
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Username"
-            android:inputType="text"
             android:layout_marginTop="16dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
 
-        <EditText
-            android:id="@+id/edit_first_name"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_username"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Username"
+                android:inputType="text"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="First Name"
-            android:inputType="text"
             android:layout_marginTop="8dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
 
-        <EditText
-            android:id="@+id/edit_last_name"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_first_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="First Name"
+                android:inputType="text"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Last Name"
-            android:inputType="text"
             android:layout_marginTop="8dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
 
-        <EditText
-            android:id="@+id/edit_address"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_last_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Last Name"
+                android:inputType="text"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Address"
-            android:inputType="textPostalAddress"
             android:layout_marginTop="8dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
 
-        <EditText
-            android:id="@+id/edit_email"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Address"
+                android:inputType="textPostalAddress"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Email"
-            android:inputType="textEmailAddress"
             android:layout_marginTop="8dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
-        <EditText
-            android:id="@+id/edit_contact_number"
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_email"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Email"
+                android:inputType="textEmailAddress"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Contact Number"
-            android:inputType="phone"
             android:layout_marginTop="8dp"
-            android:padding="10dp"
-            android:fontFamily="@font/vesper_libre_regular"
-            android:background="@drawable/edittext_container" />
+            app:boxStrokeColor="@color/purple_500"
+            app:hintTextColor="@color/black">
 
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_contact_number"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Contact Number"
+                android:inputType="phone"
+                android:padding="10dp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-
-        <Button
+        <!-- Save Changes Button -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save_changes"
+            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Save Changes"
             android:layout_marginTop="16dp"
-            android:background="@drawable/rounded_button"
-            android:backgroundTint="#5E35B1"
-            android:textColor="#FFFFFF" />
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@android:color/white" />
 
-        <Button
+        <!-- Cancel Button -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Cancel"
             android:layout_marginTop="8dp"
-            android:backgroundTint="#BDBDBD"
-            android:background="@drawable/rounded_button"
-            android:textColor="#FFFFFF" />
-    </LinearLayout>
+            android:textColor="@color/black"
+            app:strokeColor="@color/gray"
+            app:strokeWidth="2dp"
+            app:cornerRadius="20dp" />
 
+    </LinearLayout>
 </ScrollView>
-    <!-- Sa tanan users -->

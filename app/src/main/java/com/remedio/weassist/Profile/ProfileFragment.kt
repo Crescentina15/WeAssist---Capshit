@@ -79,12 +79,14 @@ class ProfileFragment : Fragment() {
                 if (!isAdded) return // Prevent crash if fragment is detached
 
                 if (snapshot.exists()) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: "N/A"
-                    val email = snapshot.child("email").getValue(String::class.java) ?: "N/A"
+                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+                    val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+
+                    // Combine first and last name
+                    val fullName = "$firstName $lastName".trim()
 
                     // Update UI
-                    usernameTextView.text = firstName
-                    emailTextView.text = email
+                    usernameTextView.text = if (fullName.isNotEmpty()) fullName else "N/A"
                 } else {
                     showToast("User data not found!")
                 }
@@ -97,6 +99,7 @@ class ProfileFragment : Fragment() {
             }
         })
     }
+
 
     private fun logoutUser() {
         if (!isAdded) return // Prevent crash if fragment is detached
