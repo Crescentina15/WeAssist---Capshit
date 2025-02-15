@@ -50,22 +50,57 @@ class LawyersListActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 lawyerList.clear()
                 for (lawyerSnapshot in snapshot.children) {
-                    val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
-                    if (lawyer != null) {
-                        if ((specialization != null && lawyer.specialization == specialization) ||
-                            (lawFirm != null && lawyer.lawFirm == lawFirm)
-                        ) {
-                            lawyerList.add(lawyer)
-                        }
+                    val lawyerId = lawyerSnapshot.key ?: continue
+                    val lawyerData = lawyerSnapshot.value as? Map<String, Any> ?: continue
+
+                    val contactData = lawyerData["contact"]
+                    val contact = when (contactData) {
+                        is Map<*, *> -> Contact(
+                            phone = contactData["phone"]?.toString() ?: "",
+                            email = contactData["email"]?.toString() ?: "",
+                            address = contactData["address"]?.toString() ?: ""
+                        )
+
+                        is String -> Contact(phone = contactData)
+                        else -> Contact()
+                    }
+
+                    val lawyer = Lawyer(
+                        id = lawyerId,
+                        name = lawyerData["name"]?.toString() ?: "",
+                        specialization = lawyerData["specialization"]?.toString() ?: "",
+                        lawFirm = lawyerData["lawFirm"]?.toString() ?: "",
+                        licenseNumber = lawyerData["licenseNumber"]?.toString() ?: "",
+                        experience = lawyerData["experience"]?.toString() ?: "",
+                        bio = lawyerData["bio"]?.toString()
+                            ?: "",  // Each lawyer gets its own background
+                        contact = contact
+                    )
+
+                    if ((specialization == null || lawyer.specialization == specialization) &&
+                        (lawFirm == null || lawyer.lawFirm == lawFirm)
+                    ) {
+                        lawyerList.add(lawyer)
                     }
                 }
 
-                // Set adapter with click event
                 lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
                     val intent = when {
-                        fromManageAvailability -> Intent(this@LawyersListActivity, AddAvailabilityActivity::class.java)
-                        fromAddBackgroundActivity -> Intent(this@LawyersListActivity, AddBackgroundActivity::class.java)
-                        fromAddBalanceActivity -> Intent(this@LawyersListActivity, AddBalanceActivity::class.java)
+                        fromManageAvailability -> Intent(
+                            this@LawyersListActivity,
+                            AddAvailabilityActivity::class.java
+                        )
+
+                        fromAddBackgroundActivity -> Intent(
+                            this@LawyersListActivity,
+                            AddBackgroundActivity::class.java
+                        )
+
+                        fromAddBalanceActivity -> Intent(
+                            this@LawyersListActivity,
+                            AddBalanceActivity::class.java
+                        )
+
                         else -> null
                     }
 
@@ -75,7 +110,11 @@ class LawyersListActivity : AppCompatActivity() {
                         intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
                         startActivity(intent)
                     } else {
-                        Toast.makeText(this@LawyersListActivity, "Invalid action!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            this@LawyersListActivity,
+                            "Invalid action!",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
 
@@ -83,7 +122,8 @@ class LawyersListActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT)
+                    .show()
             }
         })
     }
