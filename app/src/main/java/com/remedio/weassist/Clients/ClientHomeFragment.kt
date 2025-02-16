@@ -2,10 +2,12 @@ package com.remedio.weassist.Clients
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.GridLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -20,6 +22,7 @@ class ClientHomeFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private lateinit var welcomeMessageTextView: TextView
+    private lateinit var specializationsLayout: GridLayout
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -29,12 +32,12 @@ class ClientHomeFragment : Fragment() {
 
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()
-        database = FirebaseDatabase.getInstance().getReference("Users")
+        database = FirebaseDatabase.getInstance().getReference("lawyers") // Change to your lawyers node
 
         // Initialize UI elements
         welcomeMessageTextView = view.findViewById(R.id.welcome_message)
+        specializationsLayout = view.findViewById(R.id.specializations_layout)
         val searchButton: Button = view.findViewById(R.id.search_button)
-        val notaryLawyerButton: Button = view.findViewById(R.id.button_notary_lawyer) // Assuming button ID
 
         // Fetch user's first name from Firebase
         auth.currentUser?.let { fetchUserFirstName(it.uid) } ?: run {
@@ -47,10 +50,8 @@ class ClientHomeFragment : Fragment() {
             startActivity(intent)
         }
 
-        // Click listener for Notary Lawyer
-        notaryLawyerButton.setOnClickListener {
-            openLawyersList("Notary Public")
-        }
+        // Fetch specializations and dynamically create buttons
+        fetchSpecializations()
 
         return view
     }
@@ -70,6 +71,58 @@ class ClientHomeFragment : Fragment() {
                 Toast.makeText(context, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun fetchSpecializations() {
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val specializations = mutableSetOf<String>() // Use a set to avoid duplicates
+
+                for (lawyerSnapshot in snapshot.children) {
+                    val specialization = lawyerSnapshot.child("specialization").getValue(String::class.java)
+                    if (!specialization.isNullOrEmpty()) {
+                        specializations.add(specialization)
+                    }
+                }
+
+                // Log specializations for debugging
+                Log.d("Specializations", specializations.toString())
+
+                // Dynamically create buttons for each specialization
+                createSpecializationButtons(specializations.toList())
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(context, "Failed to fetch specializations: ${error.message}", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun createSpecializationButtons(specializations: List<String>) {
+        specializationsLayout.removeAllViews() // Clear existing buttons
+
+        for (specialization in specializations) {
+            val button = Button(context).apply {
+                text = specialization // Set the button text to the specialization name
+                layoutParams = GridLayout.LayoutParams().apply {
+                    width = resources.getDimensionPixelSize(R.dimen.button_width) // Set fixed width
+                    height = resources.getDimensionPixelSize(R.dimen.button_height) // Set fixed height
+                    columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+                    setMargins(8, 8, 8, 8)
+                }
+                setOnClickListener {
+                    openLawyersList(specialization)
+                }
+                // Apply styling
+                backgroundTintList = context?.getColorStateList(R.color.purple_500) // Set button background color
+                setTextColor(context?.getColor(android.R.color.white) ?: 0) // Set text color to white
+                textSize = 16f // Set text size
+                setPadding(16, 8, 16, 8) // Add padding to the button text
+            }
+
+            specializationsLayout.addView(button)
+        }
     }
 
     private fun openLawyersList(specialization: String) {
