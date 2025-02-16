@@ -28,7 +28,7 @@ class SecretaryDashboardActivity : AppCompatActivity() {
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_home -> SecretaryDashboardFragment()
-                R.id.nav_appointments -> AppointmentsFragment()
+                R.id.nav_appointments -> SecretaryAppointmentFragment()
                 R.id.nav_message -> MessageFragment()
                 R.id.nav_profile -> SecretaryProfileFragment()
                 else -> SecretaryDashboardFragment()
