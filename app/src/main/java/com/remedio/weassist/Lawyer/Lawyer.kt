@@ -27,3 +27,10 @@ data class Contact(
 ) {
     constructor() : this("", "", "")
 }
+data class Availability(
+    val date: String = "",
+    val startTime: String = "",
+    val endTime: String = ""
+) {
+    constructor() : this("", "", "")
+}

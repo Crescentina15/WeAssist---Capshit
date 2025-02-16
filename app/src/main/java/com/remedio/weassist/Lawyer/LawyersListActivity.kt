@@ -84,7 +84,7 @@ class LawyersListActivity : AppCompatActivity() {
                 }
 
                 lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
-                    val context = this@LawyersListActivity  // Ensure correct context
+                    val context = this@LawyersListActivity
 
                     val intent = when {
                         fromManageAvailability -> Intent(context, AddAvailabilityActivity::class.java)
