@@ -11,6 +11,7 @@ import com.remedio.weassist.Miscellaneous.AddBalanceActivity
 import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.AddAvailabilityActivity
 import com.remedio.weassist.Secretary.AddBackgroundActivity
+import com.remedio.weassist.Secretary.SetAppointmentActivity
 
 class LawyersListActivity : AppCompatActivity() {
 
@@ -60,7 +61,6 @@ class LawyersListActivity : AppCompatActivity() {
                             email = contactData["email"]?.toString() ?: "",
                             address = contactData["address"]?.toString() ?: ""
                         )
-
                         is String -> Contact(phone = contactData)
                         else -> Contact()
                     }
@@ -72,8 +72,7 @@ class LawyersListActivity : AppCompatActivity() {
                         lawFirm = lawyerData["lawFirm"]?.toString() ?: "",
                         licenseNumber = lawyerData["licenseNumber"]?.toString() ?: "",
                         experience = lawyerData["experience"]?.toString() ?: "",
-                        bio = lawyerData["bio"]?.toString()
-                            ?: "",  // Each lawyer gets its own background
+                        bio = lawyerData["bio"]?.toString() ?: "",
                         contact = contact
                     )
 
@@ -85,37 +84,20 @@ class LawyersListActivity : AppCompatActivity() {
                 }
 
                 lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
+                    val context = this@LawyersListActivity  // Ensure correct context
+
                     val intent = when {
-                        fromManageAvailability -> Intent(
-                            this@LawyersListActivity,
-                            AddAvailabilityActivity::class.java
-                        )
-
-                        fromAddBackgroundActivity -> Intent(
-                            this@LawyersListActivity,
-                            AddBackgroundActivity::class.java
-                        )
-
-                        fromAddBalanceActivity -> Intent(
-                            this@LawyersListActivity,
-                            AddBalanceActivity::class.java
-                        )
-
-                        else -> null
+                        fromManageAvailability -> Intent(context, AddAvailabilityActivity::class.java)
+                        fromAddBackgroundActivity -> Intent(context, AddBackgroundActivity::class.java)
+                        fromAddBalanceActivity -> Intent(context, AddBalanceActivity::class.java)
+                        else -> Intent(context, SetAppointmentActivity::class.java)
                     }
 
-                    if (intent != null) {
-                        intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                        intent.putExtra("LAWYER_NAME", selectedLawyer.name)
-                        intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
-                        startActivity(intent)
-                    } else {
-                        Toast.makeText(
-                            this@LawyersListActivity,
-                            "Invalid action!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    intent.putExtra("LAWYER_ID", selectedLawyer.id)
+                    intent.putExtra("LAWYER_NAME", selectedLawyer.name)
+                    intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
+
+                    startActivity(intent)
                 }
 
                 recyclerView.adapter = lawyerAdapter
