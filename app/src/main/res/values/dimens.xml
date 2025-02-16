@@ -1,0 +1,4 @@
+<resources>
+    <dimen name="button_width">150dp</dimen>
+    <dimen name="button_height">80dp</dimen>
+</resources>
