@@ -29,9 +29,26 @@ const Login = ({ onLogin }) => {
   return (
     <div>
       <h2>Admin Login</h2>
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <input
+        type="email"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       <button onClick={handleLogin}>Login</button>
+      
+      {/* Register Button below Login */}
+      <div style={{ marginTop: "10px" }}>
+        <a href="/register">
+          <button>Register</button>
+        </a>
+      </div>
     </div>
   );
 };
