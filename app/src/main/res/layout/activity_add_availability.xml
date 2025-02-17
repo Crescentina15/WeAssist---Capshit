@@ -7,14 +7,17 @@
     android:layout_height="match_parent"
     android:background="#FFFFFF">
 
+    <!-- Title Bar -->
     <LinearLayout
+        android:id="@+id/title_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="16dp"
         android:background="#D7C1E4"
-        app:layout_constraintTop_toTopOf="parent">
-
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <ImageView
             android:id="@+id/back_button"
@@ -23,7 +26,7 @@
             android:src="@drawable/arrow_back"
             app:tint="@android:color/black"
             android:layout_marginEnd="8dp"
-            android:layout_gravity="center_vertical" />
+            android:layout_gravity="center" />
 
         <TextView
             android:id="@+id/title"
@@ -33,10 +36,10 @@
             android:textColor="#000000"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:layout_gravity="center_vertical" />
-
+            android:layout_gravity="center" />
     </LinearLayout>
 
+    <!-- Form Section -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -44,9 +47,9 @@
         android:background="#D7C1E4"
         android:orientation="vertical"
         android:padding="20dp"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/title_bar"
         app:layout_constraintStart_toStartOf="parent"
-        tools:layout_editor_absoluteY="98dp">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <TextView
             android:id="@+id/lawyer_name"
@@ -57,10 +60,11 @@
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginBottom="12dp"/>
+
+        <!-- Date Selection -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
             android:layout_marginBottom="16dp"
             android:background="#FFFFFF"
             android:gravity="center_vertical"
@@ -74,8 +78,8 @@
                 android:layout_weight="1"
                 android:background="@null"
                 android:focusable="false"
+                android:focusableInTouchMode="false"
                 android:hint="Select Date"
-                android:inputType="none"
                 android:textColor="#000000"
                 android:textSize="14sp" />
 
@@ -83,14 +87,14 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:contentDescription="Date"
-
-                android:src="@drawable/calendar" />
+                android:src="@drawable/calendar"
+                android:layout_gravity="center"/>
         </LinearLayout>
 
+        <!-- Start Time -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
             android:layout_marginBottom="16dp"
             android:background="#FFFFFF"
             android:gravity="center_vertical"
@@ -104,8 +108,8 @@
                 android:layout_weight="1"
                 android:background="@null"
                 android:focusable="false"
+                android:focusableInTouchMode="false"
                 android:hint="Start Time"
-                android:inputType="none"
                 android:textColor="#000000"
                 android:textSize="14sp" />
 
@@ -113,13 +117,15 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:contentDescription="StartTime"
-                android:src="@drawable/clock" />
+                android:src="@drawable/clock"
+                android:layout_gravity="center"/>
         </LinearLayout>
 
+        <!-- End Time -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="4dp"
+            android:layout_marginBottom="16dp"
             android:background="#FFFFFF"
             android:gravity="center_vertical"
             android:orientation="horizontal"
@@ -132,8 +138,8 @@
                 android:layout_weight="1"
                 android:background="@null"
                 android:focusable="false"
+                android:focusableInTouchMode="false"
                 android:hint="End Time"
-                android:inputType="none"
                 android:textColor="#000000"
                 android:textSize="14sp" />
 
@@ -141,9 +147,11 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:contentDescription="EndTime"
-                android:src="@drawable/clock" />
+                android:src="@drawable/clock"
+                android:layout_gravity="center"/>
         </LinearLayout>
 
+        <!-- Add Availability Button -->
         <Button
             android:id="@+id/add_availability_button"
             android:layout_width="match_parent"
