@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, set } from "firebase/database"; // Ensure you import ref and set
-import { auth, db } from "./firebase"; // Your firebase.js file
+import { auth, db } from "./script/firebase"; // Your firebase.js file
 
 const Register = () => {
   const [formData, setFormData] = useState({

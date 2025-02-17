@@ -1,6 +1,6 @@
 // AdminPanel.jsx
 import React, { useState, useEffect } from "react";
-import { auth, db } from "./firebase";
+import { auth, db } from "./script/firebase";
 import { createUserWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth";
 import { ref, set, onValue } from "firebase/database";
 

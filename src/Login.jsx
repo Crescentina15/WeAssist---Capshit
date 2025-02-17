@@ -1,6 +1,6 @@
 // Login.jsx
 import React, { useState } from "react";
-import { auth, db } from "./firebase";
+import { auth, db } from "./script/firebase";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { ref, get } from "firebase/database";
 const Login = ({ onLogin, onRegister }) => {
