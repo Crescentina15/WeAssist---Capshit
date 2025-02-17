@@ -1,115 +1,76 @@
 import React, { useState } from "react";
-import { auth, db } from "./firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set } from "firebase/database";
-import { useNavigate } from "react-router-dom";
+import { ref, set } from "firebase/database"; // Ensure you import ref and set
+import { auth, db } from "./firebase"; // Your firebase.js file
 
 const Register = () => {
-  const [firmName, setFirmName] = useState("");
-  const [firmType, setFirmType] = useState("");
-  const [firmDescription, setFirmDescription] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [email, setEmail] = useState("");
-  const [website, setWebsite] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [operatingHours, setOperatingHours] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [officeAddress, setOfficeAddress] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    firmName: "",
+    firmType: "",
+    firmDescription: "",
+    phoneNumber: "",
+    email: "",
+    website: "",
+    specialization: "",
+    operatingHours: "",
+    licenseNumber: "",
+    officeAddress: "",
+    password: ""
+  });
   const [error, setError] = useState("");
 
-  const navigate = useNavigate();
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      await set(ref(db, "users/" + user.uid), {
-        firmName,
-        firmType,
-        firmDescription,
-        phoneNumber,
-        email,
-        website,
-        specialization,
-        operatingHours,
-        licenseNumber,
-        officeAddress,
+      // Create a reference in Realtime Database under "law_firm_admin"
+      const lawFirmAdminRef = ref(db, "law_firm_admin/" + user.uid);
+
+      // Save the additional firm data
+      await set(lawFirmAdminRef, {
+        firmName: formData.firmName,
+        firmType: formData.firmType,
+        firmDescription: formData.firmDescription,
+        phoneNumber: formData.phoneNumber,
+        email: formData.email,
+        website: formData.website,
+        specialization: formData.specialization,
+        operatingHours: formData.operatingHours,
+        licenseNumber: formData.licenseNumber,
+        officeAddress: formData.officeAddress,
+        uid: user.uid
       });
 
-      navigate("/login");
-    } catch (err) {
-      setError(err.message);
+      alert("Registration successful!");
+    } catch (error) {
+      setError(error.message);
+      alert("Registration failed: " + error.message);
     }
   };
 
   return (
     <div>
-      <h2>Register</h2>
+      <h2>Register Law Firm Admin</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
-
       <form onSubmit={handleRegister}>
-        <div>
-          <label>Firm Name:</label>
-          <input type="text" value={firmName} onChange={(e) => setFirmName(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Firm Type:</label>
-          <input type="text" value={firmType} onChange={(e) => setFirmType(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Firm Description:</label>
-          <textarea value={firmDescription} onChange={(e) => setFirmDescription(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Phone Number:</label>
-          <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Email:</label>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Website:</label>
-          <input type="url" value={website} onChange={(e) => setWebsite(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Specialization:</label>
-          <input type="text" value={specialization} onChange={(e) => setSpecialization(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Operating Hours:</label>
-          <input type="text" value={operatingHours} onChange={(e) => setOperatingHours(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>License Number:</label>
-          <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Office Address:</label>
-          <input type="text" value={officeAddress} onChange={(e) => setOfficeAddress(e.target.value)} required />
-        </div>
-
-        <div>
-          <label>Password:</label>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </div>
-
+        <input type="text" name="firmName" placeholder="Firm Name" onChange={handleChange} required />
+        <input type="text" name="firmType" placeholder="Firm Type" onChange={handleChange} required />
+        <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
+        <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
+        <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
+        <input type="url" name="website" placeholder="Website" onChange={handleChange} required />
+        <input type="text" name="specialization" placeholder="Specialization" onChange={handleChange} required />
+        <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
+        <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
+        <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
+        <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
         <button type="submit">Register</button>
-        <button type="button" onClick={() => navigate("/login")} style={{ marginLeft: "10px" }}>
-          Back
-        </button>
       </form>
     </div>
   );
