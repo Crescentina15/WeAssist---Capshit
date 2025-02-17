@@ -5,7 +5,6 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
 import com.remedio.weassist.R
-import java.text.ParseException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -13,8 +12,14 @@ class SetAppointmentActivity : AppCompatActivity() {
 
     private lateinit var databaseReference: DatabaseReference
     private lateinit var availabilityGrid: GridLayout
-    private var lawyerId: String? = null
     private lateinit var dateContainer: LinearLayout
+    private lateinit var editFullName: EditText
+    private lateinit var editProblem: EditText
+    private lateinit var btnSetAppointment: Button
+
+    private var lawyerId: String? = null
+    private var selectedDate: String? = null
+    private var selectedTime: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,9 +29,16 @@ class SetAppointmentActivity : AppCompatActivity() {
 
         availabilityGrid = findViewById(R.id.availability_grid)
         dateContainer = findViewById(R.id.date_container)
+        editFullName = findViewById(R.id.edit_full_name)
+        editProblem = findViewById(R.id.edit_problem)
+        btnSetAppointment = findViewById(R.id.btn_set_appointment)
 
         if (lawyerId != null) {
             fetchAvailability(lawyerId!!)
+        }
+
+        btnSetAppointment.setOnClickListener {
+            saveAppointment()
         }
     }
 
@@ -42,7 +54,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                 availabilityGrid.removeAllViews()
 
                 if (snapshot.exists()) {
-                    var hasDate = false
                     val dateMap = mutableMapOf<String, MutableList<String>>()
 
                     for (availabilitySnapshot in snapshot.children) {
@@ -51,18 +62,13 @@ class SetAppointmentActivity : AppCompatActivity() {
                         val endTime = availabilitySnapshot.child("endTime").getValue(String::class.java)
 
                         if (date != null && startTime != null && endTime != null) {
-                            hasDate = true
                             val timeSlot = "$startTime - $endTime"
                             dateMap.putIfAbsent(date, mutableListOf())
                             dateMap[date]?.add(timeSlot)
                         }
                     }
 
-                    if (!hasDate) {
-                        Toast.makeText(applicationContext, "No availability found", Toast.LENGTH_SHORT).show()
-                    } else {
-                        createDateCheckBoxes(dateMap)
-                    }
+                    createDateCheckBoxes(dateMap)
                 } else {
                     Toast.makeText(applicationContext, "No availability found", Toast.LENGTH_SHORT).show()
                 }
@@ -80,16 +86,10 @@ class SetAppointmentActivity : AppCompatActivity() {
             dateCheckBox.text = formatDate(date)
             dateCheckBox.setTextColor(resources.getColor(android.R.color.black))
 
-            val params = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            params.setMargins(10, 8, 10, 8)
-            dateCheckBox.layoutParams = params
-            dateCheckBox.setPadding(10, 10, 10, 10)
-
             dateCheckBox.setOnCheckedChangeListener { _, isChecked ->
                 if (isChecked) {
+                    selectedDate = date
+
                     // Uncheck other checkboxes
                     for (i in 0 until dateContainer.childCount) {
                         val child = dateContainer.getChildAt(i)
@@ -98,7 +98,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                         }
                     }
 
-                    // Display available time slots for the selected date
                     updateTimeSlots(timeSlots)
                 }
             }
@@ -115,23 +114,75 @@ class SetAppointmentActivity : AppCompatActivity() {
             checkBox.textSize = 14f
             checkBox.setTextColor(resources.getColor(android.R.color.black))
 
-            val params = GridLayout.LayoutParams()
-            params.width = GridLayout.LayoutParams.WRAP_CONTENT
-            params.height = GridLayout.LayoutParams.WRAP_CONTENT
-            params.setMargins(8, 8, 8, 8)
+            checkBox.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    selectedTime = slot
 
-            checkBox.layoutParams = params
+                    // Uncheck other time checkboxes
+                    for (i in 0 until availabilityGrid.childCount) {
+                        val child = availabilityGrid.getChildAt(i)
+                        if (child is CheckBox && child != checkBox) {
+                            child.isChecked = false
+                        }
+                    }
+                }
+            }
+
             availabilityGrid.addView(checkBox)
         }
     }
 
+    private fun saveAppointment() {
+        val fullName = editFullName.text.toString().trim()
+        val problem = editProblem.text.toString().trim()
+
+        if (lawyerId == null || selectedDate == null || selectedTime == null) {
+            Toast.makeText(this, "Please select a date and time", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (fullName.isEmpty() || problem.isEmpty()) {
+            Toast.makeText(this, "Please enter full name and problem", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Reference to the selected lawyer's appointment node
+        val appointmentRef = FirebaseDatabase.getInstance()
+            .getReference("lawyers")
+            .child(lawyerId!!)
+            .child("appointments")
+
+        val appointmentId = appointmentRef.push().key
+
+        if (appointmentId != null) {
+            val appointmentData = mapOf(
+                "appointmentId" to appointmentId,
+                "date" to selectedDate,
+                "time" to selectedTime,
+                "fullName" to fullName,
+                "problem" to problem
+            )
+
+            // Save inside the lawyer's node
+            appointmentRef.child(appointmentId).setValue(appointmentData)
+                .addOnSuccessListener {
+                    Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
+
     private fun formatDate(date: String): String {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
         return try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            val outputFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
             val parsedDate = inputFormat.parse(date)
             outputFormat.format(parsedDate ?: date)
-        } catch (e: ParseException) {
+        } catch (e: Exception) {
             date
         }
     }
