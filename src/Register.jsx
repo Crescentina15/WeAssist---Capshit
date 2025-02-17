@@ -5,7 +5,7 @@ import { auth, db } from "./firebase"; // Your firebase.js file
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    firmName: "",
+    lawFirm: "",
     firmType: "",
     firmDescription: "",
     phoneNumber: "",
@@ -34,7 +34,7 @@ const Register = () => {
 
       // Save the additional firm data
       await set(lawFirmAdminRef, {
-        firmName: formData.firmName,
+        lawFirm: formData.lawFirm,
         firmType: formData.firmType,
         firmDescription: formData.firmDescription,
         phoneNumber: formData.phoneNumber,
@@ -59,7 +59,7 @@ const Register = () => {
       <h2>Register Law Firm Admin</h2>
       {error && <p style={{ color: "red" }}>{error}</p>}
       <form onSubmit={handleRegister}>
-        <input type="text" name="firmName" placeholder="Firm Name" onChange={handleChange} required />
+        <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required />
         <input type="text" name="firmType" placeholder="Firm Type" onChange={handleChange} required />
         <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
         <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />

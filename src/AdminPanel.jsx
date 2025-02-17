@@ -8,22 +8,40 @@ const AdminPanel = ({ user, onLogout }) => {
   const [secretary, setSecretary] = useState({ name: "", email: "", phone: "", password: "" });
   const [lawyer, setLawyer] = useState({ name: "", specialization: "", lawFirm: "", licenseNumber: "", experience: "", contact: { phone: "", email: "", address: "" }, password: "" });
   const [lawyers, setLawyers] = useState([]);
+  const [adminLawFirm, setAdminLawFirm] = useState("");
 
   useEffect(() => {
-    onValue(ref(db, "lawyers"), (snapshot) => {
-      setLawyers(snapshot.val() ? Object.values(snapshot.val()) : []);
+    // Fetch law firm info for the logged-in admin
+    const adminRef = ref(db, "law_firm_admin/" + user.uid);
+    onValue(adminRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setAdminLawFirm(snapshot.val().lawFirm); // Store the admin's law firm
+      }
     });
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    // Fetch lawyers that belong to the same law firm as the admin
+    if (adminLawFirm) {
+      const lawyersRef = ref(db, "lawyers");
+      onValue(lawyersRef, (snapshot) => {
+        if (snapshot.exists()) {
+          const filteredLawyers = Object.values(snapshot.val()).filter(lawyer => lawyer.lawFirm === adminLawFirm);
+          setLawyers(filteredLawyers);
+        }
+      });
+    }
+  }, [adminLawFirm]);
 
   const addSecretary = () => {
     createUserWithEmailAndPassword(auth, secretary.email, secretary.password)
       .then((userCredential) => {
         set(ref(db, "secretaries/" + userCredential.user.uid), { 
-          name: secretary.name, email: secretary.email, lawFirm: secretary.lawFirm,phone: secretary.phone, role: "secretary" 
+          name: secretary.name, email: secretary.email, lawFirm: secretary.lawFirm, phone: secretary.phone, role: "secretary" 
         }).then(() => {
           sendEmailVerification(userCredential.user);
           alert("Secretary account created successfully! Verification email sent.");
-          setSecretary({ name: "", email: "", phone: "", password: "" , lawFirm:""});
+          setSecretary({ name: "", email: "", phone: "", password: "", lawFirm: "" });
         });
       })
       .catch(error => alert("Error: " + error.message));
@@ -39,7 +57,7 @@ const AdminPanel = ({ user, onLogout }) => {
         }).then(() => {
           sendEmailVerification(userCredential.user);
           alert("Lawyer account created successfully! Verification email sent.");
-          setLawyer({ name: "", specialization: "", lawFirm: "", licenseNumber: "", experience: "", backGround:" ", contact: { phone: "", email: "", address: "" }, password: "" });
+          setLawyer({ name: "", specialization: "", lawFirm: "", licenseNumber: "", experience: "", contact: { phone: "", email: "", address: "" }, password: "" });
         });
       })
       .catch(error => alert("Error: " + error.message));
@@ -63,7 +81,6 @@ const AdminPanel = ({ user, onLogout }) => {
       <input type="text" placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} />
       <input type="text" placeholder="Law Firm" value={lawyer.lawFirm} onChange={(e) => setLawyer({ ...lawyer, lawFirm: e.target.value })} />
       <input type="text" placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} />
-      <input type="text" placeholder="Background" value={lawyer.backGround} onChange={(e) => setLawyer({ ...lawyer, backGround: e.target.value })} />
       <input type="text" placeholder="Experience" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} />
       <input type="text" placeholder="Phone" value={lawyer.contact.phone} onChange={(e) => setLawyer({ ...lawyer, contact: { ...lawyer.contact, phone: e.target.value } })} />
       <input type="email" placeholder="Email" value={lawyer.contact.email} onChange={(e) => setLawyer({ ...lawyer, contact: { ...lawyer.contact, email: e.target.value } })} />
@@ -71,7 +88,7 @@ const AdminPanel = ({ user, onLogout }) => {
       <input type="password" placeholder="Password" value={lawyer.password} onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} />
       <button onClick={addLawyer}>Add Lawyer</button>
 
-      <h2>View Lawyers</h2>
+      <h2>View Lawyers from {adminLawFirm}</h2>
       <ul>
         {lawyers.map((lawyer, index) => (
           <li key={index}>{lawyer.name} - {lawyer.specialization}</li>
