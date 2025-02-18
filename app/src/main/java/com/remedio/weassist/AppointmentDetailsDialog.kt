@@ -41,23 +41,39 @@ class AppointmentDetailsDialog : DialogFragment() {
         problemTextView.text = "Problem: ${appointment.problem ?: "N/A"}"
 
         acceptButton.setOnClickListener {
-            updateAppointmentStatus(appointment.appointmentId, "Accepted")
+            acceptAppointment(appointment.appointmentId)
             dismiss()
         }
 
         declineButton.setOnClickListener {
-            updateAppointmentStatus(appointment.appointmentId, "Declined")
+            deleteAppointment(appointment.appointmentId)
             dismiss()
         }
 
         return view
     }
 
-    private fun updateAppointmentStatus(appointmentId: String, status: String) {
-        val databaseRef = FirebaseDatabase.getInstance().reference.child("appointments").child(appointmentId)
-        databaseRef.child("status").setValue(status)
-            .addOnSuccessListener { Log.d("Appointment", "Updated to $status") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to update status") }
+    private fun acceptAppointment(appointmentId: String) {
+        val database = FirebaseDatabase.getInstance().reference
+        val acceptedAppointmentsRef = database.child("Accepted").child(appointmentId)
+
+        // Save the appointment under the Accepted node
+        acceptedAppointmentsRef.setValue(appointment)
+            .addOnSuccessListener { Log.d("Appointment", "Appointment accepted and saved under Accepted") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to accept appointment") }
+
+        // Optionally, remove from the original appointments node
+        val appointmentsRef = database.child("appointments").child(appointmentId)
+        appointmentsRef.removeValue()
+            .addOnSuccessListener { Log.d("Appointment", "Appointment removed from original appointments") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to remove appointment from original list") }
+    }
+
+    private fun deleteAppointment(appointmentId: String) {
+        val appointmentRef = FirebaseDatabase.getInstance().reference.child("appointments").child(appointmentId)
+        appointmentRef.removeValue()
+            .addOnSuccessListener { Log.d("Appointment", "Appointment removed from the database") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to remove appointment") }
     }
 
     companion object {
@@ -70,3 +86,7 @@ class AppointmentDetailsDialog : DialogFragment() {
         }
     }
 }
+
+
+
+
