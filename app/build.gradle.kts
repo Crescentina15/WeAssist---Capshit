@@ -61,5 +61,9 @@ dependencies {
 
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation ("com.google.firebase:firebase-database:20.0.3")
+    implementation ("com.squareup.picasso:picasso:2.8")
+    implementation ("androidx.recyclerview:recyclerview:1.2.1")
+
 
 }
