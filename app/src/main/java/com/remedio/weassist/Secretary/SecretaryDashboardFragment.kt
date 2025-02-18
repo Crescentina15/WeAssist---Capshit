@@ -19,6 +19,7 @@ class SecretaryDashboardFragment : Fragment() {
     private lateinit var databaseReference: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private lateinit var secretaryNameTextView: TextView
+    private lateinit var secretaryFirmTextView: TextView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -30,8 +31,9 @@ class SecretaryDashboardFragment : Fragment() {
         databaseReference = FirebaseDatabase.getInstance().getReference("secretaries")
 
         secretaryNameTextView = view.findViewById(R.id.secretary_fname)
+        secretaryFirmTextView = view.findViewById(R.id.secretary_firm)
 
-        loadSecretaryName()
+        loadSecretaryDetails()
 
         val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
         val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
@@ -44,9 +46,10 @@ class SecretaryDashboardFragment : Fragment() {
         return view
     }
 
-    private fun loadSecretaryName() {
+    private fun loadSecretaryDetails() {
         val userId = auth.currentUser?.uid ?: return
 
+        // Fetch secretary's name
         databaseReference.child(userId).child("name").addListenerForSingleValueEvent(object :
             ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -55,6 +58,18 @@ class SecretaryDashboardFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 secretaryNameTextView.text = "Error loading name"
+            }
+        })
+
+        // Fetch law firm's name
+        databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
+            ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                secretaryFirmTextView.text = snapshot.value?.toString() ?: "No Law Firm Assigned"
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                secretaryFirmTextView.text = "Error loading law firm"
             }
         })
     }
@@ -87,3 +102,4 @@ class SecretaryDashboardFragment : Fragment() {
         })
     }
 }
+

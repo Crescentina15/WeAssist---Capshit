@@ -1,0 +1,278 @@
+[33mcommit eb97f2966de7bc46e2de675fff595a9dc1b0a507[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Merge: cddc842 f471d22
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Tue Feb 18 10:50:06 2025 +0800
+
+    secretary usab gamay
+
+[33mcommit cddc842fd2e359549f83fed0aa82fe47685de4cf[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Tue Feb 18 10:47:41 2025 +0800
+
+    secretary usab gamay
+
+[33mcommit f471d221bc79d1dbbe66aafbde28718c89753ff8[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Tue Feb 18 10:09:40 2025 +0800
+
+    changed appointments node to top-tier
+
+[33mcommit f09ca3d87ab96e7218e8cc7dce477bccb14e156a[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Tue Feb 18 09:38:38 2025 +0800
+
+    retrieve first name
+
+[33mcommit 20afb5098c7a9500c49fd2c2819620e995f2a3ff[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 17 22:12:50 2025 +0800
+
+    added appointments node for lawyers
+
+[33mcommit e79e5a89abe597cd0f2d6747f6afb52ac4d79c10[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 17 21:49:29 2025 +0800
+
+    refined set appointment
+
+[33mcommit 3944b54676f5ab60fad9d01bfc3cb29ef4b25d89[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 17 15:05:33 2025 +0800
+
+    dynamic set appointment for date and time
+
+[33mcommit 6d7282f0b80f23ac7eda98f3952c80db7771317c[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 17 14:34:29 2025 +0800
+
+    dynamically display the availability of the lawyer from the client side
+
+[33mcommit 5a0e7093deeda50eda5dc43be9cb74be469aae8b[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sun Feb 16 21:13:05 2025 +0800
+
+    add add availability function
+
+[33mcommit 0c144844f13ebe4b1b173d6d5d7a56026a19fedb[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sun Feb 16 20:10:57 2025 +0800
+
+    added set appointment for clients
+
+[33mcommit 6c149cd751195a1479ab837e186bd687d4a6868e[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sun Feb 16 19:41:15 2025 +0800
+
+    changed appointments for secretary_nav
+
+[33mcommit dd1fbf9cdd4659c5e16ce3dab79b439399a54c71[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sun Feb 16 12:10:33 2025 +0800
+
+    added dynamic buttons for specialization in clients end
+
+[33mcommit c5abcc0316635830e79ec36834ae5a139f766b9c[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sun Feb 16 12:10:20 2025 +0800
+
+    added dynamic buttons for specialization in clients end
+
+[33mcommit 3e19d6c338dfc1670b950387387f718808ae5f7d[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sat Feb 15 19:15:54 2025 +0800
+
+    added add background functionality
+
+[33mcommit 7140008d3bae0cd31e885100df77e4c1c219947a[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Fri Feb 14 22:25:05 2025 +0800
+
+    added secretary buttons view filtering
+
+[33mcommit b7f03382b2baeffc85d7fc23d771ff80c01fb629[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Fri Feb 14 21:52:09 2025 +0800
+
+    added filtering in manage_availability
+
+[33mcommit b1f279504054b1bae5f8660becb45da24a8f60e2[m
+Merge: c4a2fe2 7ddcb42
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Fri Feb 14 15:25:02 2025 +0800
+
+    Merge remote-tracking branch 'origin/main'
+
+[33mcommit c4a2fe29c413daf336d2641b0001d1b3ad6ff760[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Fri Feb 14 15:24:27 2025 +0800
+
+    added filtering for secretary lawfirm
+
+[33mcommit 7ddcb429f2fdb4c1d1a41a00a5a04b9f7ecba472[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 14:59:31 2025 +0800
+
+    show notary lawyer clients side
+
+[33mcommit a5692a5d3d29876dfd32e96056bc0f40eb606027[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 14:26:52 2025 +0800
+
+    secretary firm to firm lawyers
+
+[33mcommit 5facdb2457cfa7003edd4585af205bd76ed835cc[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 13:49:22 2025 +0800
+
+    update
+
+[33mcommit 3c04db628ceb502fc7f6341cceee820ad2f82156[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 13:35:39 2025 +0800
+
+    secretary update
+
+[33mcommit 8b032ea4724b035f9a230a54a61f140f9ef511c7[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 13:21:18 2025 +0800
+
+    display secretary
+
+[33mcommit 3769ddfb4dbd3394de6864fdce0f38e77ddf1c02[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 10:33:42 2025 +0800
+
+    secretary login
+
+[33mcommit 15382d1baaf52c8b2b28e9fda109ee4b031bd941[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 14 09:37:25 2025 +0800
+
+    fetch lawyer name
+
+[33mcommit 604325dcd86523870e8b49d4919d91a81d98e30d[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Thu Feb 13 14:54:56 2025 +0800
+
+    changes
+
+[33mcommit 03c0b773815a904a4a7b7be3fae7eb68c2479ae7[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Wed Feb 12 14:56:50 2025 +0800
+
+    with chatbot
+
+[33mcommit 25bfa5afff195a0fa34af81b439c24dc63d9b707[m
+Merge: 6581183 3cc75b9
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Wed Feb 12 14:05:48 2025 +0800
+
+    Merge remote-tracking branch 'origin/main'
+
+[33mcommit 6581183911749e79711e5cd2721e96c5c52ece5b[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Wed Feb 12 14:04:46 2025 +0800
+
+    remember me function implemented
+
+[33mcommit 3cc75b98d35d60be63e8efddca7094db59b96667[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Wed Feb 12 13:17:18 2025 +0800
+
+    rename updates
+
+[33mcommit 0d36f74a710bbd46728b6818a5c41a0bbbbad651[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Tue Feb 11 23:10:57 2025 +0800
+
+    Added bottom nav for secretary perspective
+
+[33mcommit 63978f674595fa68dff0d80b311630657c610fda[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Tue Feb 11 21:51:45 2025 +0800
+
+    removed messaging in lawyers perspective
+
+[33mcommit 3a164e3518b835ed92d75e27270fe9b1713ad395[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Tue Feb 11 17:26:49 2025 +0800
+
+    Added KT foldering and Bottom nav for lawyers
+
+[33mcommit f0f9d56ca652851d48bb00aadb11b21ea0982131[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Tue Feb 11 16:24:17 2025 +0800
+
+    folder sorting KT
+
+[33mcommit 2d2e08bb0272f6473d28af5f223d5479fcdd0c8a[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Tue Feb 11 15:22:09 2025 +0800
+
+    with lawyer login
+
+[33mcommit ce770413852f631896767fa00ae435498ba17f62[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Tue Feb 11 14:26:30 2025 +0800
+
+    rename
+
+[33mcommit baad22458b107c8e1a96cbcbfcf780414e314549[m
+Author: Crescentina <tinayremedio26@gmail.com>
+Date:   Tue Feb 11 00:42:57 2025 +0800
+
+    PARA SA LAWYERS NI TANAN
+
+[33mcommit e698dfc9c76ae1eb58c65939d4cd470f53f44ea1[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 10 23:05:01 2025 +0800
+
+    added functionalities for secretary dashboard buttons
+
+[33mcommit c05d9e91e8b5a21c74cfb3a6942e5ae1d2682d8c[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Mon Feb 10 15:15:15 2025 +0800
+
+    secretary fucntion
+
+[33mcommit 6b32583c6d75c3ab199953da96a10a1dc2532ee8[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 10 15:00:25 2025 +0800
+
+    added filters for secretary user
+
+[33mcommit fc8c3fb6250c4a90cace66cf05d4540d4397db87[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Mon Feb 10 15:01:07 2025 +0800
+
+    rename
+
+[33mcommit 3b31eff37e0a6c58b0a64e32f7de473ce87b7257[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Mon Feb 10 14:27:26 2025 +0800
+
+    Fixed UI for secretary (running)
+
+[33mcommit 35ed2a5786cc13464d8f1374e9b7d81dca3f730d[m
+Author: Crescentina <tinayremedio26@gmail.com>
+Date:   Sun Feb 9 22:14:33 2025 +0800
+
+    SECRETARY NI TANAN
+
+[33mcommit 43466e03fc109e80525c127b6841fd9d71ce1b0c[m
+Author: Dominic <dominicrestauro@gmail.com>
+Date:   Sat Feb 8 00:30:29 2025 +0800
+
+    Changed to MVVM foldering
+
+[33mcommit 0e609ec7c70d04b5a26d0147196464747b04bc2d[m
+Author: fritzxdd <fritz.marlowe@gmail.com>
+Date:   Fri Feb 7 16:50:56 2025 +0800
+
+    update manifest
+
+[33mcommit aa834e45c486afcc724c5750a72845edca2c0075[m
+Author: Crescentina <tinayremedio26@gmail.com>
+Date:   Thu Feb 6 22:35:09 2025 +0800
+
+    LAWYERS
