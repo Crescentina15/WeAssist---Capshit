@@ -1,8 +1,8 @@
-// AdminPanel.jsx
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./script/firebase";
 import { createUserWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth";
 import { ref, set, onValue } from "firebase/database";
+import { Link } from "react-router-dom";  // Import Link for navigation
 
 const AdminPanel = ({ user, onLogout }) => {
   const [secretary, setSecretary] = useState({ name: "", email: "", phone: "", password: "" });
@@ -15,13 +15,13 @@ const AdminPanel = ({ user, onLogout }) => {
     const adminRef = ref(db, "law_firm_admin/" + user.uid);
     onValue(adminRef, (snapshot) => {
       if (snapshot.exists()) {
-        setAdminLawFirm(snapshot.val().lawFirm); // Store the admin's law firm
+        setAdminLawFirm(snapshot.val().lawFirm);
       }
     });
   }, [user]);
 
   useEffect(() => {
-    // Fetch lawyers that belong to the same law firm as the admin
+    // Fetch lawyers belonging to the same law firm as the admin
     if (adminLawFirm) {
       const lawyersRef = ref(db, "lawyers");
       onValue(lawyersRef, (snapshot) => {
@@ -66,6 +66,9 @@ const AdminPanel = ({ user, onLogout }) => {
   return (
     <div>
       <h1>Law Firm Admin Panel</h1>
+      <Link to="/profile">
+        <button>Profile</button>
+      </Link>
       <button onClick={onLogout}>Logout</button>
 
       <h2>Manage Secretary</h2>
