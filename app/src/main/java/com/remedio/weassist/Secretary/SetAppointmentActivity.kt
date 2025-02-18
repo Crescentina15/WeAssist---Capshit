@@ -146,24 +146,23 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
-        // Reference to the selected lawyer's appointment node
+        // Reference to the general appointments node
         val appointmentRef = FirebaseDatabase.getInstance()
-            .getReference("lawyers")
-            .child(lawyerId!!)
-            .child("appointments")
+            .getReference("appointments")
 
         val appointmentId = appointmentRef.push().key
 
         if (appointmentId != null) {
             val appointmentData = mapOf(
                 "appointmentId" to appointmentId,
+                "lawyerId" to lawyerId,  // Keeping lawyerId as part of appointment details
                 "date" to selectedDate,
                 "time" to selectedTime,
                 "fullName" to fullName,
                 "problem" to problem
             )
 
-            // Save inside the lawyer's node
+            // Save in the general appointments node
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
@@ -174,7 +173,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
-
 
     private fun formatDate(date: String): String {
         return try {
