@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { auth } from "./script/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
+import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom";
 import Login from "./Login";
 import Register from "./Register";
 import AdminPanel from "./AdminPanel";
-import Profile from "./Profile";  // Import Profile component
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";  // Import routing components
+import Profile from "./Profile";  
 
 const App = () => {
   const [user, setUser] = useState(null);
-  const [showRegister, setShowRegister] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -28,24 +27,32 @@ const App = () => {
       });
   };
 
-  if (showRegister) {
-    return <Register onBack={() => setShowRegister(false)} />;
-  }
-
   return (
     <Router>
       <Routes>
-        <Route
-          path="/"
-          element={
-            user ? (
-              <AdminPanel user={user} onLogout={handleLogout} />
-            ) : (
-              <Login onLogin={setUser} onRegister={() => setShowRegister(true)} />
-            )
-          }
+        {/* Home Route - Redirects to AdminPanel if logged in, else Login */}
+        <Route 
+          path="/" 
+          element={user ? <AdminPanel user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
         />
-        <Route path="/profile" element={<Profile user={user} />} />  {/* Add route to Profile page */}
+
+        {/* Login Route */}
+        <Route 
+          path="/login" 
+          element={user ? <Navigate to="/" /> : <Login onLogin={setUser} />} 
+        />
+
+        {/* Register Route */}
+        <Route 
+          path="/register" 
+          element={user ? <Navigate to="/" /> : <Register />} 
+        />
+
+        {/* Profile Route - Only accessible if logged in */}
+        <Route 
+          path="/profile" 
+          element={user ? <Profile user={user} /> : <Navigate to="/login" />} 
+        />
       </Routes>
     </Router>
   );

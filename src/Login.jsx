@@ -1,21 +1,24 @@
-// Login.jsx
 import React, { useState } from "react";
 import { auth, db } from "./script/firebase";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { ref, get } from "firebase/database";
-const Login = ({ onLogin, onRegister }) => {
+import { useNavigate } from "react-router-dom"; // Import for navigation
+import "./index.css"; 
+import logo from "./assets/logo.png"; 
+
+const Login = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate(); // Hook for navigation
 
-  const handleLogin = () => {
+  const handleLogin = (e) => {
+    e.preventDefault(); 
+
     signInWithEmailAndPassword(auth, email, password)
       .then((userCredential) => {
         const user = userCredential.user;
-        // Change "users" to "law_firm_admin"
         get(ref(db, "law_firm_admin/" + user.uid)).then((snapshot) => {
           if (snapshot.exists()) {
-            // Optionally, check for a role field if you stored one:
-            // if (snapshot.val().role === "admin") { ... }
             onLogin(user);
           } else {
             alert("Access Denied: You are not an admin!");
@@ -28,17 +31,39 @@ const Login = ({ onLogin, onRegister }) => {
       });
   };
 
-
   return (
-    <div>
-      <h2>Admin Login</h2>
-      <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      <button onClick={handleLogin}>Login</button>
-      <button onClick={onRegister}>Register</button>
+    <div className="login-container">
+      <div className="login-card">
+        <div className="logo-container">
+          <img src={logo} alt="Law Firm Logo" />
+        </div>
+        <h2>Admin Login</h2>
+        <form onSubmit={handleLogin}>
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button className="login-btn" type="submit">
+            Login
+          </button>
+        </form>
+        <p>Don't have an account?</p>
+        <button className="register-btn" onClick={() => navigate("/register")}>
+          Register
+        </button>
+      </div>
     </div>
   );
 };
-
 
 export default Login;

@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { ref, set } from "firebase/database"; // Ensure you import ref and set
-import { auth, db } from "./script/firebase"; // Your firebase.js file
+import { ref, set } from "firebase/database";
+import { auth, db } from "./script/firebase"; 
+import logo from "./assets/logo.png"
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -29,10 +30,8 @@ const Register = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // Create a reference in Realtime Database under "law_firm_admin"
       const lawFirmAdminRef = ref(db, "law_firm_admin/" + user.uid);
 
-      // Save the additional firm data
       await set(lawFirmAdminRef, {
         lawFirm: formData.lawFirm,
         firmType: formData.firmType,
@@ -55,23 +54,28 @@ const Register = () => {
   };
 
   return (
-    <div>
-      <h2>Register Law Firm Admin</h2>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      <form onSubmit={handleRegister}>
-        <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required />
-        <input type="text" name="firmType" placeholder="Firm Type" onChange={handleChange} required />
-        <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
-        <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
-        <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
-        <input type="url" name="website" placeholder="Website" onChange={handleChange} required />
-        <input type="text" name="specialization" placeholder="Specialization" onChange={handleChange} required />
-        <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
-        <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
-        <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
-        <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
-        <button type="submit">Register</button>
-      </form>
+    <div className="page-container">
+      <header className="header">
+        <img src={logo}/>
+      </header>
+      <div className="form-container">
+        <h2>Register Law Firm Admin</h2>
+        {error && <p className="error">{error}</p>}
+        <form onSubmit={handleRegister}>
+          <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required />
+          <input type="text" name="firmType" placeholder="Firm Type" onChange={handleChange} required />
+          <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
+          <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
+          <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
+          <input type="url" name="website" placeholder="Website" onChange={handleChange} required />
+          <input type="text" name="specialization" placeholder="Specialization" onChange={handleChange} required />
+          <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
+          <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
+          <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
+          <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
+          <button type="submit">Register</button>
+        </form>
+      </div>
     </div>
   );
 };
