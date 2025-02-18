@@ -1,0 +1,51 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/appointment_full_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Client Name"
+        android:textSize="18sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/appointment_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Date"
+        android:textSize="16sp"/>
+
+    <TextView
+        android:id="@+id/appointment_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Time"
+        android:textSize="16sp"/>
+
+    <TextView
+        android:id="@+id/appointment_problem"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Problem"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        android:paddingTop="8dp"/>
+
+    <Button
+        android:id="@+id/btn_accept"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Accept"
+        android:backgroundTint="@android:color/holo_green_light"/>
+
+    <Button
+        android:id="@+id/btn_decline"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Decline"
+        android:backgroundTint="@android:color/holo_red_light"/>
+</LinearLayout>

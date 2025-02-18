@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.AppointmentDetailsDialog
 import com.remedio.weassist.R
 import com.squareup.picasso.Picasso
 
@@ -65,6 +66,7 @@ class SecretaryAppointmentFragment : Fragment() {
                     Log.e("SecretaryCheck", "Secretary data not found in DB for ID: $secretaryId")
                 }
             }
+
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error fetching secretary data: ${error.message}")
             }
@@ -114,7 +116,10 @@ class SecretaryAppointmentFragment : Fragment() {
                         if (appointment != null) {
                             // Add the appointment only if lawyerId is in our lawyerIds
                             if (appointment.lawyerId in lawyerIds) {
-                                Log.d("SecretaryCheck", "Adding appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+                                Log.d(
+                                    "SecretaryCheck",
+                                    "Adding appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}"
+                                )
                                 appointmentList.add(appointment)
                             }
                         }
@@ -136,8 +141,8 @@ class SecretaryAppointmentFragment : Fragment() {
     // ---------------------------------------------
     // RecyclerView Adapter
     // ---------------------------------------------
-    inner class AppointmentAdapter(private val appointments: List<Appointment>)
-        : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
+    inner class AppointmentAdapter(private val appointments: List<Appointment>) :
+        RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppointmentViewHolder {
             val view = LayoutInflater.from(parent.context)
@@ -159,10 +164,18 @@ class SecretaryAppointmentFragment : Fragment() {
             } else {
                 holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
             }
+
+            // Set click listener
+            holder.itemView.setOnClickListener {
+                val dialog = AppointmentDetailsDialog.newInstance(appointment)
+                dialog.show(
+                    (holder.itemView.context as androidx.fragment.app.FragmentActivity).supportFragmentManager,
+                    "AppointmentDetailsDialog"
+                )
+            }
         }
 
         override fun getItemCount(): Int {
-            Log.d("SecretaryCheck", "Appointment count: ${appointments.size}")
             return appointments.size
         }
 
