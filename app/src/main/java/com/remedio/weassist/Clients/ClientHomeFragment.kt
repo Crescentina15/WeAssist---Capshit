@@ -57,21 +57,31 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun fetchUserFirstName(userId: String) {
-        database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId)
+
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: "User"
-                    welcomeMessageTextView.text = "Welcome, $firstName!"
+                    val firstName = snapshot.child("firstName").getValue(String::class.java)
+                    if (!firstName.isNullOrEmpty()) {
+                        welcomeMessageTextView.text = "Welcome, $firstName!"
+                    } else {
+                        Log.e("Firebase", "First name is null or empty")
+                        welcomeMessageTextView.text = "Welcome!"
+                    }
                 } else {
-                    Toast.makeText(context, "User data not found!", Toast.LENGTH_SHORT).show()
+                    Log.e("Firebase", "User data not found")
+                    welcomeMessageTextView.text = "Welcome!"
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(context, "Database error: ${error.message}", Toast.LENGTH_SHORT).show()
+                Log.e("Firebase", "Database error: ${error.message}")
+                welcomeMessageTextView.text = "Welcome!"
             }
         })
     }
+
 
     private fun fetchSpecializations() {
         database.addListenerForSingleValueEvent(object : ValueEventListener {
