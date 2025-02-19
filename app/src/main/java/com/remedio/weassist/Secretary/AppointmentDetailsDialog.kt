@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Secretary
 
 import android.os.Bundle
 import android.util.Log
@@ -9,7 +9,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import com.google.firebase.database.FirebaseDatabase
-import com.remedio.weassist.Secretary.Appointment
+import com.remedio.weassist.R
 
 class AppointmentDetailsDialog : DialogFragment() {
 

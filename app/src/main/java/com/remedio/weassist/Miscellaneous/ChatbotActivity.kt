@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Miscellaneous
 
 import android.os.Bundle
 import android.widget.Button
@@ -6,6 +6,7 @@ import android.widget.EditText
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.google.ai.client.generativeai.GenerativeModel
+import com.remedio.weassist.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

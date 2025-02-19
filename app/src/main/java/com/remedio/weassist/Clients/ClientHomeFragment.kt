@@ -13,7 +13,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.remedio.weassist.ChatbotActivity
+import com.remedio.weassist.Miscellaneous.ChatbotActivity
 import com.remedio.weassist.Lawyer.LawyersListActivity
 import com.remedio.weassist.R
 

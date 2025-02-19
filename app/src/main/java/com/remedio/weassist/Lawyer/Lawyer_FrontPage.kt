@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.remedio.weassist.AppointmentsFragment
 import com.remedio.weassist.Clients.ClientHomeFragment
+import com.remedio.weassist.LawyerAppointmentsFragment
 import com.remedio.weassist.MessageFragment
 import com.remedio.weassist.R
 
@@ -23,7 +24,7 @@ class Lawyer_FrontPage : AppCompatActivity() {
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
 
-                R.id.nav_appointments -> AppointmentsFragment()
+                R.id.nav_appointments -> LawyerAppointmentsFragment()
 
 
                 else -> AppointmentsFragment()

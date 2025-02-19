@@ -11,7 +11,7 @@
     <fragment
         android:id="@+id/fragment_appointments"
         android:label="Appointments"
-        tools:layout="@layout/fragment_appointments">
+        tools:layout="@layout/fragment_lawyer_appointments">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
