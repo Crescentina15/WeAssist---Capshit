@@ -9,7 +9,7 @@ import com.remedio.weassist.Clients.ClientHomeFragment
 
 import com.remedio.weassist.R
 
-class Lawyer_FrontPage : AppCompatActivity() {
+class LawyerFrontPage : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lawyer_front_page)
