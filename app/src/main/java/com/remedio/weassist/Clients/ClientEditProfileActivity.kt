@@ -1,4 +1,4 @@
-package com.remedio.weassist.Profile
+package com.remedio.weassist.Clients
 
 import android.os.Bundle
 import android.widget.Button
@@ -10,7 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.R
 
-class EditProfileActivity : AppCompatActivity() {
+class ClientEditProfileActivity : AppCompatActivity() {
 
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
@@ -26,7 +26,7 @@ class EditProfileActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_edit_profile)
+        setContentView(R.layout.activity_edit_profile_client)
 
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()
@@ -77,12 +77,12 @@ class EditProfileActivity : AppCompatActivity() {
                     editEmail.setText(snapshot.child("email").getValue(String::class.java) ?: "")
                     editContactNumber.setText(snapshot.child("phone").getValue(String::class.java) ?: "")
                 } else {
-                    Toast.makeText(this@EditProfileActivity, "User data not found", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ClientEditProfileActivity, "User data not found", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@EditProfileActivity, "Error loading data: ${error.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ClientEditProfileActivity, "Error loading data: ${error.message}", Toast.LENGTH_SHORT).show()
             }
         })
     }

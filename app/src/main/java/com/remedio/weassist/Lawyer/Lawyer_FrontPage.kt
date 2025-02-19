@@ -4,10 +4,9 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import com.remedio.weassist.AppointmentsFragment
+
 import com.remedio.weassist.Clients.ClientHomeFragment
-import com.remedio.weassist.LawyerAppointmentsFragment
-import com.remedio.weassist.MessageFragment
+
 import com.remedio.weassist.R
 
 class Lawyer_FrontPage : AppCompatActivity() {
@@ -27,7 +26,7 @@ class Lawyer_FrontPage : AppCompatActivity() {
                 R.id.nav_appointments -> LawyerAppointmentsFragment()
 
 
-                else -> AppointmentsFragment()
+                else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)
             true

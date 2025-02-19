@@ -1,10 +1,11 @@
-package com.remedio.weassist
+package com.remedio.weassist.Clients
 
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.remedio.weassist.R
 
 // TODO: Rename parameter arguments, choose names that match
 // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
@@ -16,7 +17,7 @@ private const val ARG_PARAM2 = "param2"
  * Use the [MessageFragment.newInstance] factory method to
  * create an instance of this fragment.
  */
-class MessageFragment : Fragment() {
+class ClientMessageFragment : Fragment() {
     // TODO: Rename and change types of parameters
     private var param1: String? = null
     private var param2: String? = null
@@ -34,7 +35,7 @@ class MessageFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View? {
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_message, container, false)
+        return inflater.inflate(R.layout.fragment_client_message, container, false)
     }
 
     companion object {
@@ -49,7 +50,7 @@ class MessageFragment : Fragment() {
         // TODO: Rename and change types and number of parameters
         @JvmStatic
         fun newInstance(param1: String, param2: String) =
-            MessageFragment().apply {
+            ClientAppointmentsFragment().apply {
                 arguments = Bundle().apply {
                     putString(ARG_PARAM1, param1)
                     putString(ARG_PARAM2, param2)

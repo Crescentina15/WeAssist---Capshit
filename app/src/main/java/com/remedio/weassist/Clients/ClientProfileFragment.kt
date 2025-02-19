@@ -1,4 +1,4 @@
-package com.remedio.weassist.Profile
+package com.remedio.weassist.Clients
 
 import android.content.Context
 import android.content.Intent
@@ -18,7 +18,7 @@ import com.remedio.weassist.R
 import com.remedio.weassist.Miscellaneous.ReportActivity
 import com.remedio.weassist.Miscellaneous.SecurityActivity
 
-class ProfileFragment : Fragment() {
+class ClientProfileFragment : Fragment() {
 
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
@@ -36,7 +36,7 @@ class ProfileFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_profile, container, false)
+        val view = inflater.inflate(R.layout.fragment_client_profile, container, false)
 
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()
@@ -66,7 +66,7 @@ class ProfileFragment : Fragment() {
         }
 
         // Set button click listeners safely
-        editProfileButton.setOnClickListener { openActivity(EditProfileActivity::class.java) }
+        editProfileButton.setOnClickListener { openActivity(ClientEditProfileActivity::class.java) }
         securityButton.setOnClickListener { openActivity(SecurityActivity::class.java) }
         privacyButton.setOnClickListener { openActivity(PrivacyActivity::class.java) }
         reportProblemButton.setOnClickListener { openActivity(ReportActivity::class.java) }

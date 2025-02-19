@@ -7,7 +7,6 @@ import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.remedio.weassist.AppointmentsFragment
 import com.remedio.weassist.Clients.ClientHomeFragment
 import com.remedio.weassist.R
 
@@ -30,12 +29,12 @@ class LawyersDashboardActivity : AppCompatActivity() {
         loadLawyerData()
 
         // Set default fragment
-        loadFragment(AppointmentsFragment())
+        loadFragment(LawyerAppointmentsFragment())
 
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
-                R.id.nav_appointments -> AppointmentsFragment()
+                R.id.nav_appointments -> LawyerAppointmentsFragment()
                 else -> ClientHomeFragment()
             }
             loadFragment(selectedFragment)

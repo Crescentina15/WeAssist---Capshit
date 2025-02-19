@@ -28,7 +28,7 @@ class ClientHomeFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.fragment_home_client, container, false)
+        val view = inflater.inflate(R.layout.fragment_client_home, container, false)
 
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()

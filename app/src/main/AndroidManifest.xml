@@ -61,7 +61,7 @@
             android:name=".Miscellaneous.SecurityActivity"
             android:exported="false" />
         <activity
-            android:name=".Profile.EditProfileActivity"
+            android:name=".Clients.ClientEditProfileActivity"
             android:exported="true" />
         <activity
             android:name=".Clients.ClientFrontPage"

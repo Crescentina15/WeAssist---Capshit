@@ -8,7 +8,7 @@
     <fragment
         android:id="@+id/fragment_home"
         android:label="Home"
-        tools:layout="@layout/fragment_home_client">
+        tools:layout="@layout/fragment_client_home">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
@@ -16,7 +16,7 @@
     <fragment
         android:id="@+id/fragment_profile"
         android:label="Profile"
-        tools:layout="@layout/fragment_profile">
+        tools:layout="@layout/fragment_client_profile">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
@@ -24,7 +24,7 @@
     <fragment
         android:id="@+id/fragment_message"
         android:label="Message"
-        tools:layout="@layout/fragment_message">
+        tools:layout="@layout/fragment_client_message">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
@@ -32,7 +32,7 @@
     <fragment
         android:id="@+id/fragment_appointments"
         android:label="Appointments"
-        tools:layout="@layout/fragment_appointments">
+        tools:layout="@layout/fragment_client_appointments">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
