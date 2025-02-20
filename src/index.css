@@ -5,7 +5,7 @@
 
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #fdfdfd;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,27 +13,8 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
+/* LOGIN */
 
 button {
   border-radius: 8px;
@@ -113,16 +94,6 @@ button:focus-visible {
   color: #6a5acd; 
 }
 
-body {
-  font-family: 'Arial', sans-serif;
-  background-color: #6a5acd;
-  padding: 0;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start; 
-  align-items: center;
-}
 
 h2 {
   text-align: center;
@@ -145,11 +116,11 @@ h2 {
 }
 
 .logo {
-  width: 20px;  
+  width: 50px;  
 }
 
 .form-container {
-  max-width: 900px; /* Make the form wider */
+  max-width: 900px; 
   margin-top: 10px;
   padding: 30px;
   background-color: #fff;
@@ -159,8 +130,8 @@ h2 {
 
 form {
   display: flex;
-  flex-wrap: wrap;  /* Allow form elements to wrap */
-  gap: 10px;  /* Space between form elements */
+  flex-wrap: wrap; 
+  gap: 10px;  
 }
 
 input {
@@ -175,12 +146,9 @@ input[type="text"],
 input[type="email"],
 input[type="password"],
 input[type="tel"],
-input[type="url"] {
-  width: 100%;  /* Adjust to make it more spacious */
-}
 
 input[type="password"] {
-  width: 100%;  /* Make the password field wider */
+  width: 100%;  
 }
 
 /* Register Button */
@@ -189,10 +157,13 @@ button {
   background-color: #ffffff;
   color: rgb(0, 0, 0);
   font-size: 16px;
+  align-items: center;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  width: 100%;  /* Make the button span the entire width */
+  width: 100%;  
+  justify-content: center;
+  
 }
 
 button:hover {
@@ -216,7 +187,7 @@ input::placeholder {
 
 
 .login-card input {
-  width: 90%; /* Adjust width to align with buttons */
+  width: 90%; 
   padding: 14px;
   margin: 12px 0;
   border: 1px solid #ccc;
@@ -224,7 +195,7 @@ input::placeholder {
   font-size: 16px;
   outline: none;
   transition: 0.3s ease-in-out;
-  text-align: center; /* Centers text inside input fields */
+  text-align: center; 
 }
 
 
@@ -234,7 +205,7 @@ input::placeholder {
 }
 
 .login-btn {
-  width: 90%; /* Adjust width to match input fields */
+  width: 90%; 
   padding: 14px;
   background: #6a5acd;
   color: white;
@@ -247,20 +218,12 @@ input::placeholder {
   transition: 0.3s ease-in-out;
   display: flex;
   justify-content: center;
-  align-items: center; /* Ensures button text is centered */
+  align-items: center; 
 }
 
 
-.login-btn:hover {
-  background: #5b4cc9;
-  box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.3);
-  ;
-}
 
 
-.login-card input::placeholder {
-  color: #aaa;
-}
 
 /*ADMIN */
 
@@ -269,65 +232,93 @@ body {
   font-family: Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background-color: #f4f4f9;
+  background-color: #f8f8f8;
 }
 
-/* Admin Panel Container */
-.admin-panel-container {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
 
-/* Admin Panel Header with Logo and Logout */
-.admin-panel-header {
+
+
+
+.admin-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 20px;
-  background-color: #dbc8ff;
-  color: white;
-  align-items: center;
+  padding: 10px 20px;
+  background: #6a5acd;
+  border-bottom: 2px solid #ddd;
 }
 
-.admin-panel-logo img {
-  width: 150px;
-  height: auto;
-}
-
-.admin-panel-header .logout-btn-container {
+.header-left {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+}
+
+
+.admin-logo {
+  width: 200px; 
+  cursor: pointer;
+}
+
+.admin-nav {
+  display: flex;
   gap: 20px;
 }
 
-/* Logout Button Styles */
+.nav-button {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
+  transition: 0.3s ease;
+}
+
+.nav-button:hover {
+  color: #007bff;
+}
+
+.header-right {
+  display: flex;
+  position: relative;
+}
+
+.profile-button {
+  background-color: #ada3ec; 
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-right: 30px; 
+}
+
+.profile-button:hover {
+  background-color: #ada3ec; 
+}
+
 .logout-btn {
+  cursor: pointer;
+  font-size: 16px;
   padding: 10px 20px;
   background-color: #ada3ec;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  transition: background-color 0.3s ease;
 }
+
 
 .logout-btn:hover {
   background-color: #dddddd;
 }
 
-/* Admin Panel Content */
-.admin-panel-content {
-  padding: 30px;
-  background-color: white;
-  flex-grow: 1;
-  overflow-y: auto; /* Ensures scrolling content if needed */
-  margin-top: 0px; /* Adjust content below header */
+
+.admin-content {
+  display: flex;
+  gap: 20px;
+  padding: 20px;
 }
 
-/* Section Headers (h1, h2) */
 h1, h2 {
   color: #2c3e50;
 }
@@ -358,17 +349,20 @@ form button:hover {
   background: #ada3ec;
 }
 
-/* View Lawyers Container */
 .view-lawyers {
-  margin-top: 30px;
-  padding: 20px;
-  background-color: white;
+  flex: 1;
+  background: #fff;
+  padding: 15px;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 1200px;
-  margin-left: auto;
-  margin-right: auto;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.analytics {
+  flex: 1;
+  background: #fff;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
 
 .view-lawyers h2 {
@@ -386,10 +380,204 @@ form button:hover {
   padding: 10px;
   background: #ecf0f1;
   border-radius: 5px;
+  font-size: 17px;
+}
+.lawyer-button {
+  background: transparent;
+  border: none;
+  color: inherit;
   font-size: 16px;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 15px;
+  transition: color 0.3s ease;
+}
+
+.lawyer-button:hover {
+  color: #ada3ec; 
+  text-decoration: none;
+ 
 }
 
 
 
 
+/* ADD LAWYERS & MANAGE SECRETARIES */
+
+.form-container, .profile-card {
+  width: 700px; 
+  padding: 50px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  margin: 50px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center; 
+}
+
+
+h2 {
+  margin-bottom: 20px;
+  font-size: 22px;
+  color: #333;
+}
+
+
+input {
+  width: 90%; 
+  padding: 12px;
+  margin: 10px 0;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  text-align: center; 
+}
+
+
+button {
+  width: 90%;
+  padding: 12px;
+  background: #6a5acd;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  margin-top: 10px;
+}
+
+button:hover {
+  background: #4c3db0;
+}
+
+
+.profile-card {
+  width: 550px;
+  padding: 35px;
+}
+
+
+.profile-image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.profile-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.image-placeholder {
+  width: 150px;
+  height: 150px;
+  border-radius: 10px;
+  background: #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.file-input {
+  margin-top: 10px;
+  width: 90%;
+  text-align: center;
+}
+
+
+.form-container input,
+.profile-card input {
+  margin-bottom: 15px;
+}
+
+/* PROFILE */
+
+.profile-card {
+  width: 400px;
+  margin: 40px auto;
+  padding: 20px;
+  background: white;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  text-align: center;
+}
+
+.profile-header {
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ddd;
+}
+
+.profile-img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+}
+
+.profile-details {
+  text-align: left;
+  padding: 15px;
+}
+
+.profile-details p {
+  margin: 5px 0;
+  font-size: 16px;
+  color: #555;
+}
+
+.profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-edit input,
+.profile-edit textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.profile-actions {
+  margin-top: 15px;
+}
+
+.edit-btn,
+.save-btn {
+  padding: 10px 15px;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  margin: 5px;
+}
+
+.edit-btn {
+  background-color: #f8c471;
+  color: #fff;
+}
+
+.save-btn {
+  background-color: #2ecc71;
+  color: #fff;
+}
+
+.edit-btn:hover {
+  background-color: #e67e22;
+}
+
+.save-btn:hover {
+  background-color: #27ae60;
+}
 

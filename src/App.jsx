@@ -5,7 +5,9 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-d
 import Login from "./Login";
 import Register from "./Register";
 import AdminPanel from "./AdminPanel";
-import Profile from "./Profile";  
+import Profile from "./Profile";
+import AddLawyer from "./AddLawyer";
+import ManageSecretary from "./ManageSecretary";
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -30,31 +32,33 @@ const App = () => {
   return (
     <Router>
       <Routes>
-        {/* Home Route - Redirects to AdminPanel if logged in, else Login */}
         <Route 
           path="/" 
           element={user ? <AdminPanel user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
         />
-
-        {/* Login Route */}
         <Route 
           path="/login" 
           element={user ? <Navigate to="/" /> : <Login onLogin={setUser} />} 
         />
-
-        {/* Register Route */}
         <Route 
           path="/register" 
           element={user ? <Navigate to="/" /> : <Register />} 
         />
-
-        {/* Profile Route - Only accessible if logged in */}
         <Route 
           path="/profile" 
           element={user ? <Profile user={user} /> : <Navigate to="/login" />} 
         />
+        <Route 
+          path="/addlawyer" 
+          element={user ? <AddLawyer /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/managesecretary" 
+          element={user ? <ManageSecretary /> : <Navigate to="/login" />} 
+        />
       </Routes>
     </Router>
+    
   );
 };
 

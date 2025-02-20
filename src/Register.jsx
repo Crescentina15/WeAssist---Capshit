@@ -38,8 +38,6 @@ const Register = () => {
         firmDescription: formData.firmDescription,
         phoneNumber: formData.phoneNumber,
         email: formData.email,
-        website: formData.website,
-        specialization: formData.specialization,
         operatingHours: formData.operatingHours,
         licenseNumber: formData.licenseNumber,
         officeAddress: formData.officeAddress,
@@ -67,8 +65,6 @@ const Register = () => {
           <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
           <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
           <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
-          <input type="url" name="website" placeholder="Website" onChange={handleChange} required />
-          <input type="text" name="specialization" placeholder="Specialization" onChange={handleChange} required />
           <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
           <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
           <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
