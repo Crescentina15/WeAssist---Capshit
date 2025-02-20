@@ -10,8 +10,10 @@ import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.AppointmentDetailsDialog
 import com.squareup.picasso.Picasso
 
-class AppointmentAdapter(private val appointments: List<Appointment>) :
-    RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
+class AppointmentAdapter(
+    private val appointments: List<Appointment>,
+    private val isClickable: Boolean // New parameter to control clickability
+) : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppointmentViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -31,12 +33,20 @@ class AppointmentAdapter(private val appointments: List<Appointment>) :
             holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
         }
 
-        holder.itemView.setOnClickListener {
-            val dialog = AppointmentDetailsDialog.newInstance(appointment)
-            dialog.show(
-                (holder.itemView.context as androidx.fragment.app.FragmentActivity).supportFragmentManager,
-                "AppointmentDetailsDialog"
-            )
+        if (isClickable) {
+            // Enable click and open the appointment details dialog
+            holder.itemView.setOnClickListener {
+                val dialog = AppointmentDetailsDialog.newInstance(appointment)
+                dialog.show(
+                    (holder.itemView.context as androidx.fragment.app.FragmentActivity).supportFragmentManager,
+                    "AppointmentDetailsDialog"
+                )
+            }
+        } else {
+            // Disable clickability
+            holder.itemView.isClickable = false
+            holder.itemView.isFocusable = false
+            holder.itemView.alpha = 0.6f // Optional: Reduce opacity to show it's non-interactable
         }
     }
 

@@ -53,7 +53,7 @@ class SecretaryDashboardFragment : Fragment() {
         // Set up RecyclerView for accepted appointments
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        appointmentAdapter = AppointmentAdapter(appointmentList)
+        appointmentAdapter = AppointmentAdapter(appointmentList, false)
         recyclerView.adapter = appointmentAdapter
 
         fetchAcceptedAppointments()

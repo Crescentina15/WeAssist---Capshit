@@ -109,7 +109,7 @@ class SecretaryAppointmentFragment : Fragment() {
                             appointmentList.add(appointment)
                         }
                     }
-                    appointmentRecyclerView.adapter = AppointmentAdapter(appointmentList)
+                    appointmentRecyclerView.adapter = AppointmentAdapter(appointmentList, true)
                 } else {
                     Log.d("SecretaryCheck", "No appointments found in DB.")
                 }
