@@ -56,11 +56,11 @@ class AppointmentDetailsDialog : DialogFragment() {
 
     private fun acceptAppointment(appointmentId: String) {
         val database = FirebaseDatabase.getInstance().reference
-        val acceptedAppointmentsRef = database.child("Accepted").child(appointmentId)
+        val acceptedAppointmentsRef = database.child("accepted_appointment").child(appointmentId)
 
-        // Save the appointment under the Accepted node
+        // Save the appointment under the accepted_appointment node
         acceptedAppointmentsRef.setValue(appointment)
-            .addOnSuccessListener { Log.d("Appointment", "Appointment accepted and saved under Accepted") }
+            .addOnSuccessListener { Log.d("Appointment", "Appointment accepted and saved under accepted_appointment") }
             .addOnFailureListener { Log.e("Appointment", "Failed to accept appointment") }
 
         // Optionally, remove from the original appointments node
@@ -87,7 +87,3 @@ class AppointmentDetailsDialog : DialogFragment() {
         }
     }
 }
-
-
-
-
