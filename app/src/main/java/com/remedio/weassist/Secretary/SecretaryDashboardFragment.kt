@@ -9,9 +9,13 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Lawyer.LawyersListActivity
+import com.remedio.weassist.Models.Appointment
+import com.remedio.weassist.Models.AppointmentAdapter
 import com.remedio.weassist.R
 
 class SecretaryDashboardFragment : Fragment() {
@@ -20,6 +24,9 @@ class SecretaryDashboardFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private lateinit var secretaryNameTextView: TextView
     private lateinit var secretaryFirmTextView: TextView
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var appointmentAdapter: AppointmentAdapter
+    private var appointmentList = mutableListOf<Appointment>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -43,13 +50,20 @@ class SecretaryDashboardFragment : Fragment() {
         addBackgroundButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_background") }
         addBalanceButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_balance") }
 
+        // Set up RecyclerView for accepted appointments
+        recyclerView = view.findViewById(R.id.today_task_recycler_view)
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        appointmentAdapter = AppointmentAdapter(appointmentList)
+        recyclerView.adapter = appointmentAdapter
+
+        fetchAcceptedAppointments()
+
         return view
     }
 
     private fun loadSecretaryDetails() {
         val userId = auth.currentUser?.uid ?: return
 
-        // Fetch secretary's name
         databaseReference.child(userId).child("name").addListenerForSingleValueEvent(object :
             ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -61,7 +75,6 @@ class SecretaryDashboardFragment : Fragment() {
             }
         })
 
-        // Fetch law firm's name
         databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
             ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -101,5 +114,23 @@ class SecretaryDashboardFragment : Fragment() {
             }
         })
     }
-}
 
+    private fun fetchAcceptedAppointments() {
+        val databaseReference = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+
+        databaseReference.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                appointmentList.clear()
+                for (appointmentSnapshot in snapshot.children) {
+                    val appointment = appointmentSnapshot.getValue(Appointment::class.java)
+                    appointment?.let { appointmentList.add(it) }
+                }
+                appointmentAdapter.notifyDataSetChanged()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(requireContext(), "Failed to load accepted appointments", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+}
