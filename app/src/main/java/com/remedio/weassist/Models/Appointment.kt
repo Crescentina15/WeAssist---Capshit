@@ -1,4 +1,4 @@
-package com.remedio.weassist.Secretary
+package com.remedio.weassist.Models
 
 import android.os.Parcelable
 import kotlinx.android.parcel.Parcelize

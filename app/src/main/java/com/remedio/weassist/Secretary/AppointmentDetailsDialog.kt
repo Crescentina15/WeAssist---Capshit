@@ -9,6 +9,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
 import com.google.firebase.database.FirebaseDatabase
+import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.R
 
 class AppointmentDetailsDialog : DialogFragment() {
