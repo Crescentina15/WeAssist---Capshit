@@ -116,21 +116,53 @@ class SecretaryDashboardFragment : Fragment() {
     }
 
     private fun fetchAcceptedAppointments() {
-        val databaseReference = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+        val userId = auth.currentUser?.uid ?: return
 
-        databaseReference.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                appointmentList.clear()
-                for (appointmentSnapshot in snapshot.children) {
-                    val appointment = appointmentSnapshot.getValue(Appointment::class.java)
-                    appointment?.let { appointmentList.add(it) }
+        databaseReference.child(userId).child("lawFirm").addListenerForSingleValueEvent(object :
+            ValueEventListener {
+            override fun onDataChange(secretarySnapshot: DataSnapshot) {
+                if (!secretarySnapshot.exists()) {
+                    Toast.makeText(requireContext(), "Law firm not found", Toast.LENGTH_SHORT).show()
+                    return
                 }
-                appointmentAdapter.notifyDataSetChanged()
+                val secretaryLawFirm = secretarySnapshot.value.toString()
+
+                val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+                appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(appointmentSnapshot: DataSnapshot) {
+                        appointmentList.clear()
+                        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers")
+
+                        for (appointmentSnap in appointmentSnapshot.children) {
+                            val appointment = appointmentSnap.getValue(Appointment::class.java) ?: continue
+
+                            // Fetch lawyer details
+                            lawyerRef.child(appointment.lawyerId).addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                                    val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
+
+                                    // Only add appointments from the same law firm
+                                    if (lawyerLawFirm == secretaryLawFirm) {
+                                        appointmentList.add(appointment)
+                                        appointmentAdapter.notifyDataSetChanged()
+                                    }
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {}
+                            })
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Toast.makeText(requireContext(), "Failed to load accepted appointments", Toast.LENGTH_SHORT).show()
+                    }
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(requireContext(), "Failed to load accepted appointments", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Error fetching law firm", Toast.LENGTH_SHORT).show()
             }
         })
     }
+
 }
