@@ -8,6 +8,8 @@ import AdminPanel from "./AdminPanel";
 import Profile from "./Profile";
 import AddLawyer from "./AddLawyer";
 import ManageSecretary from "./ManageSecretary";
+import EditLawyer from "./EditLawyer";
+
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -40,6 +42,10 @@ const App = () => {
           path="/login" 
           element={user ? <Navigate to="/" /> : <Login onLogin={setUser} />} 
         />
+      <Route 
+        path="/EditLawyer/:id" 
+        element={user ? <EditLawyer /> : <Navigate to="/login" />} 
+      />
         <Route 
           path="/register" 
           element={user ? <Navigate to="/" /> : <Register />} 

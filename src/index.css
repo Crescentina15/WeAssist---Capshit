@@ -54,6 +54,7 @@ button:focus-visible {
   align-items: center;
   height: 100vh; 
   width: 100vw; 
+  color: black;
   background: linear-gradient(135deg, #9F97CA, #cbc4f0); 
   position: fixed;
   top: 0;
@@ -67,6 +68,7 @@ button:focus-visible {
   border-radius: 15px;
   box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.3);
   text-align: center;
+  color: black;
   width: 90%;
   max-width: 400px;
   display: flex;
@@ -105,6 +107,7 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .header {
@@ -119,51 +122,67 @@ h2 {
   width: 50px;  
 }
 
-.form-container {
-  max-width: 900px; 
-  margin-top: 10px;
-  padding: 30px;
-  background-color: #fff;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.register-container {
+  width: 500px;  
+  padding: 90px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  margin: 0px auto;
+  display: flex;
+  display: block; 
+  flex-direction: column; 
+  justify-content: center;
+  align-items: center;
 }
 
-form {
-  display: flex;
-  flex-wrap: wrap; 
-  gap: 10px;  
-}
 
 input {
-  padding: 10px;
+  padding: 50px;
   margin: 10px 0;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 16px;
+ background-color: white;
+ justify-content: center;
+  align-items: center;
+  
 }
 
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="tel"],
+input[type="text"]{
+  color: black;
+}
+input[type="email"]{
+  color: black;
+}
+input[type="password"]{
+  color: black;
+}
+input[type="tel"]{
+  color: black;
+}
 
 input[type="password"] {
+  
+    color: black;
+  
   width: 100%;  
 }
 
 /* Register Button */
-button {
+.registerButton { 
   padding: 14px;
-  background-color: #ffffff;
+  background-color: #a191f0; 
   color: rgb(0, 0, 0);
   font-size: 16px;
-  align-items: center;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  width: 100%;  
-  justify-content: center;
-  
+  width: 200px;  
+  display: block;  
+  margin: 20px auto; 
+  text-align: center; 
 }
 
 button:hover {
@@ -193,6 +212,7 @@ input::placeholder {
   border: 1px solid #ccc;
   border-radius: 10px;
   font-size: 16px;
+  color: black;
   outline: none;
   transition: 0.3s ease-in-out;
   text-align: center; 
@@ -277,6 +297,7 @@ body {
   color: #007bff;
 }
 
+
 .header-right {
   display: flex;
   position: relative;
@@ -353,6 +374,7 @@ form button:hover {
   flex: 1;
   background: #fff;
   padding: 15px;
+  color: black;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
@@ -376,46 +398,70 @@ form button:hover {
 }
 
 .view-lawyers li {
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 90%; 
   margin: 10px 0;
   padding: 10px;
-  background: #ecf0f1;
+  background: #ecf0f1; 
   border-radius: 5px;
   font-size: 17px;
 }
+
 .lawyer-button {
-  background: transparent;
-  border: none;
+  display: block; 
+  width: 90%; 
+  padding: 10px; 
+  background: #ecf0f1; 
+  border-radius: 5px;
   color: inherit;
-  font-size: 16px;
+  font-size: 17px; 
   cursor: pointer;
-  text-decoration: none;
-  padding: 15px;
-  transition: color 0.3s ease;
+  text-align: center;
+  border: none; 
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .lawyer-button:hover {
-  color: #ada3ec; 
-  text-decoration: none;
- 
+  background-color: #d2d0df; 
 }
+
 
 
 
 
 /* ADD LAWYERS & MANAGE SECRETARIES */
 
-.form-container, .profile-card {
-  width: 700px; 
-  padding: 50px;
+.profile-card {
+  width: 1100px;  /* Wider container */
+  max-width: 95%;
+  padding: 50px;  /* Adjust padding for balance */
   background: white;
   border-radius: 10px;
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
   margin: 50px auto;
   display: flex;
   flex-direction: column;
-  align-items: center; 
+  align-items: center;
+  justify-content: center;
 }
+
+.profile-card h2 {
+  text-align: center;
+}
+
+.profile-card input {
+  width: 80%; /* Ensure input fields are not too wide */
+  max-width: 600px; /* Restrict max width */
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+
 
 
 h2 {
@@ -426,7 +472,8 @@ h2 {
 
 
 input {
-  width: 90%; 
+  width: 100%; 
+  max-width: 400px;
   padding: 12px;
   margin: 10px 0;
   border: 2px solid #ccc;
@@ -437,7 +484,8 @@ input {
 
 
 button {
-  width: 90%;
+  width: 100%;
+  max-width: 400px;
   padding: 12px;
   background: #6a5acd;
   color: white;
@@ -452,12 +500,6 @@ button {
 
 button:hover {
   background: #4c3db0;
-}
-
-
-.profile-card {
-  width: 550px;
-  padding: 35px;
 }
 
 
@@ -579,5 +621,166 @@ button:hover {
 
 .save-btn:hover {
   background-color: #27ae60;
+}
+
+/* EDIT LAWYER */
+
+.Lawyerprofile-card {
+  max-width: 400px;
+  margin: auto;
+  padding: 20px;
+  color: black;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: #fff;
+  text-align: center;
+}
+
+.profile-title {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.profile-image-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.profile-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
+  border: 3px solid #007bff;
+}
+
+.image-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+}
+
+.upload-btn {
+  margin-top: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #ada3ec;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+}
+
+.profile-info {
+  background: #ada3ec;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.profile-info p {
+  margin: 10px 0;
+  font-size: 16px;
+  font-weight: bold;
+  color: #000000;
+}
+
+.services-container {
+  background: #ada3ec;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  text-align: left;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.services-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #222;
+  border-bottom: 2px solid #4a90e2;
+  padding-bottom: 5px;
+  display: inline-block;
+}
+
+.services-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.services-list li {
+  background: #ffffff;
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 14px;
+  color: #333;
+}
+
+.add-service-container {
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 15px;
+  background: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.add-service {
+  display: flex;
+  gap: 8px;
+}
+
+.service-input {
+  padding: 8px;
+  width: 80%;
+  max-width: 250px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.add-btn {
+  padding: 8px 12px;
+  background: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-btn:hover {
+  background: #357acb;
+}
+
+
+.add-btnEdit {
+  padding: 8px 12px;
+  background: #6a5acd;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-btnEdit:hover {
+  background: #6a5acd;
 }
 

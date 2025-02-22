@@ -45,19 +45,21 @@ const Login = ({ onLogin }) => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            style={{ color: "black" }}
           />
-          <input
+          <input 
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+         
           />
           <button className="login-btn" type="submit">
             Login
           </button>
         </form>
-        <p>Don't have an account?</p>
+        <p> Don't have an account?</p>
         <button className="register-btn" onClick={() => navigate("/register")}>
           Register
         </button>

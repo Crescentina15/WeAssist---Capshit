@@ -56,7 +56,7 @@ const Register = () => {
       <header className="header">
         <img src={logo}/>
       </header>
-      <div className="form-container">
+      <div className="register-container">
         <h2>Register Law Firm Admin</h2>
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleRegister}>
@@ -65,11 +65,11 @@ const Register = () => {
           <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
           <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
           <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
+          <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
           <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
           <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
           <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
-          <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
-          <button type="submit">Register</button>
+          <button type="submit" className = "registerButton">Register</button>
         </form>
       </div>
     </div>
