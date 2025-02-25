@@ -104,8 +104,17 @@ class SecretaryAppointmentFragment : Fragment() {
                 if (snapshot.exists()) {
                     for (child in snapshot.children) {
                         val appointment = child.getValue(Appointment::class.java)
+                        val clientId =
+                            child.child("clientId").getValue(String::class.java) ?: "Unknown"
+
                         if (appointment != null && appointment.lawyerId in lawyerIds) {
-                            Log.d("SecretaryCheck", "Adding appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+                            appointment.clientId =
+                                clientId // Assign clientId to the appointment object
+
+                            Log.d(
+                                "SecretaryCheck",
+                                "Adding appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}, clientId=${appointment.clientId}"
+                            )
                             appointmentList.add(appointment)
                         }
                     }

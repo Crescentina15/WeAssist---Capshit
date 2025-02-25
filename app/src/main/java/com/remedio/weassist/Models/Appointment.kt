@@ -11,7 +11,9 @@ data class Appointment(
     val time: String = "",
     val problem: String = "",
     val lawyerId: String = "",
-    val lawyerProfileImage: String? = null
+    val lawyerProfileImage: String? = null,
+    val status: String? = null,
+    var clientId: String = ""
 ) : Parcelable
 
 data class Secretary(

@@ -146,6 +146,14 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
+        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        val clientId = currentUser?.uid
+
+        if (clientId == null) {
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         // Reference to the general appointments node
         val appointmentRef = FirebaseDatabase.getInstance()
             .getReference("appointments")
@@ -155,7 +163,8 @@ class SetAppointmentActivity : AppCompatActivity() {
         if (appointmentId != null) {
             val appointmentData = mapOf(
                 "appointmentId" to appointmentId,
-                "lawyerId" to lawyerId,  // Keeping lawyerId as part of appointment details
+                "clientId" to clientId,  // **Added clientId**
+                "lawyerId" to lawyerId,
                 "date" to selectedDate,
                 "time" to selectedTime,
                 "fullName" to fullName,
@@ -173,6 +182,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
+
 
     private fun formatDate(date: String): String {
         return try {

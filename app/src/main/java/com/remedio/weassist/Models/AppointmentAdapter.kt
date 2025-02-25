@@ -48,6 +48,9 @@ class AppointmentAdapter(
             holder.itemView.isFocusable = false
             holder.itemView.alpha = 0.6f // Optional: Reduce opacity to show it's non-interactable
         }
+
+        // Display the appointment status (e.g., "Accepted")
+        holder.appointmentStatus.text = appointment.status ?: "Pending"
     }
 
     override fun getItemCount(): Int = appointments.size
@@ -57,5 +60,6 @@ class AppointmentAdapter(
         val appointmentTitle: TextView = itemView.findViewById(R.id.appointment_title)
         val appointmentDate: TextView = itemView.findViewById(R.id.appointment_date)
         val appointmentTime: TextView = itemView.findViewById(R.id.appointment_time)
+        val appointmentStatus: TextView = itemView.findViewById(R.id.appointment_status) // Add this TextView in your XML
     }
 }

@@ -8,8 +8,8 @@
     app:cardCornerRadius="16dp"
     app:cardElevation="4dp"
     android:background="@android:color/white">
+
     <LinearLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -44,6 +44,16 @@
             android:text="Time"
             android:textSize="14sp"
             android:layout_marginTop="4dp"/>
+
+        <!-- Add this TextView for the appointment status -->
+        <TextView
+            android:id="@+id/appointment_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Pending"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="8dp"/>
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>

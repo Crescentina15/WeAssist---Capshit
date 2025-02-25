@@ -1,60 +1,77 @@
 package com.remedio.weassist.Clients
 
 import android.os.Bundle
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
+import com.remedio.weassist.Models.Appointment
+import com.remedio.weassist.Models.AppointmentAdapter
 import com.remedio.weassist.R
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [AppointmentsFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class ClientAppointmentsFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
-        }
-    }
+    private lateinit var database: DatabaseReference
+    private lateinit var appointmentRecyclerView: RecyclerView
+    private lateinit var appointmentList: ArrayList<Appointment>
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_client_appointments, container, false)
+        val view = inflater.inflate(R.layout.fragment_client_appointments, container, false)
+
+        // Initialize
+        database = FirebaseDatabase.getInstance().reference
+        appointmentRecyclerView = view.findViewById(R.id.appointments_recycler_view)
+        appointmentRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+
+        appointmentList = ArrayList()
+
+        // Fetch the currently logged-in client's UID
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val clientId = currentUser?.uid
+
+        if (clientId != null) {
+            Log.d("ClientCheck", "Logged in as Client: $clientId")
+            fetchAcceptedAppointments(clientId)
+        } else {
+            Log.e("ClientCheck", "No logged-in client found.")
+        }
+
+        return view
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment AppointmentsFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            ClientAppointmentsFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private fun fetchAcceptedAppointments(clientId: String) {
+        val acceptedAppointmentsRef = database.child("accepted_appointment")
+        Log.d("ClientCheck", "Fetching accepted appointments for clientId: $clientId")
+
+        acceptedAppointmentsRef.orderByChild("clientId").equalTo(clientId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    appointmentList.clear()
+                    if (snapshot.exists()) {
+                        for (child in snapshot.children) {
+                            val appointment = child.getValue(Appointment::class.java)
+                            if (appointment != null) {
+                                Log.d("ClientCheck", "Adding accepted appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+                                appointmentList.add(appointment)
+                            }
+                        }
+                        appointmentRecyclerView.adapter = AppointmentAdapter(appointmentList, false)
+                    } else {
+                        Log.d("ClientCheck", "No accepted appointments found in DB.")
+                    }
                 }
-            }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ClientCheck", "Error fetching accepted appointments: ${error.message}")
+                }
+            })
     }
 }
