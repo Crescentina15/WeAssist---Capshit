@@ -15,11 +15,13 @@ import com.remedio.weassist.R
 class AppointmentDetailsDialog : DialogFragment() {
 
     private lateinit var appointment: Appointment
+    private var isSecretaryView: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
             appointment = it.getParcelable("appointment") ?: Appointment()
+            isSecretaryView = it.getBoolean("isSecretaryView", false)
         }
     }
 
@@ -40,6 +42,15 @@ class AppointmentDetailsDialog : DialogFragment() {
         dateTextView.text = "Date: ${appointment.date ?: "N/A"}"
         timeTextView.text = "Time: ${appointment.time ?: "N/A"}"
         problemTextView.text = "Problem: ${appointment.problem ?: "N/A"}"
+
+        // Control button visibility based on the flag
+        if (isSecretaryView) {
+            acceptButton.visibility = View.VISIBLE
+            declineButton.visibility = View.VISIBLE
+        } else {
+            acceptButton.visibility = View.GONE
+            declineButton.visibility = View.GONE
+        }
 
         acceptButton.setOnClickListener {
             acceptAppointment(appointment.appointmentId)
@@ -78,10 +89,11 @@ class AppointmentDetailsDialog : DialogFragment() {
     }
 
     companion object {
-        fun newInstance(appointment: Appointment): AppointmentDetailsDialog {
+        fun newInstance(appointment: Appointment, isSecretaryView: Boolean): AppointmentDetailsDialog {
             val fragment = AppointmentDetailsDialog()
             val args = Bundle()
             args.putParcelable("appointment", appointment)
+            args.putBoolean("isSecretaryView", isSecretaryView)
             fragment.arguments = args
             return fragment
         }

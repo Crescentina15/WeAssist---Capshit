@@ -81,7 +81,8 @@ class ClientAppointmentsFragment : Fragment() {
 
     private fun showAppointmentDetails(appointment: Appointment) {
         // Display the appointment details in a dialog
-        val dialog = AppointmentDetailsDialog.newInstance(appointment)
+        val isSecretaryView = false // Since this is the client view, set it to false
+        val dialog = AppointmentDetailsDialog.newInstance(appointment, isSecretaryView)
         dialog.show(
             requireActivity().supportFragmentManager,
             "AppointmentDetailsDialog"

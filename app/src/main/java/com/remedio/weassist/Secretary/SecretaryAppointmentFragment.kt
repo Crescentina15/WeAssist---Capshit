@@ -118,7 +118,16 @@ class SecretaryAppointmentFragment : Fragment() {
                             appointmentList.add(appointment)
                         }
                     }
-                    appointmentRecyclerView.adapter = AppointmentAdapter(appointmentList, true)
+                    // Initialize the adapter with the correct parameters
+                    val adapter = AppointmentAdapter(
+                        appointments = appointmentList,
+                        isClickable = true, // Enable clickability for the secretary view
+                        isClientView = false, // Use the secretary layout
+                        onItemClickListener = { selectedAppointment ->
+                            showAppointmentDetails(selectedAppointment)
+                        }
+                    )
+                    appointmentRecyclerView.adapter = adapter
                 } else {
                     Log.d("SecretaryCheck", "No appointments found in DB.")
                 }
@@ -128,5 +137,15 @@ class SecretaryAppointmentFragment : Fragment() {
                 Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
             }
         })
+    }
+
+    private fun showAppointmentDetails(appointment: Appointment) {
+        // Display the appointment details in a dialog
+        val isSecretaryView = true // Set this to true for the secretary view
+        val dialog = AppointmentDetailsDialog.newInstance(appointment, isSecretaryView)
+        dialog.show(
+            requireActivity().supportFragmentManager,
+            "AppointmentDetailsDialog"
+        )
     }
 }
