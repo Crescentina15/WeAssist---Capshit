@@ -11,25 +11,31 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState("");
   const navigate = useNavigate(); // Hook for navigation
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault(); 
-
-    signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        const user = userCredential.user;
-        get(ref(db, "law_firm_admin/" + user.uid)).then((snapshot) => {
-          if (snapshot.exists()) {
-            onLogin(user);
-          } else {
-            alert("Access Denied: You are not an admin!");
-            signOut(auth);
-          }
-        });
-      })
-      .catch((error) => {
-        alert("Login failed: " + error.message);
-      });
+  
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      const adminRef = ref(db, "law_firm_admin/" + user.uid);
+      const snapshot = await get(adminRef);
+  
+      if (snapshot.exists()) {
+        const adminData = snapshot.val(); // Get admin details
+  
+        // Store admin details in session/local storage (optional)
+        localStorage.setItem("adminData", JSON.stringify(adminData));
+  
+        onLogin(user, adminData); // Pass both user & admin data
+      } else {
+        alert("Access Denied: You are not an admin!");
+        await signOut(auth);
+      }
+    } catch (error) {
+      alert("Login failed: " + error.message);
+    }
   };
+  
 
   return (
     <div className="login-container">
