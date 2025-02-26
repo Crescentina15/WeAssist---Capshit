@@ -255,7 +255,13 @@ body {
   background-color: #f8f8f8;
 }
 
-
+.lawyers{
+  font-size: 1.8rem; 
+  font-weight: bold;
+  font-family:Georgia, 'Times New Roman', Times, serif;
+  text-align: left; 
+  padding-left: 20px; 
+}
 
 
 
@@ -434,9 +440,9 @@ form button:hover {
 /* ADD LAWYERS & MANAGE SECRETARIES */
 
 .profile-card {
-  width: 1100px;  /* Wider container */
+  width: 1100px;  
   max-width: 95%;
-  padding: 50px;  /* Adjust padding for balance */
+  padding: 50px; 
   background: white;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
@@ -462,6 +468,21 @@ form button:hover {
   text-align: center;
 }
 
+.photo-button {
+  background-color: #6a5acd; 
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.photo-button:hover {
+  background-color: #ada3ec; 
+}
 
 
 h2 {
@@ -596,6 +617,7 @@ button:hover {
 }
 
 .edit-btn,
+.cancel-button,
 .save-btn {
   padding: 10px 15px;
   font-size: 16px;
@@ -606,21 +628,21 @@ button:hover {
 }
 
 .edit-btn {
-  background-color: #f8c471;
+  background-color: #4c3db0;
   color: #fff;
 }
 
 .save-btn {
-  background-color: #2ecc71;
+  background-color: #4c3db0;
   color: #fff;
 }
 
 .edit-btn:hover {
-  background-color: #e67e22;
+  background-color: #4c3db0;
 }
 
 .save-btn:hover {
-  background-color: #27ae60;
+  background-color: #4c3db0;
 }
 
 /* EDIT LAWYER */
@@ -732,38 +754,6 @@ button:hover {
   color: #333;
 }
 
-.add-service-container {
-  padding: 12px;
-  border-radius: 8px;
-  margin-top: 15px;
-  background: #ffffff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  text-align: center;
-}
-
-.add-service {
-  display: flex;
-  gap: 8px;
-}
-
-.service-input {
-  padding: 8px;
-  width: 80%;
-  max-width: 250px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 14px;
-}
-
-.add-btn {
-  padding: 8px 12px;
-  background: #4a90e2;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 14px;
-}
 
 .add-btn:hover {
   background: #357acb;
@@ -780,7 +770,48 @@ button:hover {
   font-size: 14px;
 }
 
-.add-btnEdit:hover {
-  background: #6a5acd;
+.add-service-container {
+  display: flex;
+  gap: 8px; 
+}
+
+.service-input {
+
+  padding: 0px;
+  border: 1px solid #ccc;
+  height: 40px;
+}
+
+.add-btn-small {
+  width: 35px; 
+  height: 40px; 
+  font-size: 18px;
+  background-color: #ada3ec;
+  color: white;
+  border: none;  
+}
+
+
+.add-btn-small:hover {
+  background-color: #8c82db;
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; 
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 400px; 
+  margin: auto;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #7a5eff;
+  border-radius: 5px;
+  font-size: 16px;
+  box-sizing: border-box;
 }
 

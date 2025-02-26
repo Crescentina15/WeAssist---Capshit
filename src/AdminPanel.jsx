@@ -49,7 +49,7 @@ const AdminPanel = ({ user, onLogout }) => {
 
       <div className="admin-content">
         <div className="view-lawyers">
-          <h2>View Lawyers</h2>
+          <h2 className="lawyers">View Lawyers</h2>
           <ul>
             {lawyers.map((lawyer) => (
               <li key={lawyer.id}>

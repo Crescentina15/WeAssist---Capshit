@@ -12,7 +12,7 @@ const AddLawyer = () => {
     licenseNumber: "", experience: "", password: "" 
   });
   const [image, setImage] = useState(null);
-  const [lawFirmAdmin, setLawFirmAdmin] = useState(null); // Store logged-in admin's data
+  const [lawFirmAdmin, setLawFirmAdmin] = useState(null);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -51,18 +51,15 @@ const AddLawyer = () => {
         experience: lawyer.experience,
         role: "lawyer",
         profileImage: image ? URL.createObjectURL(image) : "",
-        lawFirm: lawFirmAdmin.lawFirm, // Associate lawyer with admin's law firm
-        adminUID: lawFirmAdmin.uid, // Store the admin's UID for reference
+        lawFirm: lawFirmAdmin.lawFirm,
+        adminUID: lawFirmAdmin.uid,
       });
 
       await sendEmailVerification(userCredential.user);
       alert("Lawyer account created successfully! Verification email sent.");
 
-      // Reset form fields
       setLawyer({ name: "", email: "", phone: "", specialization: "", licenseNumber: "", experience: "", password: "" });
       setImage(null);
-
-      // Redirect to home
       setTimeout(() => navigate("/"), 1000);
     } catch (error) {
       alert("Error: " + error.message);
@@ -72,10 +69,27 @@ const AddLawyer = () => {
   return (
     <div className="profile-card">
       <h2>Add Lawyer</h2>
+      
+    
       <div className="profile-image-container">
-        {image ? <img src={URL.createObjectURL(image)} alt="Profile" className="profile-image" /> : <div className="image-placeholder">No Image</div>}
-        <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} className="file-input" />
+        {image ? (
+          <img src={URL.createObjectURL(image)} alt="Profile" className="profile-image" />
+        ) : (
+          <div className="image-placeholder"></div>
+        )}
+        <button className="photo-button" onClick={() => document.getElementById("fileUpload").click()}>
+          Add Photo
+        </button>
+        <input 
+          type="file" 
+          accept="image/*" 
+          id="fileUpload" 
+          style={{ display: "none" }} 
+          onChange={(e) => setImage(e.target.files[0])} 
+        />
       </div>
+
+     
       <input type="text" placeholder="Name" value={lawyer.name} onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} autoComplete="off" />
       <input type="email" placeholder="Email" value={lawyer.email} onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })} autoComplete="off" />
       <input type="password" placeholder="Password" value={lawyer.password} onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} autoComplete="new-password" />
@@ -83,7 +97,9 @@ const AddLawyer = () => {
       <input type="text" placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} autoComplete="off" />
       <input type="text" placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} autoComplete="off" />
       <input type="text" placeholder="Experience" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} autoComplete="off" />
-      <button onClick={addLawyer}>Add Lawyer</button>
+
+      
+      <button onClick={addLawyer} className="cancel-button">Add Lawyer</button>
       <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
     </div>
   );

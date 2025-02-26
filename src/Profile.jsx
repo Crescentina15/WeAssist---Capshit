@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getDatabase, ref, get, update } from 'firebase/database';
+import { useNavigate } from "react-router-dom";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth } from './script/firebase'; // Firebase initialization
 import './index.css';
@@ -22,6 +23,8 @@ const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [preview, setPreview] = useState("");
+  const navigate = useNavigate(); 
+
 
   const user = auth.currentUser;
 
@@ -54,7 +57,7 @@ const Profile = () => {
     const file = e.target.files[0];
     if (file) {
       setSelectedFile(file);
-      setPreview(URL.createObjectURL(file)); // Show preview before uploading
+      setPreview(URL.createObjectURL(file)); 
     }
   };
 
@@ -74,10 +77,10 @@ const Profile = () => {
         const profilePicRef = storageRef(storage, `profile_pictures/${user.uid}`);
         
         try {
-          // Upload the image to Firebase Storage
+          
           await uploadBytes(profilePicRef, selectedFile);
           const downloadURL = await getDownloadURL(profilePicRef);
-          updatedData.profilePicture = downloadURL; // Update profile picture URL
+          updatedData.profilePicture = downloadURL; 
         } catch (error) {
           console.error("Error uploading image:", error);
           alert("Failed to upload image. Please try again.");
@@ -115,11 +118,15 @@ const Profile = () => {
           <p><strong>License:</strong> {formData.licenseNumber}</p>
           <p><strong>Phone:</strong> {formData.phoneNumber}</p>
           <p><strong>Email:</strong> {formData.email}</p>
-          <p><strong>Website:</strong> {formData.website}</p>
           <p><strong>Operating Hours:</strong> {formData.operatingHours}</p>
           <p><strong>Address:</strong> {formData.officeAddress}</p>
           <p><strong>Description:</strong> {formData.firmDescription}</p>
+        <div className="profile-actions">
+          <button onClick={handleEdit} className="edit-btn">{isEditing ? 'Cancel' : 'Edit'}</button>
+          <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
         </div>
+        </div>
+        
       ) : (
         <div className="profile-edit">
           <input type="text" name="lawFirm" value={formData.lawFirm} onChange={handleChange} />
@@ -128,21 +135,23 @@ const Profile = () => {
           <input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} />
           <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} />
           <input type="email" name="email" value={formData.email} onChange={handleChange} />
-          <input type="url" name="website" value={formData.website} onChange={handleChange} />
           <input type="text" name="operatingHours" value={formData.operatingHours} onChange={handleChange} />
           <input type="text" name="officeAddress" value={formData.officeAddress} onChange={handleChange} />
-          <textarea name="firmDescription" value={formData.firmDescription} onChange={handleChange} />
+          <input type="text" name="firmDescription" value={formData.firmDescription} onChange={handleChange} />
 
-          {/* Profile Picture Upload */}
           <label>Profile Picture:</label>
           <input type="file" accept="image/*" onChange={handleFileChange} />
         </div>
       )}
 
       <div className="profile-actions">
-        <button onClick={handleEdit} className="edit-btn">{isEditing ? 'Cancel' : 'Edit'}</button>
-        {isEditing && <button onClick={handleUpdate} className="save-btn">Update</button>}
-      </div>
+        {isEditing && (
+        <>
+          <button onClick={handleEdit} className="cancel-button">Cancel</button>
+          <button onClick={handleUpdate} className="save-btn">Update</button>
+        </>
+     )}
+    </div>
     </div>
   );
 };

@@ -71,7 +71,7 @@ const ManageSecretary = () => {
       <input type="email" placeholder="Email" value={secretary.email} onChange={(e) => setSecretary({ ...secretary, email: e.target.value })} autoComplete="off" />
       <input type="password" placeholder="Password" value={secretary.password} onChange={(e) => setSecretary({ ...secretary, password: e.target.value })} autoComplete="new-password" />
       <input type="text" placeholder="Phone" value={secretary.phone} onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })} autoComplete="off" />
-      <button onClick={addSecretary}>Add Secretary</button>
+      <button onClick={addSecretary}className="cancel-button">Add Secretary</button>
       <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
     </div>
   );
