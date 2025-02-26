@@ -12,12 +12,15 @@ import com.squareup.picasso.Picasso
 
 class AppointmentAdapter(
     private val appointments: List<Appointment>,
-    private val isClickable: Boolean // New parameter to control clickability
+    private val isClickable: Boolean, // New parameter to control clickability
+    private val isClientView: Boolean = false, // New parameter to determine the layout
+    private val onItemClickListener: ((Appointment) -> Unit)? = null // New parameter for click listener
 ) : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppointmentViewHolder {
-        val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_appointment, parent, false)
+        // Determine which layout to use based on isClientView
+        val layoutRes = if (isClientView) R.layout.item_appointment_client else R.layout.item_appointment
+        val view = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
         return AppointmentViewHolder(view)
     }
 
@@ -36,11 +39,7 @@ class AppointmentAdapter(
         if (isClickable) {
             // Enable click and open the appointment details dialog
             holder.itemView.setOnClickListener {
-                val dialog = AppointmentDetailsDialog.newInstance(appointment)
-                dialog.show(
-                    (holder.itemView.context as androidx.fragment.app.FragmentActivity).supportFragmentManager,
-                    "AppointmentDetailsDialog"
-                )
+                onItemClickListener?.invoke(appointment)
             }
         } else {
             // Disable clickability

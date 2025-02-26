@@ -13,6 +13,7 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.Models.AppointmentAdapter
 import com.remedio.weassist.R
+import com.remedio.weassist.Secretary.AppointmentDetailsDialog
 
 class ClientAppointmentsFragment : Fragment() {
 
@@ -63,7 +64,10 @@ class ClientAppointmentsFragment : Fragment() {
                                 appointmentList.add(appointment)
                             }
                         }
-                        appointmentRecyclerView.adapter = AppointmentAdapter(appointmentList, false)
+                        val adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
+                            showAppointmentDetails(selectedAppointment)
+                        }
+                        appointmentRecyclerView.adapter = adapter
                     } else {
                         Log.d("ClientCheck", "No accepted appointments found in DB.")
                     }
@@ -73,5 +77,14 @@ class ClientAppointmentsFragment : Fragment() {
                     Log.e("ClientCheck", "Error fetching accepted appointments: ${error.message}")
                 }
             })
+    }
+
+    private fun showAppointmentDetails(appointment: Appointment) {
+        // Display the appointment details in a dialog
+        val dialog = AppointmentDetailsDialog.newInstance(appointment)
+        dialog.show(
+            requireActivity().supportFragmentManager,
+            "AppointmentDetailsDialog"
+        )
     }
 }
