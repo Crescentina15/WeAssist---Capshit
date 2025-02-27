@@ -54,9 +54,16 @@ class SecretaryDashboardFragment : Fragment() {
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment ->
-            endSession(appointment)
+        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment, isSessionActive ->
+            if (isSessionActive) {
+                // Handle session start logic (e.g., update Firebase)
+                Toast.makeText(requireContext(), "Session started for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+            } else {
+                // Handle session end logic (e.g., update Firebase)
+                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+            }
         }
+
 
         recyclerView.adapter = appointmentAdapter
 

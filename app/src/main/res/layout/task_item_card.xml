@@ -64,7 +64,7 @@
 
         <!-- End Session Button -->
         <Button
-            android:id="@+id/btn_end_session"
+            android:id="@+id/btn_session"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center_vertical"
