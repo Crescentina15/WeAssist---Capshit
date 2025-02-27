@@ -8,7 +8,8 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.DialogFragment
-import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.R
 
@@ -43,7 +44,6 @@ class AppointmentDetailsDialog : DialogFragment() {
         timeTextView.text = "Time: ${appointment.time ?: "N/A"}"
         problemTextView.text = "Problem: ${appointment.problem ?: "N/A"}"
 
-        // Control button visibility based on the flag
         if (isSecretaryView) {
             acceptButton.visibility = View.VISIBLE
             declineButton.visibility = View.VISIBLE
@@ -53,7 +53,7 @@ class AppointmentDetailsDialog : DialogFragment() {
         }
 
         acceptButton.setOnClickListener {
-            acceptAppointment(appointment.appointmentId)
+            getSecretaryIdAndAcceptAppointment(appointment.appointmentId)
             dismiss()
         }
 
@@ -65,20 +65,57 @@ class AppointmentDetailsDialog : DialogFragment() {
         return view
     }
 
-    private fun acceptAppointment(appointmentId: String) {
-        val database = FirebaseDatabase.getInstance().reference
-        val acceptedAppointmentsRef = database.child("accepted_appointment").child(appointmentId)
+    private fun getSecretaryIdAndAcceptAppointment(appointmentId: String) {
+        val databaseRef = FirebaseDatabase.getInstance().reference.child("secretaries")
+        val currentUserEmail = FirebaseAuth.getInstance().currentUser?.email
 
-        // Save the appointment under the accepted_appointment node
+        databaseRef.orderByChild("email").equalTo(currentUserEmail)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    for (data in snapshot.children) {
+                        val secretaryId = data.key // Get the dynamic secretary ID
+                        if (secretaryId != null) {
+                            acceptAppointment(appointmentId, secretaryId)
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("Firebase", "Error fetching secretary ID: ${error.message}")
+                }
+            })
+    }
+
+    private fun acceptAppointment(appointmentId: String, secretaryId: String) {
+        val database = FirebaseDatabase.getInstance().reference
+
+        // Update the secretary ID in the appointment object
+        appointment.secretaryId = secretaryId
+
+        val acceptedAppointmentsRef = database.child("accepted_appointment").child(appointmentId)
         acceptedAppointmentsRef.setValue(appointment)
             .addOnSuccessListener { Log.d("Appointment", "Appointment accepted and saved under accepted_appointment") }
             .addOnFailureListener { Log.e("Appointment", "Failed to accept appointment") }
 
-        // Optionally, remove from the original appointments node
+        val clientAppointmentsRef = database.child("users").child(appointment.clientId).child("appointments").child(appointmentId)
+        clientAppointmentsRef.setValue(appointment)
+            .addOnSuccessListener { Log.d("Appointment", "Added to client appointments") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to add to client appointments") }
+
+        val lawyerAppointmentsRef = database.child("lawyers").child(appointment.lawyerId).child("appointments").child(appointmentId)
+        lawyerAppointmentsRef.setValue(appointment)
+            .addOnSuccessListener { Log.d("Appointment", "Added to lawyer appointments") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to add to lawyer appointments") }
+
+        val secretaryAppointmentsRef = database.child("secretaries").child(secretaryId).child("appointments").child(appointmentId)
+        secretaryAppointmentsRef.setValue(appointment)
+            .addOnSuccessListener { Log.d("Appointment", "Added to secretary appointments") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to add to secretary appointments") }
+
         val appointmentsRef = database.child("appointments").child(appointmentId)
         appointmentsRef.removeValue()
-            .addOnSuccessListener { Log.d("Appointment", "Appointment removed from original appointments") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to remove appointment from original list") }
+            .addOnSuccessListener { Log.d("Appointment", "Removed from original appointments") }
+            .addOnFailureListener { Log.e("Appointment", "Failed to remove from original list") }
     }
 
     private fun deleteAppointment(appointmentId: String) {
