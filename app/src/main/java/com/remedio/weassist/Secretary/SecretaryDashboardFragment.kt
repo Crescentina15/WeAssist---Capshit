@@ -15,7 +15,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Lawyer.LawyersListActivity
 import com.remedio.weassist.Models.Appointment
-import com.remedio.weassist.Models.AppointmentAdapter
+import com.remedio.weassist.Models.SecretaryAppointmentAdapter
 import com.remedio.weassist.R
 
 class SecretaryDashboardFragment : Fragment() {
@@ -25,7 +25,7 @@ class SecretaryDashboardFragment : Fragment() {
     private lateinit var secretaryNameTextView: TextView
     private lateinit var secretaryFirmTextView: TextView
     private lateinit var recyclerView: RecyclerView
-    private lateinit var appointmentAdapter: AppointmentAdapter
+    private lateinit var appointmentAdapter: SecretaryAppointmentAdapter
     private var appointmentList = mutableListOf<Appointment>()
 
     override fun onCreateView(
@@ -53,7 +53,11 @@ class SecretaryDashboardFragment : Fragment() {
         // Set up RecyclerView for accepted appointments
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        appointmentAdapter = AppointmentAdapter(appointmentList, false)
+
+        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment ->
+            endSession(appointment)
+        }
+
         recyclerView.adapter = appointmentAdapter
 
         fetchAcceptedAppointments()
@@ -165,4 +169,20 @@ class SecretaryDashboardFragment : Fragment() {
         })
     }
 
+    private fun endSession(appointment: Appointment) {
+        // Logic for handling the end session button click
+        Toast.makeText(requireContext(), "Ending session for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+
+        // Example: Remove from database
+        val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+        appointmentsRef.child(appointment.appointmentId).removeValue()
+            .addOnSuccessListener {
+                appointmentList.remove(appointment)
+                appointmentAdapter.notifyDataSetChanged()
+                Toast.makeText(requireContext(), "Session ended", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
+            }
+    }
 }
