@@ -56,13 +56,14 @@ class SecretaryDashboardFragment : Fragment() {
 
         appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment, isSessionActive ->
             if (isSessionActive) {
-                // Handle session start logic (e.g., update Firebase)
+                // Start session
                 Toast.makeText(requireContext(), "Session started for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
             } else {
-                // Handle session end logic (e.g., update Firebase)
-                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+                // End session
+                endSession(appointment) // Call the function to end session
             }
         }
+
 
 
         recyclerView.adapter = appointmentAdapter
@@ -177,19 +178,17 @@ class SecretaryDashboardFragment : Fragment() {
     }
 
     private fun endSession(appointment: Appointment) {
-        // Logic for handling the end session button click
-        Toast.makeText(requireContext(), "Ending session for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
-
-        // Example: Remove from database
         val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+
         appointmentsRef.child(appointment.appointmentId).removeValue()
             .addOnSuccessListener {
                 appointmentList.remove(appointment)
                 appointmentAdapter.notifyDataSetChanged()
-                Toast.makeText(requireContext(), "Session ended", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {
                 Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
             }
     }
+
 }
