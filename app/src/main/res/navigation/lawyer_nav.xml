@@ -15,4 +15,12 @@
         <!-- Define the actions and navigation here if needed -->
     </fragment>
 
+    <fragment
+        android:id="@+id/fragment_profile_lawyer"
+        android:label="ProfileLawyer"
+        tools:layout="@layout/fragment_lawyer_profile">
+        <!-- Define the actions and navigation here if needed -->
+    </fragment>
+
+
 </navigation>

@@ -35,6 +35,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_appointments -> LawyerAppointmentsFragment()
+                R.id.nav_profile -> LawyerProfileFragment()
                 else -> ClientHomeFragment()
             }
             loadFragment(selectedFragment)
