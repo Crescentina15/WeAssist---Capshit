@@ -89,34 +89,39 @@ class AppointmentDetailsDialog : DialogFragment() {
     private fun acceptAppointment(appointmentId: String, secretaryId: String) {
         val database = FirebaseDatabase.getInstance().reference
 
-        // Update the secretary ID in the appointment object
-        appointment.secretaryId = secretaryId
+        // Retrieve the appointment from Firebase first
+        val appointmentRef = database.child("appointments").child(appointmentId)
+        appointmentRef.get().addOnSuccessListener { snapshot ->
+            val appointment = snapshot.getValue(Appointment::class.java)
+            if (appointment != null) {
+                // Update appointment status to "Accepted"
+                val updatedAppointment = appointment.copy(
+                    secretaryId = secretaryId,
+                    status = "Accepted" // Change status
+                )
 
-        val acceptedAppointmentsRef = database.child("accepted_appointment").child(appointmentId)
-        acceptedAppointmentsRef.setValue(appointment)
-            .addOnSuccessListener { Log.d("Appointment", "Appointment accepted and saved under accepted_appointment") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to accept appointment") }
+                // Save updated appointment in the accepted_appointment collection
+                val acceptedAppointmentsRef = database.child("accepted_appointment").child(appointmentId)
+                acceptedAppointmentsRef.setValue(updatedAppointment)
 
-        val clientAppointmentsRef = database.child("users").child(appointment.clientId).child("appointments").child(appointmentId)
-        clientAppointmentsRef.setValue(appointment)
-            .addOnSuccessListener { Log.d("Appointment", "Added to client appointments") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to add to client appointments") }
+                // Update in User, Lawyer, and Secretary collections
+                val clientAppointmentsRef = database.child("users").child(appointment.clientId).child("appointments").child(appointmentId)
+                clientAppointmentsRef.setValue(updatedAppointment)
 
-        val lawyerAppointmentsRef = database.child("lawyers").child(appointment.lawyerId).child("appointments").child(appointmentId)
-        lawyerAppointmentsRef.setValue(appointment)
-            .addOnSuccessListener { Log.d("Appointment", "Added to lawyer appointments") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to add to lawyer appointments") }
+                val lawyerAppointmentsRef = database.child("lawyers").child(appointment.lawyerId).child("appointments").child(appointmentId)
+                lawyerAppointmentsRef.setValue(updatedAppointment)
 
-        val secretaryAppointmentsRef = database.child("secretaries").child(secretaryId).child("appointments").child(appointmentId)
-        secretaryAppointmentsRef.setValue(appointment)
-            .addOnSuccessListener { Log.d("Appointment", "Added to secretary appointments") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to add to secretary appointments") }
+                val secretaryAppointmentsRef = database.child("secretaries").child(secretaryId).child("appointments").child(appointmentId)
+                secretaryAppointmentsRef.setValue(updatedAppointment)
 
-        val appointmentsRef = database.child("appointments").child(appointmentId)
-        appointmentsRef.removeValue()
-            .addOnSuccessListener { Log.d("Appointment", "Removed from original appointments") }
-            .addOnFailureListener { Log.e("Appointment", "Failed to remove from original list") }
+                // Remove from the main appointments list
+                appointmentRef.removeValue()
+            }
+        }.addOnFailureListener {
+            Log.e("Appointment", "Failed to fetch appointment data")
+        }
     }
+
 
     private fun deleteAppointment(appointmentId: String) {
         val appointmentRef = FirebaseDatabase.getInstance().reference.child("appointments").child(appointmentId)

@@ -18,7 +18,7 @@
             android:id="@+id/appointments_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="My Appointments"
+            android:text="Your Appointments"
             android:textSize="20sp"
             android:fontFamily="@font/vesper_libre_bold"
             android:textColor="@android:color/white"

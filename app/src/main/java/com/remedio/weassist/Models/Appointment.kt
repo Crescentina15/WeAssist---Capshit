@@ -12,7 +12,7 @@ data class Appointment(
     val problem: String = "",
     val lawyerId: String = "",
     val lawyerProfileImage: String? = null,
-    val status: String? = null,
+    val status: String? = "pending", // Default to pending
     var clientId: String = "",
     var secretaryId: String = ""
 ) : Parcelable
