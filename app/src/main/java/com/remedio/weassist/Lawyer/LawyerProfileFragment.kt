@@ -73,14 +73,10 @@ class LawyerProfileFragment : Fragment() {
                 if (!isAdded) return // Prevent crash if fragment is detached
 
                 if (snapshot.exists()) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
-                    val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-
-                    // Combine first and last name
-                    val fullName = "$firstName $lastName".trim()
+                    val name = snapshot.child("name").getValue(String::class.java) ?: ""
 
                     // Update UI
-                    usernameTextView.text = if (fullName.isNotEmpty()) fullName else "N/A"
+                    usernameTextView.text = if (name.isNotEmpty()) name else "N/A"
                 } else {
                     showToast("User data not found!")
                 }
@@ -93,6 +89,7 @@ class LawyerProfileFragment : Fragment() {
             }
         })
     }
+
 
     private fun logoutUser() {
         if (!isAdded) return // Prevent crash if fragment is detached
