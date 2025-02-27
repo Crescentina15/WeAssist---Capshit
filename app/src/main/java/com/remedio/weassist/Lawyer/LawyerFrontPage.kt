@@ -4,9 +4,6 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
-
-import com.remedio.weassist.Clients.ClientHomeFragment
-
 import com.remedio.weassist.R
 
 class LawyerFrontPage : AppCompatActivity() {
@@ -16,16 +13,15 @@ class LawyerFrontPage : AppCompatActivity() {
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
 
-        // Set default fragment
-        loadFragment(ClientHomeFragment())
+        // Set default fragment to Lawyer Home
+        loadFragment(LawyerAppointmentsFragment())
 
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
 
                 R.id.nav_appointments -> LawyerAppointmentsFragment()
-
-
+                R.id.nav_profile -> LawyerProfileFragment()
                 else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)

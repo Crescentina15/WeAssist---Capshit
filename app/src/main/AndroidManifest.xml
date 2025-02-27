@@ -16,10 +16,13 @@
             android:name=".Secretary.AppointmentDetailsDialog"
             android:exported="false" />
         <activity
+            android:name=".Lawyer.LawyerEditProfileActivity"
+            android:exported="false" />
+        <activity
             android:name=".Secretary.SecretaryFrontPage"
             android:exported="false" />
         <activity
-            android:name=".Lawyer.Lawyer_FrontPage"
+            android:name=".Lawyer.LawyerFrontPage"
             android:exported="false" />
         <activity
             android:name=".Lawyer.ConsultationLogsActivity"

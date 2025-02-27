@@ -36,7 +36,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_appointments -> LawyerAppointmentsFragment()
                 R.id.nav_profile -> LawyerProfileFragment()
-                else -> ClientHomeFragment()
+                else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)
             true
