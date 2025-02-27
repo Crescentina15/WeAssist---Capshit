@@ -35,83 +35,35 @@
                 android:layout_marginStart="8dp" />
         </LinearLayout>
 
+        <!-- Date Selector -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Date"
+            android:text="Select Date"
             android:textSize="18sp"
             android:layout_marginTop="16dp"
             android:textColor="@android:color/black" />
 
-        <!-- Date Selector -->
-        <HorizontalScrollView
+        <Spinner
+            android:id="@+id/date_spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:paddingBottom="8dp"
-            android:scrollbars="none">
-
-            <LinearLayout
-                android:id="@+id/date_container"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/date_13"
-                    android:layout_width="50dp"
-                    android:layout_height="70dp"
-                    android:text="13\nMON"
-                    android:textSize="14sp"
-                    android:textColor="@android:color/white"
-                    android:background="@drawable/rounded_bottom"
-                    android:gravity="center"
-                    android:padding="5dp"
-                    android:layout_marginEnd="8dp"/>
-
-                <Button
-                    android:id="@+id/date_14"
-                    android:layout_width="50dp"
-                    android:layout_height="70dp"
-                    android:text="14\nTUE"
-                    android:textSize="14sp"
-                    android:textColor="@android:color/white"
-                    android:background="@drawable/rounded_bottom"
-                    android:gravity="center"
-                    android:padding="5dp"
-                    android:layout_marginEnd="8dp"/>
-
-                <Button
-                    android:id="@+id/date_15"
-                    android:layout_width="50dp"
-                    android:layout_height="70dp"
-                    android:text="15\nWED"
-                    android:textSize="14sp"
-                    android:textColor="@android:color/white"
-                    android:background="@drawable/rounded_bottom"
-                    android:gravity="center"
-                    android:padding="5dp"
-                    android:layout_marginEnd="8dp"/>
-
-            </LinearLayout>
-        </HorizontalScrollView>
+            android:layout_marginTop="8dp" />
 
         <!-- Available Time Slots -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Available Time"
+            android:text="Select Time"
             android:textSize="18sp"
             android:layout_marginTop="16dp"
             android:textColor="@android:color/black" />
 
-        <GridLayout
-            android:id="@+id/availability_grid"
+        <Spinner
+            android:id="@+id/time_spinner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:columnCount="3"
-            android:layout_marginTop="8dp">
-        </GridLayout>
+            android:layout_marginTop="8dp" />
 
         <!-- Client Details -->
         <TextView

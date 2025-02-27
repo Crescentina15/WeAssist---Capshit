@@ -11,8 +11,8 @@ import java.util.*
 class SetAppointmentActivity : AppCompatActivity() {
 
     private lateinit var databaseReference: DatabaseReference
-    private lateinit var availabilityGrid: GridLayout
-    private lateinit var dateContainer: LinearLayout
+    private lateinit var dateSpinner: Spinner
+    private lateinit var timeSpinner: Spinner
     private lateinit var editFullName: EditText
     private lateinit var editProblem: EditText
     private lateinit var btnSetAppointment: Button
@@ -27,8 +27,8 @@ class SetAppointmentActivity : AppCompatActivity() {
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
 
-        availabilityGrid = findViewById(R.id.availability_grid)
-        dateContainer = findViewById(R.id.date_container)
+        dateSpinner = findViewById(R.id.date_spinner)
+        timeSpinner = findViewById(R.id.time_spinner)
         editFullName = findViewById(R.id.edit_full_name)
         editProblem = findViewById(R.id.edit_problem)
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
@@ -50,9 +50,6 @@ class SetAppointmentActivity : AppCompatActivity() {
 
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                dateContainer.removeAllViews()
-                availabilityGrid.removeAllViews()
-
                 if (snapshot.exists()) {
                     val dateMap = mutableMapOf<String, MutableList<String>>()
 
@@ -68,7 +65,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                         }
                     }
 
-                    createDateCheckBoxes(dateMap)
+                    setupDateSpinner(dateMap)
                 } else {
                     Toast.makeText(applicationContext, "No availability found", Toast.LENGTH_SHORT).show()
                 }
@@ -80,55 +77,37 @@ class SetAppointmentActivity : AppCompatActivity() {
         })
     }
 
-    private fun createDateCheckBoxes(dateMap: Map<String, List<String>>) {
-        dateMap.forEach { (date, timeSlots) ->
-            val dateCheckBox = CheckBox(this)
-            dateCheckBox.text = formatDate(date)
-            dateCheckBox.setTextColor(resources.getColor(android.R.color.black))
+    private fun setupDateSpinner(dateMap: Map<String, List<String>>) {
+        val dates = dateMap.keys.toList()
+        val dateAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, dates)
+        dateAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        dateSpinner.adapter = dateAdapter
 
-            dateCheckBox.setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) {
-                    selectedDate = date
-
-                    // Uncheck other checkboxes
-                    for (i in 0 until dateContainer.childCount) {
-                        val child = dateContainer.getChildAt(i)
-                        if (child is CheckBox && child != dateCheckBox) {
-                            child.isChecked = false
-                        }
-                    }
-
-                    updateTimeSlots(timeSlots)
-                }
+        dateSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
+                selectedDate = dates[position]
+                updateTimeSpinner(dateMap[selectedDate] ?: emptyList())
             }
 
-            dateContainer.addView(dateCheckBox)
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                // Do nothing
+            }
         }
     }
 
-    private fun updateTimeSlots(timeSlots: List<String>) {
-        availabilityGrid.removeAllViews()
-        for (slot in timeSlots) {
-            val checkBox = CheckBox(this)
-            checkBox.text = slot
-            checkBox.textSize = 14f
-            checkBox.setTextColor(resources.getColor(android.R.color.black))
+    private fun updateTimeSpinner(timeSlots: List<String>) {
+        val timeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, timeSlots)
+        timeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        timeSpinner.adapter = timeAdapter
 
-            checkBox.setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) {
-                    selectedTime = slot
-
-                    // Uncheck other time checkboxes
-                    for (i in 0 until availabilityGrid.childCount) {
-                        val child = availabilityGrid.getChildAt(i)
-                        if (child is CheckBox && child != checkBox) {
-                            child.isChecked = false
-                        }
-                    }
-                }
+        timeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
+                selectedTime = timeSlots[position]
             }
 
-            availabilityGrid.addView(checkBox)
+            override fun onNothingSelected(parent: AdapterView<*>) {
+                // Do nothing
+            }
         }
     }
 
@@ -180,18 +159,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                 .addOnFailureListener {
                     Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
                 }
-        }
-    }
-
-
-    private fun formatDate(date: String): String {
-        return try {
-            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val outputFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
-            val parsedDate = inputFormat.parse(date)
-            outputFormat.format(parsedDate ?: date)
-        } catch (e: Exception) {
-            date
         }
     }
 }
