@@ -100,7 +100,7 @@
         <TextView
             android:id="@+id/markAsReadButton"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:text="Mark All as Read"
             android:textSize="14sp"
             android:textColor="@color/black"

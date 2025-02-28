@@ -178,13 +178,32 @@ class SecretaryDashboardFragment : Fragment() {
     }
 
     private fun endSession(appointment: Appointment) {
-        val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+        val database = FirebaseDatabase.getInstance()
 
-        appointmentsRef.child(appointment.appointmentId).removeValue()
+        val acceptedAppointmentsRef = database.getReference("accepted_appointment")
+        val lawyerAppointmentsRef = database.getReference("lawyers").child(appointment.lawyerId).child("appointments")
+        val secretaryAppointmentsRef = database.getReference("secretaries").child(appointment.secretaryId).child("appointments")
+
+        // Remove appointment from accepted_appointment
+        acceptedAppointmentsRef.child(appointment.appointmentId).removeValue()
             .addOnSuccessListener {
-                appointmentList.remove(appointment)
-                appointmentAdapter.notifyDataSetChanged()
-                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+                // Remove appointment from lawyer's list
+                lawyerAppointmentsRef.child(appointment.appointmentId).removeValue()
+                    .addOnSuccessListener {
+                        // Remove appointment from secretary's list
+                        secretaryAppointmentsRef.child(appointment.appointmentId).removeValue()
+                            .addOnSuccessListener {
+                                appointmentList.remove(appointment)
+                                appointmentAdapter.notifyDataSetChanged()
+                                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(requireContext(), "Failed to remove appointment from secretary's list", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(requireContext(), "Failed to remove appointment from lawyer's list", Toast.LENGTH_SHORT).show()
+                    }
             }
             .addOnFailureListener {
                 Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
