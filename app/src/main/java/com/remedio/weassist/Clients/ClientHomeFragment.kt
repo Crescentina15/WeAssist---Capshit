@@ -54,7 +54,7 @@ class ClientHomeFragment : Fragment() {
 
         // Click listener for notifications
         notificationButton.setOnClickListener {
-            val intent = Intent(requireContext(), NotificationActivity::class.java)
+            val intent = Intent(requireContext(), ClientNotificationActivity::class.java)
             startActivity(intent)
         }
 
