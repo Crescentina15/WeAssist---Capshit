@@ -16,6 +16,9 @@
             android:name=".Secretary.AppointmentDetailsDialog"
             android:exported="false" />
         <activity
+            android:name=".Clients.ClientNotificationActivity"
+            android:exported="false" />
+        <activity
             android:name=".Lawyer.LawyerEditProfileActivity"
             android:exported="false" />
         <activity

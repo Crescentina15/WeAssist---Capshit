@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.GridLayout
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -38,6 +39,7 @@ class ClientHomeFragment : Fragment() {
         welcomeMessageTextView = view.findViewById(R.id.welcome_message)
         specializationsLayout = view.findViewById(R.id.specializations_layout)
         val searchButton: Button = view.findViewById(R.id.search_button)
+        val notificationButton: ImageButton = view.findViewById(R.id.notification_icon) // Notifications button
 
         // Fetch user's first name from Firebase
         auth.currentUser?.let { fetchUserFirstName(it.uid) } ?: run {
@@ -47,6 +49,12 @@ class ClientHomeFragment : Fragment() {
         // Click listener for chatbot
         searchButton.setOnClickListener {
             val intent = Intent(requireContext(), ChatbotActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Click listener for notifications
+        notificationButton.setOnClickListener {
+            val intent = Intent(requireContext(), NotificationActivity::class.java)
             startActivity(intent)
         }
 
@@ -81,7 +89,6 @@ class ClientHomeFragment : Fragment() {
             }
         })
     }
-
 
     private fun fetchSpecializations() {
         database.addListenerForSingleValueEvent(object : ValueEventListener {
