@@ -33,6 +33,7 @@
           android:background="@drawable/baseline_circle_24" />
 
       <TextView
+          android:layout_marginTop="8dp"
           android:id="@+id/welcome_message"
           android:layout_width="0dp"
           android:layout_height="wrap_content"
@@ -42,12 +43,18 @@
           android:textColor="@android:color/black"
           android:fontFamily="@font/vesper_libre_bold" />
 
-      <ImageView
+      <ImageButton
           android:id="@+id/notification_icon"
-          android:layout_width="30dp"
-          android:layout_height="30dp"
+          android:layout_width="40dp"
+          android:layout_height="40dp"
           android:src="@drawable/notifications"
-          app:tint="@android:color/white" />
+          android:contentDescription="Notifications"
+          android:layout_gravity="center_vertical"
+          android:padding="8dp"
+          android:scaleType="fitCenter"
+          android:layout_alignParentEnd="true"
+          android:background="#9F97CA"
+          />
     </LinearLayout>
 
     <!-- Search Section -->
