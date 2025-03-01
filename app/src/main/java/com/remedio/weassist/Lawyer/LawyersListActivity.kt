@@ -90,7 +90,7 @@ class LawyersListActivity : AppCompatActivity() {
                     if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
                         // Launch LawyerBackgroundActivity for clients
                         val intent = Intent(context, LawyerBackgroundActivity::class.java)
-                        intent.putExtra("LAWYER", selectedLawyer)
+                        intent.putExtra("LAWYER_ID", selectedLawyer.id)  // ✅ Correct key
                         startActivity(intent)
                     } else {
                         // Existing logic for other cases
