@@ -52,7 +52,7 @@ class ClientMessageFragment : Fragment() {
             return view
         }
 
-        // Retrieve the secretary assigned to the lawyer
+        // Retrieve the secretary assigned to the lawyer based on lawFirm
         getSecretaryIdForLawyer(lawyerId, clientId)
 
         sendButton.setOnClickListener {
@@ -72,19 +72,46 @@ class ClientMessageFragment : Fragment() {
             return
         }
 
+        // Step 1: Get the lawyer's lawFirm
         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
-        lawyerRef.child("secretaryId").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                secretaryId = snapshot.getValue(String::class.java)
-                if (!secretaryId.isNullOrEmpty()) {
-                    setupDatabase(clientId, secretaryId!!)
+        lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                if (lawyerSnapshot.exists()) {
+                    val lawyerLawFirm = lawyerSnapshot.child("lawFirm").getValue(String::class.java)
+                    if (lawyerLawFirm.isNullOrEmpty()) {
+                        Toast.makeText(requireContext(), "Lawyer's law firm not found", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+
+                    // Step 2: Query the secretaries node to find a secretary with matching lawFirm
+                    val secretariesRef = FirebaseDatabase.getInstance().getReference("secretaries")
+                    secretariesRef.orderByChild("lawFirm").equalTo(lawyerLawFirm)
+                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                            override fun onDataChange(secretariesSnapshot: DataSnapshot) {
+                                if (secretariesSnapshot.exists()) {
+                                    for (secretarySnapshot in secretariesSnapshot.children) {
+                                        secretaryId = secretarySnapshot.key // Get the secretary's ID
+                                        if (!secretaryId.isNullOrEmpty()) {
+                                            setupDatabase(clientId, secretaryId!!)
+                                            return
+                                        }
+                                    }
+                                }
+                                // If no secretary is found
+                                Toast.makeText(requireContext(), "No secretary assigned to this law firm", Toast.LENGTH_SHORT).show()
+                            }
+
+                            override fun onCancelled(error: DatabaseError) {
+                                Toast.makeText(requireContext(), "Failed to get secretary information", Toast.LENGTH_SHORT).show()
+                            }
+                        })
                 } else {
-                    Toast.makeText(requireContext(), "No secretary assigned to this lawyer", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(requireContext(), "Lawyer data not found", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(requireContext(), "Failed to get secretary information", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Failed to load lawyer data", Toast.LENGTH_SHORT).show()
             }
         })
     }

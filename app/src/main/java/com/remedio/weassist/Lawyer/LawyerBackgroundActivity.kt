@@ -47,7 +47,6 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                 .addToBackStack(null)
                 .commit()
         }
-
     }
 
     private fun retrieveLawyerData(lawyerId: String) {
