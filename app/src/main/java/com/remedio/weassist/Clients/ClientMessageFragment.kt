@@ -1,60 +1,143 @@
 package com.remedio.weassist.Clients
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
+import android.widget.ImageButton
+import android.widget.Toast
+import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.*
 import com.remedio.weassist.R
 
-// TODO: Rename parameter arguments, choose names that match
-// the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-private const val ARG_PARAM1 = "param1"
-private const val ARG_PARAM2 = "param2"
-
-/**
- * A simple [Fragment] subclass.
- * Use the [MessageFragment.newInstance] factory method to
- * create an instance of this fragment.
- */
 class ClientMessageFragment : Fragment() {
-    // TODO: Rename and change types of parameters
-    private var param1: String? = null
-    private var param2: String? = null
+
+    private var lawyerId: String? = null
+    private var secretaryId: String? = null
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var messageInput: EditText
+    private lateinit var sendButton: ImageButton
+    private lateinit var databaseReference: DatabaseReference
+    private lateinit var messagesAdapter: MessagesAdapter
+    private val messagesList = mutableListOf<Message>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
-            param1 = it.getString(ARG_PARAM1)
-            param2 = it.getString(ARG_PARAM2)
+            lawyerId = it.getString("LAWYER_ID")
         }
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_client_message, container, false)
+    ): View {
+        val view = inflater.inflate(R.layout.fragment_client_message, container, false)
+
+        recyclerView = view.findViewById(R.id.inbox_recycler_view)
+        messageInput = view.findViewById(R.id.editTextMessage)
+        sendButton = view.findViewById(R.id.buttonSend)
+
+        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        messagesAdapter = MessagesAdapter(messagesList)
+        recyclerView.adapter = messagesAdapter
+
+        val clientId = FirebaseAuth.getInstance().currentUser?.uid
+        if (clientId.isNullOrEmpty()) {
+            Toast.makeText(requireContext(), "User not authenticated", Toast.LENGTH_SHORT).show()
+            return view
+        }
+
+        // Retrieve the secretary assigned to the lawyer
+        getSecretaryIdForLawyer(lawyerId, clientId)
+
+        sendButton.setOnClickListener {
+            if (!secretaryId.isNullOrEmpty()) {
+                sendMessage(clientId, secretaryId!!)
+            } else {
+                Toast.makeText(requireContext(), "No secretary assigned", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        return view
     }
 
-    companion object {
-        /**
-         * Use this factory method to create a new instance of
-         * this fragment using the provided parameters.
-         *
-         * @param param1 Parameter 1.
-         * @param param2 Parameter 2.
-         * @return A new instance of fragment MessageFragment.
-         */
-        // TODO: Rename and change types and number of parameters
-        @JvmStatic
-        fun newInstance(param1: String, param2: String) =
-            ClientAppointmentsFragment().apply {
-                arguments = Bundle().apply {
-                    putString(ARG_PARAM1, param1)
-                    putString(ARG_PARAM2, param2)
+    private fun getSecretaryIdForLawyer(lawyerId: String?, clientId: String) {
+        if (lawyerId.isNullOrEmpty()) {
+            Toast.makeText(requireContext(), "No lawyer assigned", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+        lawyerRef.child("secretaryId").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                secretaryId = snapshot.getValue(String::class.java)
+                if (!secretaryId.isNullOrEmpty()) {
+                    setupDatabase(clientId, secretaryId!!)
+                } else {
+                    Toast.makeText(requireContext(), "No secretary assigned to this lawyer", Toast.LENGTH_SHORT).show()
                 }
             }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(requireContext(), "Failed to get secretary information", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun setupDatabase(clientId: String, secretaryId: String) {
+        databaseReference = FirebaseDatabase.getInstance().getReference("messages")
+        loadMessages(clientId, secretaryId)
+    }
+
+    private fun loadMessages(clientId: String, secretaryId: String) {
+        val messageRef = databaseReference.child(clientId).child(secretaryId)
+        messageRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val message = snapshot.getValue(Message::class.java)
+                message?.let {
+                    messagesList.add(it)
+                    messagesAdapter.notifyItemInserted(messagesList.size - 1)
+                    recyclerView.scrollToPosition(messagesList.size - 1)
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(requireContext(), "Failed to load messages", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun sendMessage(clientId: String, secretaryId: String) {
+        val messageText = messageInput.text.toString().trim()
+        if (messageText.isEmpty()) {
+            Toast.makeText(requireContext(), "Message cannot be empty", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val message = Message(clientId, secretaryId, messageText, System.currentTimeMillis())
+
+        val clientMessageRef = databaseReference.child(clientId).child(secretaryId).push()
+        val secretaryMessageRef = databaseReference.child(secretaryId).child(clientId).push()
+
+        val messageData = mapOf(
+            clientMessageRef.key!! to message,
+            secretaryMessageRef.key!! to message
+        )
+
+        databaseReference.updateChildren(messageData).addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                messageInput.text.clear()
+            } else {
+                Toast.makeText(requireContext(), "Failed to send message", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }

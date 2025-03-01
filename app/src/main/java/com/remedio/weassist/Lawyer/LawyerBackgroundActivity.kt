@@ -2,10 +2,10 @@ package com.remedio.weassist.Lawyer
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
+import com.remedio.weassist.Clients.ClientMessageFragment
 import com.remedio.weassist.Secretary.SetAppointmentActivity
 import com.remedio.weassist.databinding.ActivityLawyerBackgroundBinding
 
@@ -25,23 +25,30 @@ class LawyerBackgroundActivity : AppCompatActivity() {
 
         if (lawyerId.isNullOrEmpty()) {
             Toast.makeText(this, "Lawyer ID not found", Toast.LENGTH_SHORT).show()
-            println("DEBUG: Lawyer ID is NULL or EMPTY")  // Check Logcat
             return
         }
 
-        println("DEBUG: Received Lawyer ID -> $lawyerId")  // Log the ID
         retrieveLawyerData(lawyerId!!)
 
         binding.btnSetAppointment.setOnClickListener {
             val intent = Intent(this, SetAppointmentActivity::class.java)
-            intent.putExtra("LAWYER_ID", lawyerId) // Pass the lawyer ID
+            intent.putExtra("LAWYER_ID", lawyerId)
             startActivity(intent)
         }
 
-
+        binding.btnMessage.setOnClickListener {
+            val fragment = ClientMessageFragment().apply {
+                arguments = Bundle().apply {
+                    putString("LAWYER_ID", lawyerId)
+                }
+            }
+            supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, fragment)
+                .addToBackStack(null)
+                .commit()
+        }
 
     }
-
 
     private fun retrieveLawyerData(lawyerId: String) {
         databaseReference = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
