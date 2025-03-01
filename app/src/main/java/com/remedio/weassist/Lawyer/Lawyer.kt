@@ -1,5 +1,8 @@
 package com.remedio.weassist.Lawyer
 
+import android.os.Parcel
+import android.os.Parcelable
+
 data class Lawyer(
     val id: String = "",
     val name: String = "",
@@ -7,7 +10,7 @@ data class Lawyer(
     val lawFirm: String = "",
     val licenseNumber: String = "",
     val experience: String = "",
-    val lawSchool: String? = null,  // Nullable for missing fields
+    val lawSchool: String? = null,
     val graduationYear: String? = null,
     val certifications: String? = null,
     val jurisdiction: String? = null,
@@ -15,22 +18,55 @@ data class Lawyer(
     val bio: String? = null,
     val rate: String? = null,
     val profileImage: String? = null,
-    val contact: Contact? = null // Contact can be null in Firebase
-) {
-    constructor() : this("", "", "", "", "", "", null, null, null, null, null, null, null, null, null)
-}
+    val contact: Contact? = null
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readString(),
+        parcel.readParcelable(Contact::class.java.classLoader)
+    )
 
-data class Contact(
-    val phone: String = "",
-    val email: String = "",
-    val address: String = ""
-) {
-    constructor() : this("", "", "")
-}
-data class Availability(
-    val date: String = "",
-    val startTime: String = "",
-    val endTime: String = ""
-) {
-    constructor() : this("", "", "")
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(id)
+        parcel.writeString(name)
+        parcel.writeString(specialization)
+        parcel.writeString(lawFirm)
+        parcel.writeString(licenseNumber)
+        parcel.writeString(experience)
+        parcel.writeString(lawSchool)
+        parcel.writeString(graduationYear)
+        parcel.writeString(certifications)
+        parcel.writeString(jurisdiction)
+        parcel.writeString(employer)
+        parcel.writeString(bio)
+        parcel.writeString(rate)
+        parcel.writeString(profileImage)
+        parcel.writeParcelable(contact, flags)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<Lawyer> {
+        override fun createFromParcel(parcel: Parcel): Lawyer {
+            return Lawyer(parcel)
+        }
+
+        override fun newArray(size: Int): Array<Lawyer?> {
+            return arrayOfNulls(size)
+        }
+    }
 }

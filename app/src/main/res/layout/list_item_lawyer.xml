@@ -16,6 +16,7 @@
         android:padding="12dp"
         android:gravity="center_vertical">
 
+        <!-- Lawyer Profile Image -->
         <ImageView
             android:id="@+id/lawyer_image"
             android:layout_width="60dp"
@@ -31,6 +32,7 @@
             android:orientation="vertical"
             android:layout_weight="1">
 
+            <!-- Lawyer Name -->
             <TextView
                 android:id="@+id/lawyer_name"
                 android:layout_width="wrap_content"
@@ -40,6 +42,7 @@
                 android:textColor="#000000"
                 android:textStyle="bold" />
 
+            <!-- Lawyer Specialty -->
             <TextView
                 android:id="@+id/lawyer_specialty"
                 android:layout_width="wrap_content"
@@ -48,8 +51,9 @@
                 android:textSize="14sp"
                 android:textColor="#666666" />
 
+            <!-- Lawyer Balance -->
             <TextView
-                android:id="@+id/lawyer_specialty"
+                android:id="@+id/lawyer_balance"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Balance: ₱1,000.00"
@@ -60,4 +64,3 @@
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>
-    <!-- Directed from Add Balance, Add Availability and Background -->

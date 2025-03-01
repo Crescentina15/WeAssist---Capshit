@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/lawyer_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:text="Lawyer Name" />
+
+    <TextView
+        android:id="@+id/lawyer_bio"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Bio"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_experience"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Experience"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_law_school"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Law School"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_graduation_year"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Graduation Year"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_certifications"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Certifications"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_jurisdiction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Jurisdiction"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_employer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Employer"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/lawyer_rate"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Rate"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>

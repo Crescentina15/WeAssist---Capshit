@@ -36,3 +36,4 @@ class LawyerAdapter(
 
     override fun getItemCount(): Int = lawyersList.size
 }
+

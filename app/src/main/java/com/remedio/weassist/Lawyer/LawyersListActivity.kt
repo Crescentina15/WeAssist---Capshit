@@ -61,6 +61,7 @@ class LawyersListActivity : AppCompatActivity() {
                             email = contactData["email"]?.toString() ?: "",
                             address = contactData["address"]?.toString() ?: ""
                         )
+
                         is String -> Contact(phone = contactData)
                         else -> Contact()
                     }
@@ -86,18 +87,38 @@ class LawyersListActivity : AppCompatActivity() {
                 lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
                     val context = this@LawyersListActivity
 
-                    val intent = when {
-                        fromManageAvailability -> Intent(context, AddAvailabilityActivity::class.java)
-                        fromAddBackgroundActivity -> Intent(context, AddBackgroundActivity::class.java)
-                        fromAddBalanceActivity -> Intent(context, AddBalanceActivity::class.java)
-                        else -> Intent(context, SetAppointmentActivity::class.java)
+                    if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
+                        // Launch LawyerBackgroundActivity for clients
+                        val intent = Intent(context, LawyerBackgroundActivity::class.java)
+                        intent.putExtra("LAWYER", selectedLawyer)
+                        startActivity(intent)
+                    } else {
+                        // Existing logic for other cases
+                        val intent = when {
+                            fromManageAvailability -> Intent(
+                                context,
+                                AddAvailabilityActivity::class.java
+                            )
+
+                            fromAddBackgroundActivity -> Intent(
+                                context,
+                                AddBackgroundActivity::class.java
+                            )
+
+                            fromAddBalanceActivity -> Intent(
+                                context,
+                                AddBalanceActivity::class.java
+                            )
+
+                            else -> Intent(context, SetAppointmentActivity::class.java)
+                        }
+
+                        intent.putExtra("LAWYER_ID", selectedLawyer.id)
+                        intent.putExtra("LAWYER_NAME", selectedLawyer.name)
+                        intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
+
+                        startActivity(intent)
                     }
-
-                    intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                    intent.putExtra("LAWYER_NAME", selectedLawyer.name)
-                    intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
-
-                    startActivity(intent)
                 }
 
                 recyclerView.adapter = lawyerAdapter

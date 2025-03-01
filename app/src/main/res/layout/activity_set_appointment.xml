@@ -83,11 +83,7 @@
             android:background="@drawable/edittext_container"
             android:layout_marginTop="8dp" />
 
-        <Spinner
-            android:id="@+id/spinner_age"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" />
+
 
         <EditText
             android:id="@+id/edit_problem"

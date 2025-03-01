@@ -13,6 +13,9 @@
         android:theme="@style/Theme.WeAssist"
         tools:targetApi="31">
         <activity
+            android:name=".Lawyer.LawyerBackgroundActivity"
+            android:exported="false" />
+        <activity
             android:name=".Secretary.AppointmentDetailsDialog"
             android:exported="false" />
         <activity
