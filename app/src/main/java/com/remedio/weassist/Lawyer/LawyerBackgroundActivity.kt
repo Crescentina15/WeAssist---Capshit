@@ -1,9 +1,12 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Intent
 import android.os.Bundle
+import android.widget.Button
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
+import com.remedio.weassist.Secretary.SetAppointmentActivity
 import com.remedio.weassist.databinding.ActivityLawyerBackgroundBinding
 
 class LawyerBackgroundActivity : AppCompatActivity() {
@@ -28,6 +31,15 @@ class LawyerBackgroundActivity : AppCompatActivity() {
 
         println("DEBUG: Received Lawyer ID -> $lawyerId")  // Log the ID
         retrieveLawyerData(lawyerId!!)
+
+        binding.btnSetAppointment.setOnClickListener {
+            val intent = Intent(this, SetAppointmentActivity::class.java)
+            intent.putExtra("LAWYER_ID", lawyerId) // Pass the lawyer ID
+            startActivity(intent)
+        }
+
+
+
     }
 
 

@@ -69,6 +69,19 @@
         android:text="Rate"
         android:layout_marginTop="8dp" />
 
+    <!-- Buttons for setting appointment and messaging -->
+    <Button
+        android:id="@+id/btn_set_appointment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Set Appointment"
+        android:layout_marginTop="16dp" />
 
+    <Button
+        android:id="@+id/btn_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Message"
+        android:layout_marginTop="8dp" />
 
 </LinearLayout>
