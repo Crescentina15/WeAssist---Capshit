@@ -3,10 +3,9 @@ package com.remedio.weassist.Secretary
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.R
-import java.text.SimpleDateFormat
-import java.util.*
 
 class SetAppointmentActivity : AppCompatActivity() {
 
@@ -16,6 +15,7 @@ class SetAppointmentActivity : AppCompatActivity() {
     private lateinit var editFullName: EditText
     private lateinit var editProblem: EditText
     private lateinit var btnSetAppointment: Button
+    private lateinit var backArrow: ImageButton
 
     private var lawyerId: String? = null
     private var selectedDate: String? = null
@@ -32,6 +32,12 @@ class SetAppointmentActivity : AppCompatActivity() {
         editFullName = findViewById(R.id.edit_full_name)
         editProblem = findViewById(R.id.edit_problem)
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
+        backArrow = findViewById(R.id.back_arrow)  // Back arrow button
+
+        // Back arrow functionality
+        backArrow.setOnClickListener {
+            finish() // Go back to the previous activity
+        }
 
         if (lawyerId != null) {
             fetchAvailability(lawyerId!!)
@@ -125,7 +131,7 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
-        val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+        val currentUser = FirebaseAuth.getInstance().currentUser
         val clientId = currentUser?.uid
 
         if (clientId == null) {
@@ -133,16 +139,13 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
-        // Reference to the general appointments node
-        val appointmentRef = FirebaseDatabase.getInstance()
-            .getReference("appointments")
-
+        val appointmentRef = FirebaseDatabase.getInstance().getReference("appointments")
         val appointmentId = appointmentRef.push().key
 
         if (appointmentId != null) {
             val appointmentData = mapOf(
                 "appointmentId" to appointmentId,
-                "clientId" to clientId,  // **Added clientId**
+                "clientId" to clientId,
                 "lawyerId" to lawyerId,
                 "date" to selectedDate,
                 "time" to selectedTime,
@@ -150,7 +153,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                 "problem" to problem
             )
 
-            // Save in the general appointments node
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()

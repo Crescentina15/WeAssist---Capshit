@@ -2,6 +2,7 @@ package com.remedio.weassist.Lawyer
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
@@ -20,6 +21,11 @@ class LawyerBackgroundActivity : AppCompatActivity() {
 
         binding = ActivityLawyerBackgroundBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Back Arrow Functionality
+        binding.backArrow.setOnClickListener {
+            finish() // Go back to the previous activity
+        }
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
 
@@ -58,14 +64,15 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                     val lawyer = snapshot.getValue(Lawyer::class.java)
                     lawyer?.let {
                         binding.lawyerName.text = it.name
-                        binding.lawyerBio.text = it.bio ?: "No bio available"
-                        binding.lawyerExperience.text = it.experience ?: "No experience available"
-                        binding.lawyerLawSchool.text = it.lawSchool ?: "No law school available"
-                        binding.lawyerGraduationYear.text = it.graduationYear ?: "No graduation year available"
-                        binding.lawyerCertifications.text = it.certifications ?: "No certifications available"
-                        binding.lawyerJurisdiction.text = it.jurisdiction ?: "No jurisdiction available"
-                        binding.lawyerEmployer.text = it.employer ?: "No employer available"
-                        binding.lawyerRate.text = it.rate ?: "No rate available"
+
+                        binding.lawyerBio.text = formatText("Bio", it.bio)
+                        binding.lawyerExperience.text = formatText("Experience", it.experience)
+                        binding.lawyerLawSchool.text = formatText("Law School", it.lawSchool)
+                        binding.lawyerGraduationYear.text = formatText("Graduation Year", it.graduationYear)
+                        binding.lawyerCertifications.text = formatText("Certifications", it.certifications)
+                        binding.lawyerJurisdiction.text = formatText("Jurisdiction", it.jurisdiction)
+                        binding.lawyerEmployer.text = formatText("Employer", it.employer)
+                        binding.lawyerRate.text = formatText("Rate", it.rate)
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
@@ -76,5 +83,9 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext, "Failed to load lawyer data", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun formatText(label: String, value: String?): CharSequence {
+        return android.text.Html.fromHtml("<b>$label:</b> ${value ?: "Not available"}")
     }
 }
