@@ -4,6 +4,8 @@ import { ref, onValue } from "firebase/database";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/logo.png";
 import "./index.css";
+import { analytics } from "./script/firebase"; // Import Firebase Analytics
+import { logEvent } from "firebase/analytics"; // Import logEvent
 
 const AdminPanel = ({ user, onLogout }) => {
   const [lawyers, setLawyers] = useState([]);
@@ -15,6 +17,9 @@ const AdminPanel = ({ user, onLogout }) => {
     onValue(adminRef, (snapshot) => {
       if (snapshot.exists()) {
         setAdminLawFirm(snapshot.val().lawFirm);
+        if (analytics) {
+          logEvent(analytics, "admin_dashboard_view", { admin_id: user.uid });
+        }
       }
     });
   }, [user]);
@@ -29,6 +34,9 @@ const AdminPanel = ({ user, onLogout }) => {
             ...lawyer
           })).filter(lawyer => lawyer.lawFirm === adminLawFirm);
           setLawyers(filteredLawyers);
+          if (analytics) {
+            logEvent(analytics, "lawyers_list_loaded", { law_firm: adminLawFirm, count: filteredLawyers.length });
+          }
         }
       });
     }
@@ -39,11 +47,26 @@ const AdminPanel = ({ user, onLogout }) => {
       <header className="admin-header">
         <img src={logo} alt="Logo" className="admin-logo" />
         <nav className="admin-nav">
-          <button className="nav-button" onClick={() => navigate("/")}>Dashboard</button>
-          <button className="nav-button" onClick={() => navigate("/addlawyer")}>Manage Lawyer</button>
-          <button className="nav-button" onClick={() => navigate("/managesecretary")}>Manage Secretary</button>
-          <button className="nav-button" onClick={() => navigate("/profile")}>Profile</button>
-          <button className="nav-button logout-button" onClick={onLogout}>Logout</button>
+          <button className="nav-button" onClick={() => { 
+            navigate("/"); 
+            if (analytics) logEvent(analytics, "navigate", { destination: "Dashboard" });
+          }}>Dashboard</button>
+          <button className="nav-button" onClick={() => { 
+            navigate("/addlawyer"); 
+            if (analytics) logEvent(analytics, "navigate", { destination: "Manage Lawyer" });
+          }}>Manage Lawyer</button>
+          <button className="nav-button" onClick={() => { 
+            navigate("/managesecretary"); 
+            if (analytics) logEvent(analytics, "navigate", { destination: "Manage Secretary" });
+          }}>Manage Secretary</button>
+          <button className="nav-button" onClick={() => { 
+            navigate("/profile"); 
+            if (analytics) logEvent(analytics, "navigate", { destination: "Profile" });
+          }}>Profile</button>
+          <button className="nav-button logout-button" onClick={() => { 
+            onLogout(); 
+            if (analytics) logEvent(analytics, "logout", { admin_id: user.uid });
+          }}>Logout</button>
         </nav>
       </header>
 
@@ -53,10 +76,12 @@ const AdminPanel = ({ user, onLogout }) => {
           <ul>
             {lawyers.map((lawyer) => (
               <li key={lawyer.id}>
-                <button className="lawyer-button" onClick={() => navigate(`/EditLawyer/${lawyer.id}`)}>
+                <button className="lawyer-button" onClick={() => { 
+                  navigate(`/EditLawyer/${lawyer.id}`); 
+                  if (analytics) logEvent(analytics, "edit_lawyer", { lawyer_id: lawyer.id });
+                }}>
                     {lawyer.name} - {lawyer.specialization}
                 </button>
-
               </li>
             ))}
           </ul>

@@ -1,7 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getDatabase } from "firebase/database";
+import { getAnalytics } from "firebase/analytics";
 
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBGx-8FIuBqFIVEYLZV3KLLkukRDNDRRYU",
   authDomain: "weassist-f2a77.firebaseapp.com",
@@ -17,3 +19,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+
+// Initialize Firebase Analytics (only works in the browser)
+export const analytics = typeof window !== "undefined" ? getAnalytics(app) : null;
