@@ -2,6 +2,7 @@ package com.remedio.weassist.Secretary
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -27,8 +28,8 @@ class SetAppointmentActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_set_appointment)
 
-        // Initialize views
         lawyerId = intent.getStringExtra("LAWYER_ID")
+
         dateSpinner = findViewById(R.id.date_spinner)
         timeSpinner = findViewById(R.id.time_spinner)
         editFullName = findViewById(R.id.edit_full_name)
@@ -36,50 +37,63 @@ class SetAppointmentActivity : AppCompatActivity() {
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
         backArrow = findViewById(R.id.back_arrow)
 
-        // Back button
-        backArrow.setOnClickListener { finish() }
+        // Get current user ID
+        clientId = FirebaseAuth.getInstance().currentUser?.uid
 
-        // Get current user
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        clientId = currentUser?.uid
+        backArrow.setOnClickListener {
+            finish()
+        }
 
         if (clientId != null) {
             fetchClientName(clientId!!)
         } else {
-            Log.e("SetAppointmentActivity", "User not logged in")
+            Log.e("SetAppointmentActivity", "Client ID is null, user not logged in")
+            Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
         }
 
         if (lawyerId != null) {
             fetchAvailability(lawyerId!!)
+        } else {
+            Log.e("SetAppointmentActivity", "Lawyer ID is null")
+            Toast.makeText(this, "Lawyer not found", Toast.LENGTH_SHORT).show()
         }
 
-        btnSetAppointment.setOnClickListener { saveAppointment() }
+        btnSetAppointment.setOnClickListener {
+            saveAppointment()
+        }
     }
 
+    // ✅ FIXED: Fetch client name correctly from Firebase
     private fun fetchClientName(clientId: String) {
         val userRef = FirebaseDatabase.getInstance().getReference("users").child(clientId)
 
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("SetAppointmentActivity", "Snapshot received: ${snapshot.value}") // Debug log
+
                 if (snapshot.exists()) {
                     val name = snapshot.child("name").getValue(String::class.java)
                     if (!name.isNullOrEmpty()) {
-                        editFullName.setText(name) // Auto-fill name field
+                        editFullName.setText(name) // Auto-fill name
                         Log.d("SetAppointmentActivity", "Client name retrieved: $name")
                     } else {
                         Log.e("SetAppointmentActivity", "Client name is empty")
+                        Toast.makeText(applicationContext, "Client name not found", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Log.e("SetAppointmentActivity", "User snapshot does not exist")
+                    Toast.makeText(applicationContext, "User data not found", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("SetAppointmentActivity", "Failed to load client name: ${error.message}")
+                Log.e("SetAppointmentActivity", "Firebase error: ${error.message}")
+                Toast.makeText(applicationContext, "Failed to load client name", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
+    // ✅ FIXED: Fetch availability correctly from Firebase
     private fun fetchAvailability(lawyerId: String) {
         databaseReference = FirebaseDatabase.getInstance()
             .getReference("lawyers")
@@ -121,7 +135,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         dateSpinner.adapter = dateAdapter
 
         dateSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 if (position > 0) {
                     selectedDate = dates[position]
                     updateTimeSpinner(dateMap[selectedDate] ?: emptyList())
@@ -142,7 +156,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         timeSpinner.adapter = timeAdapter
 
         timeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
                 selectedTime = if (position > 0) times[position] else null
             }
 

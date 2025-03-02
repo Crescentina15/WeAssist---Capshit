@@ -72,7 +72,7 @@ class ClientHomeFragment : Fragment() {
                 if (snapshot.exists()) {
                     val firstName = snapshot.child("firstName").getValue(String::class.java)
                     if (!firstName.isNullOrEmpty()) {
-                        welcomeMessageTextView.text = "Welcome, $firstName!"
+                        welcomeMessageTextView.text = "Welcome!\n$firstName"
                     } else {
                         Log.e("Firebase", "First name is null or empty")
                         welcomeMessageTextView.text = "Welcome!"
