@@ -50,24 +50,28 @@ class SecretaryMessageFragment : Fragment() {
 
     private fun loadMessages() {
         val currentUserId = currentUser.uid
-        messagesRef.orderByChild("timestamp").addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                messageList.clear()
-                for (messageSnapshot in snapshot.children) {
-                    val message = messageSnapshot.getValue(Message::class.java)
-                    if (message != null && (message.receiverId == currentUserId || message.senderId == currentUserId)) {
-                        messageList.add(message)
-                    }
+        messagesRef.orderByChild("timestamp").addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val message = snapshot.getValue(Message::class.java)
+                if (message != null && (message.receiverId == currentUserId || message.senderId == currentUserId)) {
+                    messageList.add(message)
+                    messageAdapter.notifyItemInserted(messageList.size - 1)
+                    recyclerView.scrollToPosition(messageList.size - 1)
                 }
-                messageAdapter.notifyDataSetChanged()
-                recyclerView.scrollToPosition(messageList.size - 1)
             }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {}
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("FirebaseError", "Failed to load messages", error.toException())
             }
         })
     }
+
 
     private fun sendMessage() {
         val senderId = currentUser.uid
