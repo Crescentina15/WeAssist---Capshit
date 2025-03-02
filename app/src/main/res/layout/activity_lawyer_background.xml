@@ -1,87 +1,174 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp">
+    tools:context=".Lawyer.LawyerBackgroundActivity">
 
-    <TextView
-        android:id="@+id/lawyer_name"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:text="Lawyer Name" />
-
-    <TextView
-        android:id="@+id/lawyer_bio"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Bio"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_experience"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Experience"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_law_school"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Law School"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_graduation_year"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Graduation Year"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_certifications"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Certifications"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_jurisdiction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Jurisdiction"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_employer"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Employer"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/lawyer_rate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Rate"
-        android:layout_marginTop="8dp" />
-
-    <!-- Buttons for setting appointment and messaging -->
-    <Button
-        android:id="@+id/btn_set_appointment"
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Set Appointment"
-        android:layout_marginTop="16dp" />
+        android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/btn_message"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Message"
-        android:layout_marginTop="8dp" />
+        <LinearLayout
+            android:id="@+id/profile_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="#ded2fc"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <ImageButton
+                android:id="@+id/back_arrow"
+                android:layout_width="35dp"
+                android:layout_height="25dp"
+                android:src="@drawable/arrow_back"
+                app:tint="@color/black" />
+
+            <ImageView
+                android:id="@+id/profile_image"
+                android:layout_width="120dp"
+                android:layout_height="110dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="8dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/account_circle_24" />
+
+            <TextView
+                android:id="@+id/lawyerName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text="Atty. [Lawyer Name]"
+                android:textColor="@android:color/black"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/profile_details"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="5dp"
+                android:text="Specialty: Family Lawyer\nLocation: Banlad\nRating: 4.5"
+                android:textColor="@android:color/black"
+                android:textSize="20sp" />
+
+            <!-- Buttons properly positioned -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_set_appointment"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:backgroundTint="#7959A0"
+                    android:text="Set Appointment"
+                    android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/btn_message"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:backgroundTint="#7959A0"
+                    android:text="Message"
+                    android:textColor="@android:color/white" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            app:layout_constraintTop_toBottomOf="@id/profile_section"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="15dp"
+                android:background="@android:color/white">
+
+                <TextView
+                    android:id="@+id/lawyer_bio"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Bio"
+                    android:textSize="25sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/lawyer_experience"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="bold"
+                    android:text="Experience"
+                    android:layout_marginTop="15dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_law_school"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Law School"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_graduation_year"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Graduation Year"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_certifications"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Certifications"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_jurisdiction"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Jurisdiction"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_employer"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Law Firm"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
+
+                <TextView
+                    android:id="@+id/lawyer_rate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Rate"
+                    android:textStyle="bold"
+                    android:layout_marginTop="8dp" />
 
 </LinearLayout>
+        </ScrollView>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
