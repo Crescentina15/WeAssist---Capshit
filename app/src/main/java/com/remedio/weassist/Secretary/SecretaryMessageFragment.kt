@@ -1,115 +1,95 @@
 package com.remedio.weassist.Secretary
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
-import com.remedio.weassist.Clients.MessagesAdapter
+import com.remedio.weassist.Clients.MessageAdapter
 import com.remedio.weassist.R
 
 class SecretaryMessageFragment : Fragment() {
-
     private lateinit var recyclerView: RecyclerView
-    private lateinit var messageInput: EditText
-    private lateinit var sendButton: ImageButton
-    private lateinit var databaseReference: DatabaseReference
-    private lateinit var messagesAdapter: MessagesAdapter
-    private val messagesList = mutableListOf<Message>()
-    private var secretaryId: String? = null
-    private var clientId: String? = null
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            clientId = it.getString("CLIENT_ID")
-        }
-    }
+    private lateinit var messageAdapter: MessageAdapter
+    private val messageList = mutableListOf<Message>()
+    private lateinit var messagesRef: DatabaseReference
+    private lateinit var currentUser: FirebaseUser
+    private lateinit var editTextMessage: EditText
+    private lateinit var buttonSend: ImageButton
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View {
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
 
         recyclerView = view.findViewById(R.id.inbox_recycler_view)
-        messageInput = view.findViewById(R.id.editTextMessage)
-        sendButton = view.findViewById(R.id.buttonSend)
+        editTextMessage = view.findViewById(R.id.editTextMessage)
+        buttonSend = view.findViewById(R.id.buttonSend)
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
-        messagesAdapter = MessagesAdapter(messagesList)
-        recyclerView.adapter = messagesAdapter
+        currentUser = FirebaseAuth.getInstance().currentUser!!
+        messagesRef = FirebaseDatabase.getInstance().getReference("messages")
 
-        secretaryId = FirebaseAuth.getInstance().currentUser?.uid
+        messageAdapter = MessageAdapter(messageList, currentUser.uid)
+        recyclerView.adapter = messageAdapter
 
-        if (secretaryId.isNullOrEmpty() || clientId.isNullOrEmpty()) {
-            Toast.makeText(requireContext(), "User authentication failed", Toast.LENGTH_SHORT).show()
-            return view
-        }
-
-        // Ensure messages are stored under both nodes
-        databaseReference = FirebaseDatabase.getInstance().getReference("messages")
         loadMessages()
-
-        sendButton.setOnClickListener {
-            sendMessage()
-        }
+        buttonSend.setOnClickListener { sendMessage() }
 
         return view
     }
 
     private fun loadMessages() {
-        val messageRef = databaseReference.child(secretaryId!!).child(clientId!!)
-        messageRef.addChildEventListener(object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val message = snapshot.getValue(Message::class.java)
-                message?.let {
-                    messagesList.add(it)
-                    messagesAdapter.notifyItemInserted(messagesList.size - 1)
-                    recyclerView.scrollToPosition(messagesList.size - 1)
+        val currentUserId = currentUser.uid
+        messagesRef.orderByChild("timestamp").addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                messageList.clear()
+                for (messageSnapshot in snapshot.children) {
+                    val message = messageSnapshot.getValue(Message::class.java)
+                    if (message != null && (message.receiverId == currentUserId || message.senderId == currentUserId)) {
+                        messageList.add(message)
+                    }
                 }
+                messageAdapter.notifyDataSetChanged()
+                recyclerView.scrollToPosition(messageList.size - 1)
             }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(requireContext(), "Failed to load messages", Toast.LENGTH_SHORT).show()
+                Log.e("FirebaseError", "Failed to load messages", error.toException())
             }
         })
     }
 
     private fun sendMessage() {
-        val messageText = messageInput.text.toString().trim()
-        if (messageText.isEmpty()) {
-            Toast.makeText(requireContext(), "Message cannot be empty", Toast.LENGTH_SHORT).show()
-            return
-        }
+        val senderId = currentUser.uid
+        val messageText = editTextMessage.text.toString().trim()
 
-        val message = Message(secretaryId!!, clientId!!, messageText, System.currentTimeMillis())
+        if (messageText.isNotEmpty()) {
+            val receiverId = "6rTJ9u2n3SdjhjSJiq3EAxGl5653" // Replace with actual receiver logic
+            val timestamp = System.currentTimeMillis()
 
-        val clientMessageRef = databaseReference.child(clientId!!).child(secretaryId!!).push()
-        val secretaryMessageRef = databaseReference.child(secretaryId!!).child(clientId!!).push()
+            val message = Message(
+                senderId = senderId,
+                receiverId = receiverId,
+                message = messageText,  // ✅ Use "message" to match the model
+                timestamp = timestamp
+            )
 
-        val messageData = mapOf(
-            clientMessageRef.key!! to message,
-            secretaryMessageRef.key!! to message
-        )
-
-        databaseReference.updateChildren(messageData).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                messageInput.text.clear()
-            } else {
-                Toast.makeText(requireContext(), "Failed to send message", Toast.LENGTH_SHORT).show()
+            messagesRef.push().setValue(message).addOnSuccessListener {
+                editTextMessage.text.clear()
+            }.addOnFailureListener {
+                Log.e("FirebaseError", "Failed to send message", it)
             }
         }
     }
+
 }

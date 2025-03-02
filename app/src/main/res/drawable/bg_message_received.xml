@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-
-    <color>
-        <solid android:color="#3498DB" />
-    </color>
-</selector>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#E0E0E0" /> <!-- Light Gray color for received messages -->
+    <corners android:radius="16dp" />
+    <padding android:left="12dp" android:right="12dp" android:top="8dp" android:bottom="8dp"/>
+</shape>
