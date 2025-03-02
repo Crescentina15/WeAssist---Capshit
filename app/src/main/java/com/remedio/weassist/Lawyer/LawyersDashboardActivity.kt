@@ -1,19 +1,20 @@
 package com.remedio.weassist.Lawyer
 
 import android.os.Bundle
+import android.view.View
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.remedio.weassist.Clients.ClientHomeFragment
 import com.remedio.weassist.R
 
 class LawyersDashboardActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private lateinit var lawyerNameTextView: TextView
+    private lateinit var profileSection: View // Reference to the profile header section
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,6 +22,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
         lawyerNameTextView = findViewById(R.id.lawyer_name) // Reference to TextView
+        profileSection = findViewById(R.id.profile_section) // Reference to profile header
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("lawyers")
@@ -34,8 +36,14 @@ class LawyersDashboardActivity : AppCompatActivity() {
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
-                R.id.nav_appointments -> LawyerAppointmentsFragment()
-                R.id.nav_profile -> LawyerProfileFragment()
+                R.id.nav_appointments -> {
+                    profileSection.visibility = View.VISIBLE // Show header for Appointments
+                    LawyerAppointmentsFragment()
+                }
+                R.id.nav_profile -> {
+                    profileSection.visibility = View.GONE // Hide header for Profile
+                    LawyerProfileFragment()
+                }
                 else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)
@@ -62,7 +70,6 @@ class LawyersDashboardActivity : AppCompatActivity() {
             }
         }
     }
-
 
     private fun loadFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
