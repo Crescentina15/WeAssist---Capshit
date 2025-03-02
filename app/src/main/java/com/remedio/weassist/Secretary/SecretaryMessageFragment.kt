@@ -7,7 +7,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageButton
-import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,7 +20,7 @@ import com.remedio.weassist.R
 class SecretaryMessageFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var messageAdapter: MessageAdapter
-    private var messageList = mutableListOf<Message>()
+    private val messageList = mutableListOf<Message>()
     private lateinit var messagesRef: DatabaseReference
     private lateinit var currentUser: FirebaseUser
     private lateinit var editTextMessage: EditText
@@ -29,7 +28,7 @@ class SecretaryMessageFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
 
         recyclerView = view.findViewById(R.id.inbox_recycler_view)
@@ -78,7 +77,13 @@ class SecretaryMessageFragment : Fragment() {
             val receiverId = "6rTJ9u2n3SdjhjSJiq3EAxGl5653" // Replace with actual receiver logic
             val timestamp = System.currentTimeMillis()
 
-            val message = Message(messageText, senderId, receiverId, timestamp)
+            val message = Message(
+                senderId = senderId,
+                receiverId = receiverId,
+                message = messageText,  // ✅ Use "message" to match the model
+                timestamp = timestamp
+            )
+
             messagesRef.push().setValue(message).addOnSuccessListener {
                 editTextMessage.text.clear()
             }.addOnFailureListener {
@@ -86,6 +91,5 @@ class SecretaryMessageFragment : Fragment() {
             }
         }
     }
+
 }
-
-

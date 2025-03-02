@@ -32,8 +32,9 @@ class MessageAdapter(private val messageList: List<Message>, private val current
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val message = messageList[position]
-        holder.messageTextView.text = message.message
+        holder.messageTextView.text = message.message // ✅ Use "message" instead of "text"
     }
+
 
     override fun getItemCount(): Int = messageList.size
 
