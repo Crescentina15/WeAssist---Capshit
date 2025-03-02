@@ -1,6 +1,7 @@
 package com.remedio.weassist.Secretary
 
 import android.os.Bundle
+import android.util.Log
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -20,32 +21,63 @@ class SetAppointmentActivity : AppCompatActivity() {
     private var lawyerId: String? = null
     private var selectedDate: String? = null
     private var selectedTime: String? = null
+    private var clientId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_set_appointment)
 
+        // Initialize views
         lawyerId = intent.getStringExtra("LAWYER_ID")
-
         dateSpinner = findViewById(R.id.date_spinner)
         timeSpinner = findViewById(R.id.time_spinner)
         editFullName = findViewById(R.id.edit_full_name)
         editProblem = findViewById(R.id.edit_problem)
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
-        backArrow = findViewById(R.id.back_arrow)  // Back arrow button
+        backArrow = findViewById(R.id.back_arrow)
 
-        // Back arrow functionality
-        backArrow.setOnClickListener {
-            finish() // Go back to the previous activity
+        // Back button
+        backArrow.setOnClickListener { finish() }
+
+        // Get current user
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        clientId = currentUser?.uid
+
+        if (clientId != null) {
+            fetchClientName(clientId!!)
+        } else {
+            Log.e("SetAppointmentActivity", "User not logged in")
         }
 
         if (lawyerId != null) {
             fetchAvailability(lawyerId!!)
         }
 
-        btnSetAppointment.setOnClickListener {
-            saveAppointment()
-        }
+        btnSetAppointment.setOnClickListener { saveAppointment() }
+    }
+
+    private fun fetchClientName(clientId: String) {
+        val userRef = FirebaseDatabase.getInstance().getReference("users").child(clientId)
+
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val name = snapshot.child("name").getValue(String::class.java)
+                    if (!name.isNullOrEmpty()) {
+                        editFullName.setText(name) // Auto-fill name field
+                        Log.d("SetAppointmentActivity", "Client name retrieved: $name")
+                    } else {
+                        Log.e("SetAppointmentActivity", "Client name is empty")
+                    }
+                } else {
+                    Log.e("SetAppointmentActivity", "User snapshot does not exist")
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SetAppointmentActivity", "Failed to load client name: ${error.message}")
+            }
+        })
     }
 
     private fun fetchAvailability(lawyerId: String) {
@@ -70,7 +102,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                             dateMap[date]?.add(timeSlot)
                         }
                     }
-
                     setupDateSpinner(dateMap)
                 } else {
                     Toast.makeText(applicationContext, "No availability found", Toast.LENGTH_SHORT).show()
@@ -84,36 +115,38 @@ class SetAppointmentActivity : AppCompatActivity() {
     }
 
     private fun setupDateSpinner(dateMap: Map<String, List<String>>) {
-        val dates = dateMap.keys.toList()
+        val dates = mutableListOf("Select Date") + dateMap.keys
         val dateAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, dates)
         dateAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         dateSpinner.adapter = dateAdapter
 
         dateSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
-                selectedDate = dates[position]
-                updateTimeSpinner(dateMap[selectedDate] ?: emptyList())
+                if (position > 0) {
+                    selectedDate = dates[position]
+                    updateTimeSpinner(dateMap[selectedDate] ?: emptyList())
+                } else {
+                    selectedDate = null
+                    updateTimeSpinner(emptyList())
+                }
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Do nothing
-            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
 
     private fun updateTimeSpinner(timeSlots: List<String>) {
-        val timeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, timeSlots)
+        val times = mutableListOf("Select Time") + timeSlots
+        val timeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, times)
         timeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         timeSpinner.adapter = timeAdapter
 
         timeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: android.view.View?, position: Int, id: Long) {
-                selectedTime = timeSlots[position]
+                selectedTime = if (position > 0) times[position] else null
             }
 
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Do nothing
-            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
 
@@ -130,9 +163,6 @@ class SetAppointmentActivity : AppCompatActivity() {
             Toast.makeText(this, "Please enter full name and problem", Toast.LENGTH_SHORT).show()
             return
         }
-
-        val currentUser = FirebaseAuth.getInstance().currentUser
-        val clientId = currentUser?.uid
 
         if (clientId == null) {
             Toast.makeText(this, "User not logged in", Toast.LENGTH_SHORT).show()
