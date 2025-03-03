@@ -216,11 +216,31 @@ class SetAppointmentActivity : AppCompatActivity() {
             notificationRef.child(notificationId).setValue(notificationData)
                 .addOnSuccessListener {
                     Log.d("SetAppointmentActivity", "Notification sent to client: $clientId")
+
+                    // Remove older notifications, keeping only the most recent 5
+                    notificationRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            val notifications = snapshot.children.sortedByDescending {
+                                it.child("timestamp").getValue(String::class.java)?.toLongOrNull() ?: 0L
+                            }
+
+                            if (notifications.size > 5) {
+                                for (i in 5 until notifications.size) {
+                                    notifications[i].ref.removeValue()
+                                }
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("SetAppointmentActivity", "Failed to clean up old notifications: ${error.message}")
+                        }
+                    })
                 }
                 .addOnFailureListener {
                     Log.e("SetAppointmentActivity", "Failed to send notification")
                 }
         }
     }
+
 
 }

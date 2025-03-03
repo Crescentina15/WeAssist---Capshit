@@ -50,26 +50,33 @@ class ClientNotificationActivity : AppCompatActivity() {
         databaseReference.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val notifications = mutableListOf<Pair<String, Long>>() // List of message and timestamp pairs
+                    val notifications = mutableListOf<Triple<String, Long, String>>() // message, timestamp, key
 
                     for (notif in snapshot.children) {
                         val message = notif.child("message").getValue(String::class.java)
                         val timestampValue = notif.child("timestamp").value
+                        val notifKey = notif.key // Store the Firebase key
 
                         val timestamp = when (timestampValue) {
-                            is Long -> timestampValue // If already a Long, use it
-                            is String -> timestampValue.toLongOrNull() // Convert String to Long safely
+                            is Long -> timestampValue
+                            is String -> timestampValue.toLongOrNull()
                             else -> null
                         }
 
-                        if (!message.isNullOrEmpty() && timestamp != null) {
-                            notifications.add(Pair(message, timestamp))
+                        if (!message.isNullOrEmpty() && timestamp != null && notifKey != null) {
+                            notifications.add(Triple(message, timestamp, notifKey))
                         }
                     }
 
                     if (notifications.isNotEmpty()) {
                         // Sort notifications by timestamp (latest first)
                         notifications.sortByDescending { it.second }
+
+                        // Keep only the latest two notifications
+                        while (notifications.size > 2) {
+                            val oldestNotif = notifications.removeLast() // Remove the oldest
+                            databaseReference.child(oldestNotif.third).removeValue() // Delete from Firebase
+                        }
 
                         // Display the most recent notification
                         val latestNotif = notifications.first()
@@ -107,6 +114,7 @@ class ClientNotificationActivity : AppCompatActivity() {
             }
         })
     }
+
 
     private fun formatTimestamp(timestamp: Long): String {
         val sdf = SimpleDateFormat("MMM dd, yyyy hh:mm a", Locale.getDefault())
