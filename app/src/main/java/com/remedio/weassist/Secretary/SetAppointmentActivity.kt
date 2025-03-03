@@ -37,7 +37,6 @@ class SetAppointmentActivity : AppCompatActivity() {
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
         backArrow = findViewById(R.id.back_arrow)
 
-        // Get current user ID
         clientId = FirebaseAuth.getInstance().currentUser?.uid
 
         backArrow.setOnClickListener {
@@ -63,37 +62,27 @@ class SetAppointmentActivity : AppCompatActivity() {
         }
     }
 
-    // ✅ FIXED: Fetch client name correctly from Firebase
     private fun fetchClientName(clientId: String) {
         val userRef = FirebaseDatabase.getInstance().getReference("users").child(clientId)
 
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("SetAppointmentActivity", "Snapshot received: ${snapshot.value}") // Debug log
-
                 if (snapshot.exists()) {
                     val name = snapshot.child("name").getValue(String::class.java)
                     if (!name.isNullOrEmpty()) {
-                        editFullName.setText(name) // Auto-fill name
-                        Log.d("SetAppointmentActivity", "Client name retrieved: $name")
+                        editFullName.setText(name)
                     } else {
-                        Log.e("SetAppointmentActivity", "Client name is empty")
                         Toast.makeText(applicationContext, "Client name not found", Toast.LENGTH_SHORT).show()
                     }
-                } else {
-                    Log.e("SetAppointmentActivity", "User snapshot does not exist")
-                    Toast.makeText(applicationContext, "User data not found", Toast.LENGTH_SHORT).show()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("SetAppointmentActivity", "Firebase error: ${error.message}")
                 Toast.makeText(applicationContext, "Failed to load client name", Toast.LENGTH_SHORT).show()
             }
         })
     }
 
-    // ✅ FIXED: Fetch availability correctly from Firebase
     private fun fetchAvailability(lawyerId: String) {
         databaseReference = FirebaseDatabase.getInstance()
             .getReference("lawyers")
@@ -194,11 +183,15 @@ class SetAppointmentActivity : AppCompatActivity() {
                 "date" to selectedDate,
                 "time" to selectedTime,
                 "fullName" to fullName,
-                "problem" to problem
+                "problem" to problem,
+                "status" to "Pending"
             )
 
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
+                    val notificationMessage = "Your appointment on $selectedDate at $selectedTime has been successfully booked."
+                    sendNotificationToClient(clientId!!, notificationMessage) // ✅ Send notification to the client
+
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
                     finish()
                 }
@@ -207,4 +200,27 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
+
+
+    private fun sendNotificationToClient(clientId: String, message: String) {
+        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(clientId)
+        val notificationId = notificationRef.push().key
+
+        if (notificationId != null) {
+            val notificationData = mapOf(
+                "notificationId" to notificationId,
+                "message" to message,
+                "timestamp" to System.currentTimeMillis().toString()
+            )
+
+            notificationRef.child(notificationId).setValue(notificationData)
+                .addOnSuccessListener {
+                    Log.d("SetAppointmentActivity", "Notification sent to client: $clientId")
+                }
+                .addOnFailureListener {
+                    Log.e("SetAppointmentActivity", "Failed to send notification")
+                }
+        }
+    }
+
 }
