@@ -2,7 +2,6 @@ package com.remedio.weassist.Lawyer
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
@@ -15,6 +14,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLawyerBackgroundBinding
     private lateinit var databaseReference: DatabaseReference
     private var lawyerId: String? = null
+    private var secretaryId: String? = null // Store secretary ID
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,9 +22,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         binding = ActivityLawyerBackgroundBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Back Arrow Functionality
         binding.backArrow.setOnClickListener {
-            finish() // Go back to the previous activity
+            finish()
         }
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
@@ -35,24 +34,6 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         }
 
         retrieveLawyerData(lawyerId!!)
-
-        binding.btnSetAppointment.setOnClickListener {
-            val intent = Intent(this, SetAppointmentActivity::class.java)
-            intent.putExtra("LAWYER_ID", lawyerId)
-            startActivity(intent)
-        }
-
-        binding.btnMessage.setOnClickListener {
-            val fragment = ClientMessageFragment().apply {
-                arguments = Bundle().apply {
-                    putString("LAWYER_ID", lawyerId)
-                }
-            }
-            supportFragmentManager.beginTransaction()
-                .replace(android.R.id.content, fragment)
-                .addToBackStack(null)
-                .commit()
-        }
     }
 
     private fun retrieveLawyerData(lawyerId: String) {
@@ -61,10 +42,9 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val lawyer = snapshot.getValue(Lawyer::class.java)
+                    val lawyer = snapshot.getValue(Lawyer::class.java) // Ensure it matches the updated class
                     lawyer?.let {
                         binding.lawyerName.text = it.name
-
                         binding.lawyerBio.text = formatText("Bio", it.bio)
                         binding.lawyerExperience.text = formatText("Experience", it.experience)
                         binding.lawyerLawSchool.text = formatText("Law School", it.lawSchool)
@@ -73,6 +53,14 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         binding.lawyerJurisdiction.text = formatText("Jurisdiction", it.jurisdiction)
                         binding.lawyerEmployer.text = formatText("Employer", it.employer)
                         binding.lawyerRate.text = formatText("Rate", it.rate)
+
+                        if (!it.secretaryId.isNullOrEmpty()) {
+                            secretaryId = it.secretaryId
+                        } else {
+                            assignSecretaryToLawyer(lawyerId!!, it.lawFirm)
+                        }
+
+                        setupButtonListeners()
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
@@ -83,6 +71,65 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext, "Failed to load lawyer data", Toast.LENGTH_SHORT).show()
             }
         })
+
+
+    }
+
+    private fun assignSecretaryToLawyer(lawyerId: String, lawFirm: String) {
+        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries")
+
+        secretaryRef.orderByChild("lawFirm").equalTo(lawFirm)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (secSnapshot in snapshot.children) {
+                            secretaryId = secSnapshot.key // Get the secretary's ID
+
+                            val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+                            lawyerRef.child("secretaryId").setValue(secretaryId)
+                                .addOnSuccessListener {
+                                    Toast.makeText(applicationContext, "Secretary assigned!", Toast.LENGTH_SHORT).show()
+                                    setupButtonListeners() // Update UI
+                                }
+                                .addOnFailureListener {
+                                    Toast.makeText(applicationContext, "Failed to assign secretary", Toast.LENGTH_SHORT).show()
+                                }
+                            break
+                        }
+                    } else {
+                        Toast.makeText(applicationContext, "No secretary found for this law firm", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(applicationContext, "Error fetching secretaries", Toast.LENGTH_SHORT).show()
+                }
+            })
+    }
+
+    private fun setupButtonListeners() {
+        binding.btnSetAppointment.setOnClickListener {
+            val intent = Intent(this, SetAppointmentActivity::class.java)
+            intent.putExtra("LAWYER_ID", lawyerId)
+            startActivity(intent)
+        }
+
+        binding.btnMessage.setOnClickListener {
+            if (secretaryId.isNullOrEmpty()) {
+                Toast.makeText(this, "No secretary available for this lawyer", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val fragment = ClientMessageFragment().apply {
+                arguments = Bundle().apply {
+                    putString("SECRETARY_ID", secretaryId) // Send the secretary ID
+                }
+            }
+            supportFragmentManager.beginTransaction()
+                .replace(android.R.id.content, fragment)
+                .addToBackStack(null)
+                .commit()
+        }
     }
 
     private fun formatText(label: String, value: String?): CharSequence {
