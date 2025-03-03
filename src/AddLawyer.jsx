@@ -34,14 +34,28 @@ const AddLawyer = () => {
 
   const addLawyer = async () => {
     if (!lawFirmAdmin) {
-      alert("Law firm admin data not loaded. Please try again.");
+      alert("Law firm admin data not loaded.");
       return;
     }
-
+  
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, lawyer.email, lawyer.password);
       const lawyerUID = userCredential.user.uid;
-
+  
+      // Fetch the secretary for the same law firm
+      const secretariesRef = ref(db, "secretaries");
+      const secretariesSnap = await get(secretariesRef);
+  
+      let secretaryID = null;
+      if (secretariesSnap.exists()) {
+        Object.entries(secretariesSnap.val()).forEach(([secID, secData]) => {
+          if (secData.lawFirm === lawFirmAdmin.lawFirm) {
+            secretaryID = secID; // Assign secretary ID if it belongs to the same firm
+          }
+        });
+      }
+  
+      // Store lawyer details in database
       await set(ref(db, `lawyers/${lawyerUID}`), {
         name: lawyer.name,
         email: lawyer.email,
@@ -51,13 +65,14 @@ const AddLawyer = () => {
         experience: lawyer.experience,
         role: "lawyer",
         profileImage: image ? URL.createObjectURL(image) : "",
-        lawFirm: lawFirmAdmin.lawFirm,
-        adminUID: lawFirmAdmin.uid,
+        lawFirm: lawFirmAdmin.lawFirm, // Link to law firm
+        adminUID: lawFirmAdmin.uid, // Link to firm admin
+        secretaryID: secretaryID || "", // Auto-assign secretary ID
       });
-
+  
       await sendEmailVerification(userCredential.user);
       alert("Lawyer account created successfully! Verification email sent.");
-
+  
       setLawyer({ name: "", email: "", phone: "", specialization: "", licenseNumber: "", experience: "", password: "" });
       setImage(null);
       setTimeout(() => navigate("/"), 1000);
@@ -65,6 +80,7 @@ const AddLawyer = () => {
       alert("Error: " + error.message);
     }
   };
+  
 
   return (
     <div className="profile-card">
