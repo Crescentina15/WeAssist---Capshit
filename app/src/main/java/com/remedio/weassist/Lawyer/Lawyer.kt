@@ -19,10 +19,7 @@ data class Lawyer(
     val rate: String? = null,
     val profileImage: String? = null,
     val contact: Contact? = null,
-    val secretaryId: String? = null
 ) : Parcelable {
-
-
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",
         parcel.readString() ?: "",
