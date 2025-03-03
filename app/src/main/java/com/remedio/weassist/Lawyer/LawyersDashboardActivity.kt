@@ -1,13 +1,17 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.Clients.ClientNotificationActivity
 import com.remedio.weassist.R
 
 class LawyersDashboardActivity : AppCompatActivity() {
@@ -20,12 +24,19 @@ class LawyersDashboardActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lawyers_dashboard)
 
+
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
         lawyerNameTextView = findViewById(R.id.lawyer_name) // Reference to TextView
         profileSection = findViewById(R.id.profile_section) // Reference to profile header
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("lawyers")
+
+        val imageButton: ImageButton = findViewById(R.id.notification_icon)
+        imageButton.setOnClickListener {
+            val intent = Intent(this, LawyerNotification::class.java)
+            startActivity(intent)
+        }
 
         // Load lawyer's name
         loadLawyerData()
