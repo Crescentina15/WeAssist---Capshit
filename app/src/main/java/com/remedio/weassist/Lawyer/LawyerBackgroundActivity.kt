@@ -6,6 +6,7 @@ import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
+import com.remedio.weassist.ChatActivity
 import com.remedio.weassist.Clients.ClientMessageFragment
 import com.remedio.weassist.Secretary.SetAppointmentActivity
 import com.remedio.weassist.databinding.ActivityLawyerBackgroundBinding
@@ -43,16 +44,13 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         }
 
         binding.btnMessage.setOnClickListener {
-            val fragment = ClientMessageFragment().apply {
-                arguments = Bundle().apply {
-                    putString("LAWYER_ID", lawyerId)
-                }
+            val intent = Intent(this, ChatActivity::class.java).apply {
+                putExtra("LAWYER_ID", lawyerId) // Pass lawyer's ID to ChatActivity
             }
-            supportFragmentManager.beginTransaction()
-                .replace(android.R.id.content, fragment)
-                .addToBackStack(null)
-                .commit()
+            startActivity(intent)
         }
+
+
     }
 
     private fun retrieveLawyerData(lawyerId: String) {

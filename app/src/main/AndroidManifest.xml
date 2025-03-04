@@ -82,6 +82,9 @@
             android:name=".ChatMessagesActivity"
             android:exported="true" />
         <activity
+            android:name=".ChatActivity"
+            android:exported="true" />
+        <activity
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
         <activity
