@@ -57,6 +57,11 @@ const ManageSecretary = () => {
       return;
     }
 
+    if (!secretary.email || !secretary.password) {
+      alert("Please enter both email and password for the new secretary.");
+      return;
+    }
+
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, secretary.email, secretary.password);
       const secretaryUID = userCredential.user.uid;
@@ -72,8 +77,9 @@ const ManageSecretary = () => {
 
       await sendEmailVerification(userCredential.user);
       alert("Secretary account created successfully! Verification email sent.");
+
       setExistingSecretary({ uid: secretaryUID, ...secretary });
-      setSecretary({ ...secretary, password: "" });
+      setSecretary({ name: "", email: "", phone: "", password: "" });
     } catch (error) {
       alert("Error: " + error.message);
     }
@@ -103,7 +109,7 @@ const ManageSecretary = () => {
       <h2>Manage Secretary</h2>
 
       <input type="text" placeholder="Name" value={secretary.name} onChange={(e) => setSecretary({ ...secretary, name: e.target.value })} autoComplete="off" />
-      <input type="email" placeholder="Email" value={secretary.email} disabled autoComplete="off" />
+      <input type="email" placeholder="Email" value={secretary.email} onChange={(e) => setSecretary({ ...secretary, email: e.target.value })} autoComplete="off" disabled={!!existingSecretary}/>
       <input type="password" placeholder="Password" value={secretary.password} onChange={(e) => setSecretary({ ...secretary, password: e.target.value })} autoComplete="new-password" disabled={!!existingSecretary} />
       <input type="text" placeholder="Phone" value={secretary.phone} onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })} autoComplete="off" />
 
