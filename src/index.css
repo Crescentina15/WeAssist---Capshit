@@ -555,8 +555,20 @@ button:hover {
   width: 90%;
   text-align: center;
 }
-
-
+.profile-card {
+  max-width: 400px;
+  margin: auto;
+  text-align: left;
+  padding: 15px;
+}
+.profile-display {
+  color: black;
+  font-size: 16px;
+  text-align: left;
+  margin: 5px 0;
+  padding: 15px;
+  border-radius: 10px;
+}
 .form-container input,
 .profile-card input {
   margin-bottom: 15px;

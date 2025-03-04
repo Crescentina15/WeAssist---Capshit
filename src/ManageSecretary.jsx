@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "./script/firebase";
 import { useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, updatePassword } from "firebase/auth";
 import { ref, set, get, update, remove } from "firebase/database";
 import "./index.css";
 
@@ -10,7 +10,7 @@ const ManageSecretary = () => {
   const [secretary, setSecretary] = useState({ name: "", email: "", phone: "", password: "" });
   const [lawFirmAdmin, setLawFirmAdmin] = useState(null);
   const [existingSecretary, setExistingSecretary] = useState(null);
-  const [isEditing, setIsEditing] = useState(false); // New state to track editing mode
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -98,6 +98,13 @@ const ManageSecretary = () => {
         email: secretary.email
       });
 
+      if (secretary.password) {
+        const user = auth.currentUser;
+        if (user) {
+          await updatePassword(user, secretary.password);
+        }
+      }
+
       alert("Secretary details updated successfully.");
       setIsEditing(false);
     }
@@ -116,50 +123,50 @@ const ManageSecretary = () => {
     <div className="profile-card">
       <h2>Manage Secretary</h2>
 
-      <input
-        type="text"
-        placeholder="Name"
-        value={secretary.name}
-        onChange={(e) => setSecretary({ ...secretary, name: e.target.value })}
-        autoComplete="off"
-        disabled={!isEditing}
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={secretary.email}
-        onChange={(e) => setSecretary({ ...secretary, email: e.target.value })}
-        autoComplete="off"
-        disabled={!isEditing}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={secretary.password}
-        onChange={(e) => setSecretary({ ...secretary, password: e.target.value })}
-        autoComplete="new-password"
-        disabled={!isEditing}
-      />
-      <input
-        type="text"
-        placeholder="Phone"
-        value={secretary.phone}
-        onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })}
-        autoComplete="off"
-        disabled={!isEditing}
-      />
-
-      {existingSecretary ? (
-        <>
-          {isEditing ? (
+      {existingSecretary && !isEditing ? (
+        <div className="profile-display">
+          <p><strong>Name:</strong> {secretary.name}</p>
+          <p><strong>Email:</strong> {secretary.email}</p>
+          <p><strong>Phone:</strong> {secretary.phone}</p>
+          <button onClick={enableEditing} className="cancel-button">Update Secretary</button>
+          <button onClick={deleteSecretary} className="cancel-button">Delete Secretary</button>
+        </div>
+      ) : (
+        <div>
+          <input
+            type="text"
+            placeholder="Name"
+            value={secretary.name}
+            onChange={(e) => setSecretary({ ...secretary, name: e.target.value })}
+            autoComplete="off"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={secretary.email}
+            onChange={(e) => setSecretary({ ...secretary, email: e.target.value })}
+            autoComplete="off"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={secretary.password}
+            onChange={(e) => setSecretary({ ...secretary, password: e.target.value })}
+            autoComplete="new-password"
+          />
+          <input
+            type="text"
+            placeholder="Phone"
+            value={secretary.phone}
+            onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })}
+            autoComplete="off"
+          />
+          {existingSecretary ? (
             <button onClick={saveSecretaryChanges} className="cancel-button">Save Changes</button>
           ) : (
-            <button onClick={enableEditing} className="cancel-button">Update Secretary</button>
+            <button onClick={addSecretary} className="cancel-button">Add Secretary</button>
           )}
-          <button onClick={deleteSecretary} className="cancel-button">Delete Secretary</button>
-        </>
-      ) : (
-        <button onClick={addSecretary} className="cancel-button">Add Secretary</button>
+        </div>
       )}
 
       <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
