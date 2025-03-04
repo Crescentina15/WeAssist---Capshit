@@ -45,65 +45,75 @@ class ClientMessageFragment : Fragment() {
 
     private fun loadClientInbox() {
         val currentUserId = currentUser.uid
-        val uniqueChats = mutableMapOf<String, InboxItem>()
 
-        messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                inboxList.clear()
+        // Fetch all secretaries first
+        secretariesRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(secSnapshot: DataSnapshot) {
+                val secretariesMap = mutableMapOf<String, String>() // Stores secretaryId -> name
 
-                val secretaryIds = mutableSetOf<String>()
-
-                // Collect all secretary IDs
-                for (messageSnapshot in snapshot.children) {
-                    val message = messageSnapshot.getValue(Message::class.java)
-                    if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
-                        val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
-                        secretaryIds.add(chatPartnerId)
-                    }
+                for (secretary in secSnapshot.children) {
+                    val secretaryId = secretary.key ?: continue
+                    val name = secretary.child("name").getValue(String::class.java) ?: "Unknown"
+                    secretariesMap[secretaryId] = name
                 }
 
-                // Fetch all secretaries in one call
-                secretariesRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(secSnapshot: DataSnapshot) {
-                        for (messageSnapshot in snapshot.children) {
-                            val message = messageSnapshot.getValue(Message::class.java)
-                            if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
-                                val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
-
-                                if (secSnapshot.child(chatPartnerId).exists()) {
-                                    val secretaryName = secSnapshot.child(chatPartnerId).child("name").value.toString()
-                                    val unreadCount = messageSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
-
-                                    val messageTimestamp = message.timestamp.toString().toLongOrNull() ?: 0L
-
-                                    if (!uniqueChats.containsKey(chatPartnerId) || messageTimestamp > (uniqueChats[chatPartnerId]?.timestamp?.toLongOrNull() ?: 0L)) {
-                                        uniqueChats[chatPartnerId] = InboxItem(
-                                            chatPartnerId, secretaryName, message.message,
-                                            messageTimestamp.toString(), unreadCount
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Update inbox list and UI after processing all messages
-                        inboxList.clear()
-                        inboxList.addAll(uniqueChats.values.sortedByDescending { it.timestamp })
-                        inboxAdapter.notifyDataSetChanged()
+                // Now fetch messages in real-time
+                messagesRef.addChildEventListener(object : ChildEventListener {
+                    override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                        processMessage(snapshot, currentUserId, secretariesMap)
                     }
 
+                    override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                        processMessage(snapshot, currentUserId, secretariesMap)
+                    }
+
+                    override fun onChildRemoved(snapshot: DataSnapshot) {
+                        removeMessage(snapshot, currentUserId)
+                    }
+
+                    override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
                     override fun onCancelled(error: DatabaseError) {
-                        Log.e("FirebaseError", "Failed to load secretaries", error.toException())
+                        Log.e("FirebaseError", "Failed to load messages", error.toException())
                     }
                 })
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Failed to load messages", error.toException())
+                Log.e("FirebaseError", "Failed to load secretaries", error.toException())
             }
         })
     }
 
+    private fun processMessage(snapshot: DataSnapshot, currentUserId: String, secretariesMap: Map<String, String>) {
+        val message = snapshot.getValue(Message::class.java) ?: return
+        if (message.senderId != currentUserId && message.receiverId != currentUserId) return
 
+        val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
+        val secretaryName = secretariesMap[chatPartnerId] ?: return // Ignore if not a secretary
+
+        val messageTimestamp = message.timestamp.toString().toLongOrNull() ?: 0L
+        val unreadCount = snapshot.child("unreadCount").getValue(Int::class.java) ?: 0
+
+        // Find existing chat or add new one
+        val existingIndex = inboxList.indexOfFirst { it.chatPartnerId == chatPartnerId }
+        if (existingIndex != -1) {
+            inboxList[existingIndex] = InboxItem(chatPartnerId, secretaryName, message.message, messageTimestamp.toString(), unreadCount)
+        } else {
+            inboxList.add(InboxItem(chatPartnerId, secretaryName, message.message, messageTimestamp.toString(), unreadCount))
+        }
+
+        // Sort and update UI
+        inboxList.sortByDescending { it.timestamp.toLongOrNull() ?: 0L }
+        inboxAdapter.notifyDataSetChanged()
+    }
+
+    private fun removeMessage(snapshot: DataSnapshot, currentUserId: String) {
+        val message = snapshot.getValue(Message::class.java) ?: return
+        if (message.senderId != currentUserId && message.receiverId != currentUserId) return
+
+        val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
+        inboxList.removeAll { it.chatPartnerId == chatPartnerId }
+
+        inboxAdapter.notifyDataSetChanged()
+    }
 }
-

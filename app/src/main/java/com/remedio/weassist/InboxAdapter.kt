@@ -10,7 +10,7 @@ import com.remedio.weassist.R
 class InboxAdapter(private val inboxList: List<InboxItem>) : RecyclerView.Adapter<InboxAdapter.InboxViewHolder>() {
 
     class InboxViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val profileImage: ImageView = view.findViewById(R.id.profileImage)
+        //val profileImage: ImageView = view.findViewById(R.id.profileImage)
         val nameTextView: TextView = view.findViewById(R.id.nameTextView)
         val messageTextView: TextView = view.findViewById(R.id.messageTextView)
         val timestampTextView: TextView = view.findViewById(R.id.timestampTextView)
