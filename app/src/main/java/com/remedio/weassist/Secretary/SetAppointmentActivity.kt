@@ -200,6 +200,26 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
+    private fun sendNotificationToLawyer(lawyerId: String, date: String) {
+        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(lawyerId)
+        val notificationId = notificationRef.push().key
+
+        if (notificationId != null) {
+            val notificationData = mapOf(
+                "notificationId" to notificationId,
+                "message" to "Your appointment is accepted for $date.",
+                "timestamp" to System.currentTimeMillis().toString()
+            )
+
+            notificationRef.child(notificationId).setValue(notificationData)
+                .addOnSuccessListener {
+                    Log.d("SetAppointmentActivity", "Notification sent to lawyer: $lawyerId")
+                }
+                .addOnFailureListener {
+                    Log.e("SetAppointmentActivity", "Failed to send notification to lawyer")
+                }
+        }
+    }
 
 
     private fun sendNotificationToClient(clientId: String, message: String) {
