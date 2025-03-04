@@ -5,8 +5,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
-import android.widget.ImageButton
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,8 +21,6 @@ class SecretaryMessageFragment : Fragment() {
     private val messageList = mutableListOf<Message>()
     private lateinit var messagesRef: DatabaseReference
     private lateinit var currentUser: FirebaseUser
-    private lateinit var editTextMessage: EditText
-    private lateinit var buttonSend: ImageButton
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -32,68 +28,48 @@ class SecretaryMessageFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
 
         recyclerView = view.findViewById(R.id.inbox_recycler_view)
-        editTextMessage = view.findViewById(R.id.editTextMessage)
-        buttonSend = view.findViewById(R.id.buttonSend)
-
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
+
         currentUser = FirebaseAuth.getInstance().currentUser!!
         messagesRef = FirebaseDatabase.getInstance().getReference("messages")
 
-        messageAdapter = MessageAdapter(messageList, currentUser.uid)
+        messageAdapter = MessageAdapter(messageList)
         recyclerView.adapter = messageAdapter
 
         loadMessages()
-        buttonSend.setOnClickListener { sendMessage() }
 
         return view
     }
 
     private fun loadMessages() {
         val currentUserId = currentUser.uid
-        messagesRef.orderByChild("timestamp").addChildEventListener(object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val message = snapshot.getValue(Message::class.java)
-                if (message != null && (message.receiverId == currentUserId || message.senderId == currentUserId)) {
-                    messageList.add(message)
-                    messageAdapter.notifyItemInserted(messageList.size - 1)
-                    recyclerView.scrollToPosition(messageList.size - 1)
+        val uniqueChats = mutableMapOf<String, Message>() // Store latest message per contact
+
+        messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                messageList.clear()
+
+                for (messageSnapshot in snapshot.children) {
+                    val message = messageSnapshot.getValue(Message::class.java)
+
+                    if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
+                        val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
+
+                        // Store only the latest message per user
+                        if (!uniqueChats.containsKey(chatPartnerId) || message.timestamp > (uniqueChats[chatPartnerId]?.timestamp ?: 0)) {
+                            uniqueChats[chatPartnerId] = message
+                        }
+                    }
                 }
+
+                // Convert map values (last messages) to list and sort by timestamp (latest first)
+                messageList.addAll(uniqueChats.values.sortedByDescending { it.timestamp })
+                messageAdapter.notifyDataSetChanged()
             }
-
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
-
-            override fun onChildRemoved(snapshot: DataSnapshot) {}
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("FirebaseError", "Failed to load messages", error.toException())
             }
         })
     }
-
-
-    private fun sendMessage() {
-        val senderId = currentUser.uid
-        val messageText = editTextMessage.text.toString().trim()
-
-        if (messageText.isNotEmpty()) {
-            val receiverId = "6rTJ9u2n3SdjhjSJiq3EAxGl5653" // Replace with actual receiver logic
-            val timestamp = System.currentTimeMillis()
-
-            val message = Message(
-                senderId = senderId,
-                receiverId = receiverId,
-                message = messageText,  // ✅ Use "message" to match the model
-                timestamp = timestamp
-            )
-
-            messagesRef.push().setValue(message).addOnSuccessListener {
-                editTextMessage.text.clear()
-            }.addOnFailureListener {
-                Log.e("FirebaseError", "Failed to send message", it)
-            }
-        }
-    }
-
 }
