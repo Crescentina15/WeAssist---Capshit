@@ -10,6 +10,7 @@ const ManageSecretary = () => {
   const [secretary, setSecretary] = useState({ name: "", email: "", phone: "", password: "" });
   const [lawFirmAdmin, setLawFirmAdmin] = useState(null);
   const [existingSecretary, setExistingSecretary] = useState(null);
+  const [isEditing, setIsEditing] = useState(false); // New state to track editing mode
 
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -85,13 +86,20 @@ const ManageSecretary = () => {
     }
   };
 
-  const updateSecretary = async () => {
+  const enableEditing = () => {
+    setIsEditing(true);
+  };
+
+  const saveSecretaryChanges = async () => {
     if (existingSecretary) {
       await update(ref(db, `secretaries/${existingSecretary.uid}`), {
         name: secretary.name,
         phone: secretary.phone,
+        email: secretary.email
       });
+
       alert("Secretary details updated successfully.");
+      setIsEditing(false);
     }
   };
 
@@ -108,20 +116,52 @@ const ManageSecretary = () => {
     <div className="profile-card">
       <h2>Manage Secretary</h2>
 
-      <input type="text" placeholder="Name" value={secretary.name} onChange={(e) => setSecretary({ ...secretary, name: e.target.value })} autoComplete="off" />
-      <input type="email" placeholder="Email" value={secretary.email} onChange={(e) => setSecretary({ ...secretary, email: e.target.value })} autoComplete="off" disabled={!!existingSecretary}/>
-      <input type="password" placeholder="Password" value={secretary.password} onChange={(e) => setSecretary({ ...secretary, password: e.target.value })} autoComplete="new-password" disabled={!!existingSecretary} />
-      <input type="text" placeholder="Phone" value={secretary.phone} onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })} autoComplete="off" />
+      <input
+        type="text"
+        placeholder="Name"
+        value={secretary.name}
+        onChange={(e) => setSecretary({ ...secretary, name: e.target.value })}
+        autoComplete="off"
+        disabled={!isEditing}
+      />
+      <input
+        type="email"
+        placeholder="Email"
+        value={secretary.email}
+        onChange={(e) => setSecretary({ ...secretary, email: e.target.value })}
+        autoComplete="off"
+        disabled={!isEditing}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={secretary.password}
+        onChange={(e) => setSecretary({ ...secretary, password: e.target.value })}
+        autoComplete="new-password"
+        disabled={!isEditing}
+      />
+      <input
+        type="text"
+        placeholder="Phone"
+        value={secretary.phone}
+        onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })}
+        autoComplete="off"
+        disabled={!isEditing}
+      />
 
       {existingSecretary ? (
         <>
-          <button onClick={updateSecretary} className="cancel-button">Update Secretary</button>
+          {isEditing ? (
+            <button onClick={saveSecretaryChanges} className="cancel-button">Save Changes</button>
+          ) : (
+            <button onClick={enableEditing} className="cancel-button">Update Secretary</button>
+          )}
           <button onClick={deleteSecretary} className="cancel-button">Delete Secretary</button>
         </>
       ) : (
         <button onClick={addSecretary} className="cancel-button">Add Secretary</button>
       )}
-      
+
       <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
     </div>
   );
