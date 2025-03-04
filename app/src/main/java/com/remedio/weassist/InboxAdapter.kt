@@ -25,7 +25,7 @@ class InboxAdapter(private val inboxList: List<InboxItem>) : RecyclerView.Adapte
     override fun onBindViewHolder(holder: InboxViewHolder, position: Int) {
         val inboxItem = inboxList[position]
 
-        holder.nameTextView.text = inboxItem.secretaryName
+        holder.nameTextView.text = inboxItem.chatPartnerName
         holder.messageTextView.text = inboxItem.lastMessage
         holder.timestampTextView.text = inboxItem.timestamp
 

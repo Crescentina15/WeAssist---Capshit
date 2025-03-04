@@ -12,14 +12,16 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
-import com.remedio.weassist.Clients.MessageAdapter
+import com.remedio.weassist.InboxItem
 import com.remedio.weassist.R
+import com.remedio.weassist.SecretaryInboxAdapter
 
 class SecretaryMessageFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
-    private lateinit var messageAdapter: MessageAdapter
-    private val messageList = mutableListOf<Message>()
+    private lateinit var inboxAdapter: SecretaryInboxAdapter
+    private val inboxList = mutableListOf<InboxItem>()
     private lateinit var messagesRef: DatabaseReference
+    private lateinit var usersRef: DatabaseReference
     private lateinit var currentUser: FirebaseUser
 
     override fun onCreateView(
@@ -32,39 +34,94 @@ class SecretaryMessageFragment : Fragment() {
 
         currentUser = FirebaseAuth.getInstance().currentUser!!
         messagesRef = FirebaseDatabase.getInstance().getReference("messages")
+        usersRef = FirebaseDatabase.getInstance().getReference("Users") // Confirm correct path
 
-        messageAdapter = MessageAdapter(messageList)
-        recyclerView.adapter = messageAdapter
+        inboxAdapter = SecretaryInboxAdapter(inboxList) { selectedInbox ->
+            // Handle click event - Open chat
+        }
+        recyclerView.adapter = inboxAdapter
 
-        loadMessages()
+        loadSecretaryInbox()
 
         return view
     }
 
-    private fun loadMessages() {
+    private fun loadSecretaryInbox() {
         val currentUserId = currentUser.uid
-        val uniqueChats = mutableMapOf<String, Message>() // Store latest message per contact
+        Log.d("FirebaseCheck", "Current User ID: $currentUserId") // Debugging
+        val uniqueChats = mutableMapOf<String, InboxItem>()
 
         messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                messageList.clear()
+                inboxList.clear()
+                val clientIds = mutableSetOf<String>()
 
+                Log.d("FirebaseCheck", "Messages snapshot retrieved: ${snapshot.exists()}")
+
+                // Step 1: Collect all client IDs that the secretary has messages with
                 for (messageSnapshot in snapshot.children) {
                     val message = messageSnapshot.getValue(Message::class.java)
 
+                    Log.d("FirebaseCheck", "Message Retrieved: ${messageSnapshot.value}")
+
                     if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
                         val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
-
-                        // Store only the latest message per user
-                        if (!uniqueChats.containsKey(chatPartnerId) || message.timestamp > (uniqueChats[chatPartnerId]?.timestamp ?: 0)) {
-                            uniqueChats[chatPartnerId] = message
-                        }
+                        clientIds.add(chatPartnerId)
                     }
                 }
 
-                // Convert map values (last messages) to list and sort by timestamp (latest first)
-                messageList.addAll(uniqueChats.values.sortedByDescending { it.timestamp })
-                messageAdapter.notifyDataSetChanged()
+                Log.d("FirebaseCheck", "Client IDs found: $clientIds")
+
+                // Step 2: Fetch user names from Firebase
+                usersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(userSnapshot: DataSnapshot) {
+                        for (chatPartnerId in clientIds) {
+                            val firstName = userSnapshot.child(chatPartnerId).child("firstName").value?.toString() ?: ""
+                            val lastName = userSnapshot.child(chatPartnerId).child("lastName").value?.toString() ?: ""
+                            val clientName = if (firstName.isNotEmpty() && lastName.isNotEmpty()) "$firstName $lastName" else "Unknown"
+
+                            Log.d("FirebaseCheck", "Fetched client name: $clientName for ID: $chatPartnerId")
+
+                            // Step 3: Find the latest message for this chat partner
+                            for (messageSnapshot in snapshot.children) {
+                                val message = messageSnapshot.getValue(Message::class.java)
+                                if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
+                                    val partnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
+
+                                    if (partnerId == chatPartnerId) {
+                                        val unreadCount = messageSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
+                                        val messageTimestamp = message.timestamp.toString().toLongOrNull() ?: 0L
+
+                                        // Step 4: Store only the latest message per chat
+                                        if (!uniqueChats.containsKey(chatPartnerId) || messageTimestamp > (uniqueChats[chatPartnerId]?.timestamp?.toLongOrNull() ?: 0L)) {
+                                            uniqueChats[chatPartnerId] = InboxItem(
+                                                chatPartnerId, // Generic chat partner ID
+                                                clientName, // Fetch the correct client name
+                                                message.message,
+                                                messageTimestamp.toString(),
+                                                unreadCount
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Step 5: Update UI with sorted inbox list
+                        inboxList.clear()
+                        inboxList.addAll(uniqueChats.values.sortedByDescending { it.timestamp })
+
+                        requireActivity().runOnUiThread {
+                            inboxAdapter.notifyDataSetChanged()
+                        }
+
+                        Log.d("FirebaseCheck", "Inbox list updated: ${inboxList.size} items")
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("FirebaseError", "Failed to load users", error.toException())
+                    }
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {
