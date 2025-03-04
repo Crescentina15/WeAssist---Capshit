@@ -57,18 +57,16 @@
         android:layout_height="wrap_content"
         android:background="@color/white"
         android:orientation="horizontal"
-        android:padding="8dp"
         android:layout_gravity="bottom">
 
 
         <ImageButton
             android:id="@+id/file_attachment_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_attachment"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/attach_file"
             android:background="?android:attr/selectableItemBackground"
             android:contentDescription="Attach File"
-            android:layout_gravity="center_vertical"
             app:tint="@android:color/black" />
 
 

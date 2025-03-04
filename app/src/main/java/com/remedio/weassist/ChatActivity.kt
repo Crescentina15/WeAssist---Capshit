@@ -20,6 +20,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var btnSendMessage: ImageButton
     private lateinit var rvChatMessages: RecyclerView
     private lateinit var messagesAdapter: MessageAdapter
+    private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
 
     private var lawyerId: String? = null
@@ -34,6 +35,7 @@ class ChatActivity : AppCompatActivity() {
         etMessageInput = findViewById(R.id.etMessageInput)
         btnSendMessage = findViewById(R.id.btnSendMessage)
         rvChatMessages = findViewById(R.id.rvChatMessages)
+        backButton = findViewById(R.id.back_button) // Back button initialization
 
         database = FirebaseDatabase.getInstance().reference
         lawyerId = intent.getStringExtra("LAWYER_ID")
@@ -49,6 +51,11 @@ class ChatActivity : AppCompatActivity() {
         btnSendMessage.setOnClickListener {
             sendMessage()
         }
+
+        // Handle back button click
+        backButton.setOnClickListener {
+            finish() // Closes the activity and goes back to the previous screen
+        }
     }
 
     private fun getSecretaryName(lawyerId: String) {
@@ -61,7 +68,7 @@ class ChatActivity : AppCompatActivity() {
                         .addOnSuccessListener { secretarySnapshot ->
                             if (secretarySnapshot.exists()) {
                                 val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
-                                tvSecretaryName.text = "Chat with Secretary $secretaryName"
+                                tvSecretaryName.text = "$secretaryName"
 
                                 listenForMessages()
                             }
