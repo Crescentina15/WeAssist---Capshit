@@ -1,13 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
     android:padding="16dp"
     android:background="@color/white">
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:backgroundTint="@color/cardview_light_background"
+        android:gravity="start|center_vertical"
+        android:paddingBottom="8dp">
 
+        <ImageButton
+            android:id="@+id/back_button"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@drawable/arrow_back"
+            android:background="?android:attr/selectableItemBackground"
+            android:contentDescription="Back Button"
+            app:tint="@android:color/black" />
+
+    </LinearLayout>
 
     <!-- Progress Bar (Shown while loading data) -->
     <ProgressBar
