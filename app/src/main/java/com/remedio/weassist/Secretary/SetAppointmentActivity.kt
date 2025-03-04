@@ -192,6 +192,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                     val notificationMessage = "Your appointment on $selectedDate at $selectedTime has been successfully booked."
                     sendNotificationToClient(clientId!!, notificationMessage) // ✅ Send notification to the client
 
+                    // Notify the lawyer about the new appointment
+                    sendNotificationToLawyer(lawyerId!!, selectedDate!!, selectedTime!!)
+
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
                     finish()
                 }
@@ -200,27 +203,43 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
-    private fun sendNotificationToLawyer(lawyerId: String, date: String) {
+
+    private fun sendNotificationToLawyer(lawyerId: String, date: String, time: String) {
         val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(lawyerId)
         val notificationId = notificationRef.push().key
 
         if (notificationId != null) {
+            val currentTimestamp = System.currentTimeMillis().toString()
+
             val notificationData = mapOf(
                 "notificationId" to notificationId,
-                "message" to "Your appointment is accepted for $date.",
-                "timestamp" to System.currentTimeMillis().toString()
+                "message" to "Your appointment on $date at $time has been accepted.",
+                "timestamp" to currentTimestamp
             )
 
-            notificationRef.child(notificationId).setValue(notificationData)
+            notificationRef.child("recent").setValue(notificationData)
                 .addOnSuccessListener {
-                    Log.d("SetAppointmentActivity", "Notification sent to lawyer: $lawyerId")
+                    Log.d("SetAppointmentActivity", "Recent appointment updated for lawyer: $lawyerId")
+
+                    // Move previous "recent" to "earlier" before replacing it
+                    notificationRef.child("recent").addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(snapshot: DataSnapshot) {
+                            if (snapshot.exists()) {
+                                val previousData = snapshot.value
+                                notificationRef.child("earlier").setValue(previousData)
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("SetAppointmentActivity", "Failed to update earlier notification: ${error.message}")
+                        }
+                    })
                 }
                 .addOnFailureListener {
-                    Log.e("SetAppointmentActivity", "Failed to send notification to lawyer")
+                    Log.e("SetAppointmentActivity", "Failed to update notification")
                 }
         }
     }
-
 
     private fun sendNotificationToClient(clientId: String, message: String) {
         val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(clientId)
@@ -261,6 +280,4 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
-
-
 }
