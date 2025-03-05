@@ -23,8 +23,8 @@ class ChatDetailActivity : AppCompatActivity() {
     private val messagesList = mutableListOf<Message>()
 
     private var chatPartnerId: String? = null
-    private var conversationId: String? = null
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
+    private var conversationId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +48,7 @@ class ChatDetailActivity : AppCompatActivity() {
         tvChatPartnerName.text = chatPartnerName ?: "Chat Partner"
 
         // Generate conversation ID
-        conversationId = generateConversationId()
+        conversationId = generateConversationId(currentUserId!!, chatPartnerId!!)
 
         // Setup RecyclerView
         messagesAdapter = MessageAdapter(messagesList)
@@ -65,28 +65,24 @@ class ChatDetailActivity : AppCompatActivity() {
             finish()
         }
 
-        // Start listening for messages if conversation ID is available
+        // Start listening for messages if conversation details are available
         if (conversationId != null) {
             listenForMessages()
         }
     }
 
-    private fun generateConversationId(): String? {
-        return if (currentUserId != null && chatPartnerId != null) {
-            if (currentUserId!! < chatPartnerId!!) {
-                "conversation_${currentUserId}_${chatPartnerId}"
-            } else {
-                "conversation_${chatPartnerId}_${currentUserId}"
-            }
+    private fun generateConversationId(user1: String, user2: String): String {
+        return if (user1 < user2) {
+            "conversation_${user1}_${user2}"
         } else {
-            null
+            "conversation_${user2}_${user1}"
         }
     }
 
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
 
-        if (messageText.isNotEmpty() && chatPartnerId != null && currentUserId != null && conversationId != null) {
+        if (messageText.isNotEmpty() && conversationId != null && currentUserId != null && chatPartnerId != null) {
             val message = Message(
                 senderId = currentUserId!!,
                 receiverId = chatPartnerId!!,
@@ -94,11 +90,13 @@ class ChatDetailActivity : AppCompatActivity() {
                 timestamp = System.currentTimeMillis()
             )
 
-            // Reference to specific conversation
-            val conversationRef = database.child("conversations").child(conversationId!!).child("messages")
+            // Reference to specific conversation's messages
+            val conversationMessagesRef = database.child("conversations")
+                .child(conversationId!!)
+                .child("messages")
 
             // Create a new message in the messages node
-            val newMessageRef = conversationRef.push()
+            val newMessageRef = conversationMessagesRef.push()
             newMessageRef.setValue(message).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     Log.d("ChatDetailActivity", "Message sent successfully")
@@ -113,7 +111,10 @@ class ChatDetailActivity : AppCompatActivity() {
     private fun listenForMessages() {
         if (conversationId == null) return
 
-        val conversationMessagesRef = database.child("conversations").child(conversationId!!).child("messages")
+        // Reference to specific conversation's messages
+        val conversationMessagesRef = database.child("conversations")
+            .child(conversationId!!)
+            .child("messages")
 
         conversationMessagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {

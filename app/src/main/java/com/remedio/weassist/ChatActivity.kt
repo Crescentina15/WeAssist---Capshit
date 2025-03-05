@@ -101,7 +101,8 @@ class ChatActivity : AppCompatActivity() {
             val message = Message(
                 senderId = currentUserId!!,
                 receiverId = secretaryId!!,
-                message = messageText
+                message = messageText,
+                timestamp = System.currentTimeMillis()
             )
 
             val chatRef = database.child("conversations").child(conversationId).child("messages").push()
