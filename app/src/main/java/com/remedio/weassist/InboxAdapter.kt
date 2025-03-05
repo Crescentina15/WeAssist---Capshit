@@ -1,16 +1,22 @@
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.remedio.weassist.InboxItem
 import com.remedio.weassist.R
 
-class InboxAdapter(private val inboxList: List<InboxItem>) : RecyclerView.Adapter<InboxAdapter.InboxViewHolder>() {
+class InboxAdapter(
+    private val inboxList: List<InboxItem>,
+    private val onItemClickListener: OnItemClickListener
+) : RecyclerView.Adapter<InboxAdapter.InboxViewHolder>() {
+
+    // Interface for handling item clicks
+    interface OnItemClickListener {
+        fun onItemClick(inboxItem: InboxItem)
+    }
 
     class InboxViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        //val profileImage: ImageView = view.findViewById(R.id.profileImage)
         val nameTextView: TextView = view.findViewById(R.id.nameTextView)
         val messageTextView: TextView = view.findViewById(R.id.messageTextView)
         val timestampTextView: TextView = view.findViewById(R.id.timestampTextView)
@@ -35,6 +41,11 @@ class InboxAdapter(private val inboxList: List<InboxItem>) : RecyclerView.Adapte
             holder.unreadBadge.visibility = View.VISIBLE
         } else {
             holder.unreadBadge.visibility = View.GONE
+        }
+
+        // Set click listener for the entire item view
+        holder.itemView.setOnClickListener {
+            onItemClickListener.onItemClick(inboxItem)
         }
     }
 

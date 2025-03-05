@@ -1,6 +1,7 @@
 package com.remedio.weassist.Clients
 
 import InboxAdapter
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -15,7 +16,8 @@ import com.google.firebase.database.*
 import com.remedio.weassist.InboxItem
 import com.remedio.weassist.R
 
-class ClientMessageFragment : Fragment() {
+
+class ClientMessageFragment : Fragment(), InboxAdapter.OnItemClickListener {
     private lateinit var recyclerView: RecyclerView
     private lateinit var inboxAdapter: InboxAdapter
     private val inboxList = mutableListOf<InboxItem>()
@@ -35,12 +37,23 @@ class ClientMessageFragment : Fragment() {
         messagesRef = FirebaseDatabase.getInstance().getReference("messages")
         secretariesRef = FirebaseDatabase.getInstance().getReference("secretaries")
 
-        inboxAdapter = InboxAdapter(inboxList)
+        // Pass the OnItemClickListener (this fragment) to the adapter
+        inboxAdapter = InboxAdapter(inboxList, this)
         recyclerView.adapter = inboxAdapter
 
         loadClientInbox()
 
         return view
+    }
+
+    // Implement the OnItemClickListener interface method
+    override fun onItemClick(inboxItem: InboxItem) {
+        // Navigate to chat detail activity when an inbox item is clicked
+        val intent = Intent(requireContext(), ChatDetailActivity::class.java).apply {
+            putExtra("CHAT_PARTNER_ID", inboxItem.chatPartnerId)
+            putExtra("CHAT_PARTNER_NAME", inboxItem.chatPartnerName)
+        }
+        startActivity(intent)
     }
 
     private fun loadClientInbox() {
