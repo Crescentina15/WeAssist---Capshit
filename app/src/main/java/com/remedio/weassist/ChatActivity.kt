@@ -59,9 +59,13 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun getSecretaryName(lawyerId: String) {
+        Log.d("ChatActivity", "Fetching secretary for lawyerId: $lawyerId") // Debug log
+
         database.child("lawyers").child(lawyerId).get().addOnSuccessListener { lawyerSnapshot ->
             if (lawyerSnapshot.exists()) {
                 secretaryId = lawyerSnapshot.child("secretaryID").value?.toString()
+
+                Log.d("ChatActivity", "Retrieved secretaryId: $secretaryId") // Debug log
 
                 if (!secretaryId.isNullOrEmpty()) {
                     database.child("secretaries").child(secretaryId!!).get()
@@ -70,43 +74,75 @@ class ChatActivity : AppCompatActivity() {
                                 val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
                                 tvSecretaryName.text = "$secretaryName"
 
+                                Log.d("ChatActivity", "Secretary Name: $secretaryName") // Debug log
+
                                 listenForMessages()
+                            } else {
+                                Log.e("ChatActivity", "Secretary not found!")
                             }
                         }
+                } else {
+                    Log.e("ChatActivity", "No secretary ID found for lawyer!")
                 }
+            } else {
+                Log.e("ChatActivity", "Lawyer not found!")
             }
         }
     }
 
+
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
+        Log.d("ChatActivity", "Button Clicked! Message: $messageText") // Debug log
 
         if (messageText.isNotEmpty() && !secretaryId.isNullOrEmpty() && currentUserId != null) {
+            val conversationId = generateConversationId(currentUserId!!, secretaryId!!) // Generate conversation ID
+
             val message = Message(
                 senderId = currentUserId!!,
                 receiverId = secretaryId!!,
                 message = messageText
             )
 
-            val chatRef = database.child("messages").push()
+            val chatRef = database.child("conversations").child(conversationId).child("messages").push()
             chatRef.setValue(message).addOnCompleteListener {
                 if (it.isSuccessful) {
+                    Log.d("ChatActivity", "Message Sent Successfully!")
                     etMessageInput.text.clear()
                 } else {
                     Log.e("ChatActivity", "Failed to send message: ${it.exception?.message}")
                 }
             }
+        } else {
+            Log.e("ChatActivity", "Message cannot be sent! Check messageText, secretaryId, or currentUserId.")
         }
     }
 
+
+    /**
+     * Generates a unique conversation ID for two users
+     */
+    private fun generateConversationId(user1: String, user2: String): String {
+        return if (user1 < user2) {
+            "conversation_${user1}_${user2}"
+        } else {
+            "conversation_${user2}_${user1}"
+        }
+    }
+
+
     private fun listenForMessages() {
-        val messagesRef = database.child("messages")
+        if (secretaryId.isNullOrEmpty() || currentUserId == null) return
+
+        val conversationId = generateConversationId(currentUserId!!, secretaryId!!) // Get conversation ID
+        val messagesRef = database.child("conversations").child(conversationId).child("messages")
+
         messagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 messagesList.clear()
                 for (messageSnapshot in snapshot.children) {
                     val message = messageSnapshot.getValue(Message::class.java)
-                    if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
+                    if (message != null) {
                         messagesList.add(message)
                     }
                 }
@@ -119,4 +155,5 @@ class ChatActivity : AppCompatActivity() {
             }
         })
     }
+
 }
