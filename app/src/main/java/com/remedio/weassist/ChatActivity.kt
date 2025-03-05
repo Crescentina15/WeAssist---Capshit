@@ -106,10 +106,29 @@ class ChatActivity : AppCompatActivity() {
             )
 
             val chatRef = database.child("conversations").child(conversationId).child("messages").push()
+
+            // First, add the message to the conversation
             chatRef.setValue(message).addOnCompleteListener {
                 if (it.isSuccessful) {
                     Log.d("ChatActivity", "Message Sent Successfully!")
-                    etMessageInput.text.clear()
+
+                    // Now, add the participant IDs to the conversation
+                    val participantsMap = mapOf(
+                        currentUserId!! to true,
+                        secretaryId!! to true
+                    )
+
+                    // Add participants to the conversation if they are not already there
+                    database.child("conversations").child(conversationId).child("participantIds")
+                        .updateChildren(participantsMap).addOnCompleteListener { updateTask ->
+                            if (updateTask.isSuccessful) {
+                                Log.d("ChatActivity", "Participants added successfully!")
+                            } else {
+                                Log.e("ChatActivity", "Failed to add participants: ${updateTask.exception?.message}")
+                            }
+                        }
+
+                    etMessageInput.text.clear()  // Clear the input field
                 } else {
                     Log.e("ChatActivity", "Failed to send message: ${it.exception?.message}")
                 }
@@ -118,6 +137,7 @@ class ChatActivity : AppCompatActivity() {
             Log.e("ChatActivity", "Message cannot be sent! Check messageText, secretaryId, or currentUserId.")
         }
     }
+
 
 
     /**
