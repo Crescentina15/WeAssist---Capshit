@@ -22,11 +22,13 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var messagesAdapter: MessageAdapter
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
+    private var clientId: String? = null
 
     private var lawyerId: String? = null
     private var secretaryId: String? = null
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
 
+    // Update the onCreate method to retrieve clientId from intent
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
@@ -39,21 +41,27 @@ class ChatActivity : AppCompatActivity() {
 
         database = FirebaseDatabase.getInstance().reference
         lawyerId = intent.getStringExtra("LAWYER_ID")
-        secretaryId = intent.getStringExtra("SECRETARY_ID") // Get secretary ID from intent
+        secretaryId = intent.getStringExtra("SECRETARY_ID")
+        clientId = intent.getStringExtra("CLIENT_ID")
+        currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
         messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
 
-        // If SECRETARY_ID is provided, use it directly
-        if (secretaryId != null) {
+        // If SECRETARY_ID is provided with CLIENT_ID, this is secretary-client chat
+        if (secretaryId != null && clientId != null) {
+            getClientName(clientId!!)
+        }
+        // If SECRETARY_ID is provided alone, use it directly (client viewing secretary)
+        else if (secretaryId != null) {
             getSecretaryNameDirect(secretaryId!!)
         }
         // Otherwise, fetch the secretary based on lawyer ID
         else if (lawyerId != null) {
             getSecretaryName(lawyerId!!)
         } else {
-            Log.e("ChatActivity", "No lawyer or secretary ID provided!")
+            Log.e("ChatActivity", "No valid IDs provided!")
             finish()
         }
 
@@ -65,6 +73,23 @@ class ChatActivity : AppCompatActivity() {
             finish()
         }
     }
+
+    // Add a method to get client name
+    private fun getClientName(clientId: String) {
+        database.child("Users").child(clientId).get()
+            .addOnSuccessListener { clientSnapshot ->
+                if (clientSnapshot.exists()) {
+                    val firstName = clientSnapshot.child("firstName").value?.toString() ?: "Unknown"
+                    val lastName = clientSnapshot.child("lastName").value?.toString() ?: ""
+                    val fullName = "$firstName $lastName".trim()
+                    tvSecretaryName.text = fullName
+                    listenForMessages()
+                } else {
+                    Log.e("ChatActivity", "Client not found!")
+                }
+            }
+    }
+
 
     private fun getSecretaryNameDirect(secretaryId: String) {
         database.child("secretaries").child(secretaryId).get()
@@ -114,16 +139,26 @@ class ChatActivity : AppCompatActivity() {
     }
 
 
+    // Update sendMessage method to handle client IDs
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
-        Log.d("ChatActivity", "Button Clicked! Message: $messageText") // Debug log
+        Log.d("ChatActivity", "Button Clicked! Message: $messageText")
 
-        if (messageText.isNotEmpty() && !secretaryId.isNullOrEmpty() && currentUserId != null) {
-            val conversationId = generateConversationId(currentUserId!!, secretaryId!!) // Generate conversation ID
+        if (messageText.isNotEmpty() && currentUserId != null) {
+            val receiverId = when {
+                clientId != null -> clientId!!
+                secretaryId != null -> secretaryId!!
+                else -> {
+                    Log.e("ChatActivity", "No receiver ID available")
+                    return
+                }
+            }
+
+            val conversationId = generateConversationId(currentUserId!!, receiverId)
 
             val message = Message(
                 senderId = currentUserId!!,
-                receiverId = secretaryId!!,
+                receiverId = receiverId,
                 message = messageText,
                 timestamp = System.currentTimeMillis()
             )
@@ -138,7 +173,7 @@ class ChatActivity : AppCompatActivity() {
                     // Now, add the participant IDs to the conversation
                     val participantsMap = mapOf(
                         currentUserId!! to true,
-                        secretaryId!! to true
+                        receiverId to true
                     )
 
                     // Add participants to the conversation if they are not already there
@@ -157,7 +192,7 @@ class ChatActivity : AppCompatActivity() {
                 }
             }
         } else {
-            Log.e("ChatActivity", "Message cannot be sent! Check messageText, secretaryId, or currentUserId.")
+            Log.e("ChatActivity", "Message cannot be sent! Check messageText or currentUserId.")
         }
     }
 
@@ -175,10 +210,20 @@ class ChatActivity : AppCompatActivity() {
     }
 
 
+    // Update listenForMessages to handle client IDs
     private fun listenForMessages() {
-        if (secretaryId.isNullOrEmpty() || currentUserId == null) return
+        if (currentUserId == null) return
 
-        val conversationId = generateConversationId(currentUserId!!, secretaryId!!) // Get conversation ID
+        val receiverId = when {
+            clientId != null -> clientId!!
+            secretaryId != null -> secretaryId!!
+            else -> {
+                Log.e("ChatActivity", "No receiver ID available")
+                return
+            }
+        }
+
+        val conversationId = generateConversationId(currentUserId!!, receiverId)
         val messagesRef = database.child("conversations").child(conversationId).child("messages")
 
         messagesRef.addValueEventListener(object : ValueEventListener {

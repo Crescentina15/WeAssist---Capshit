@@ -120,7 +120,9 @@ class SecretaryMessageFragment : Fragment() {
 
     private fun openChatActivity(clientId: String) {
         val intent = Intent(requireContext(), ChatActivity::class.java)
-        intent.putExtra("CLIENT_ID", clientId)
+        // Using the same key format as in ClientMessageFragment for consistency
+        intent.putExtra("SECRETARY_ID", currentUserId) // Pass secretary's own ID
+        intent.putExtra("CLIENT_ID", clientId) // Pass client ID for reference
         startActivity(intent)
     }
 }
