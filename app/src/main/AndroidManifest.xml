@@ -16,6 +16,9 @@
             android:name=".Lawyer.LawyerNotification"
             android:exported="false" />
         <activity
+            android:name=".MyApp"
+            android:exported="false" />
+        <activity
             android:name=".Lawyer.LawyerBackgroundActivity"
             android:exported="false" />
         <activity

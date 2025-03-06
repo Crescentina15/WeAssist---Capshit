@@ -35,28 +35,51 @@ class ChatActivity : AppCompatActivity() {
         etMessageInput = findViewById(R.id.etMessageInput)
         btnSendMessage = findViewById(R.id.btnSendMessage)
         rvChatMessages = findViewById(R.id.rvChatMessages)
-        backButton = findViewById(R.id.back_button) // Back button initialization
+        backButton = findViewById(R.id.back_button)
 
         database = FirebaseDatabase.getInstance().reference
         lawyerId = intent.getStringExtra("LAWYER_ID")
+        secretaryId = intent.getStringExtra("SECRETARY_ID") // Get secretary ID from intent
 
         messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
 
-        if (lawyerId != null) {
+        // If SECRETARY_ID is provided, use it directly
+        if (secretaryId != null) {
+            getSecretaryNameDirect(secretaryId!!)
+        }
+        // Otherwise, fetch the secretary based on lawyer ID
+        else if (lawyerId != null) {
             getSecretaryName(lawyerId!!)
+        } else {
+            Log.e("ChatActivity", "No lawyer or secretary ID provided!")
+            finish()
         }
 
         btnSendMessage.setOnClickListener {
             sendMessage()
         }
 
-        // Handle back button click
         backButton.setOnClickListener {
-            finish() // Closes the activity and goes back to the previous screen
+            finish()
         }
     }
+
+    private fun getSecretaryNameDirect(secretaryId: String) {
+        database.child("secretaries").child(secretaryId).get()
+            .addOnSuccessListener { secretarySnapshot ->
+                if (secretarySnapshot.exists()) {
+                    val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
+                    tvSecretaryName.text = secretaryName
+                    listenForMessages()
+                } else {
+                    Log.e("ChatActivity", "Secretary not found!")
+                }
+            }
+    }
+
+
 
     private fun getSecretaryName(lawyerId: String) {
         Log.d("ChatActivity", "Fetching secretary for lawyerId: $lawyerId") // Debug log
