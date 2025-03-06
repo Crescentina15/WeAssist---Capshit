@@ -48,15 +48,54 @@
                 android:textSize="24sp"
                 android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/profile_details"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="5dp"
-                android:text="Specialty: Family Lawyer\nLocation: Banlad\nRating: 4.5"
-                android:textColor="@android:color/black"
-                android:textSize="20sp" />
+                android:orientation="vertical"
+                android:layout_marginTop="10dp"
+                android:gravity="center"
+                android:layout_gravity="center_horizontal">
+
+                <TextView
+                    android:id="@+id/lawyerSpecialization"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Specialty: Family Lawyer"
+                    android:textColor="@android:color/black"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/lawyerFirm"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/black"
+                    android:textSize="20sp"
+                    android:gravity="center"
+                    android:text="Law Firm: "/>
+
+                <TextView
+                    android:id="@+id/lawyerLocation"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Location: Banlad"
+                    android:textColor="@android:color/black"
+                    android:textSize="20sp"
+                    android:gravity="center" />
+
+                <TextView
+                    android:id="@+id/lawyerRating"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Rating: 4.5"
+                    android:textColor="@android:color/black"
+                    android:textSize="20sp"
+                    android:gravity="center" />
+
+            </LinearLayout>
+
+
 
             <!-- Buttons properly positioned -->
             <LinearLayout
@@ -150,13 +189,7 @@
                     android:textStyle="bold"
                     android:layout_marginTop="8dp" />
 
-                <TextView
-                    android:id="@+id/lawyer_employer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Law Firm"
-                    android:textStyle="bold"
-                    android:layout_marginTop="8dp" />
+
 
                 <TextView
                     android:id="@+id/lawyer_rate"

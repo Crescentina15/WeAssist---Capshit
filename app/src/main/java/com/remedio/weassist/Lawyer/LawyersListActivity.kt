@@ -2,6 +2,7 @@ package com.remedio.weassist.Lawyer
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -44,6 +45,11 @@ class LawyersListActivity : AppCompatActivity() {
 
         // Load lawyers from Firebase
         loadLawyers(specialization, lawFirm)
+
+        // Handle back button click
+        findViewById<ImageButton>(R.id.back_button).setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
     }
 
     private fun loadLawyers(specialization: String?, lawFirm: String?) {
@@ -90,7 +96,7 @@ class LawyersListActivity : AppCompatActivity() {
                     if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
                         // Launch LawyerBackgroundActivity for clients
                         val intent = Intent(context, LawyerBackgroundActivity::class.java)
-                        intent.putExtra("LAWYER_ID", selectedLawyer.id)  // ✅ Correct key
+                        intent.putExtra("LAWYER_ID", selectedLawyer.id)
                         startActivity(intent)
                     } else {
                         // Existing logic for other cases

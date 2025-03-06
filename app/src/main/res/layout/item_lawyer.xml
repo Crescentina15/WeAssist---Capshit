@@ -27,13 +27,6 @@
             android:textColor="@android:color/darker_gray"/>
 
         <TextView
-            android:id="@+id/lawyer_firm"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textSize="14sp"
-            android:textColor="@android:color/darker_gray"/>
-
-        <TextView
             android:id="@+id/lawyer_location"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -46,6 +39,15 @@
             android:layout_height="wrap_content"
             android:textSize="14sp"
             android:textColor="@android:color/darker_gray"/>
+
+        <TextView
+            android:id="@+id/lawyer_firm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textColor="@android:color/darker_gray"/>
+
+
     </LinearLayout>
 
 </androidx.cardview.widget.CardView>
