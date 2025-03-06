@@ -11,12 +11,10 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
 import com.remedio.weassist.ChatActivity
 import com.remedio.weassist.Conversation
 import com.remedio.weassist.ConversationAdapter
-import com.remedio.weassist.InboxItem
 import com.remedio.weassist.R
 
 class ClientMessageFragment : Fragment() {

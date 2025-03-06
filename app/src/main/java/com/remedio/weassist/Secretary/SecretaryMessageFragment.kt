@@ -1,5 +1,6 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -11,122 +12,116 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
+import com.remedio.weassist.ChatActivity
 import com.remedio.weassist.Clients.Message
+import com.remedio.weassist.Conversation
+import com.remedio.weassist.ConversationAdapter
 import com.remedio.weassist.InboxItem
 import com.remedio.weassist.R
 import com.remedio.weassist.SecretaryInboxAdapter
 
 class SecretaryMessageFragment : Fragment() {
-    private lateinit var recyclerView: RecyclerView
-    private lateinit var inboxAdapter: SecretaryInboxAdapter
-    private val inboxList = mutableListOf<InboxItem>()
-    private lateinit var messagesRef: DatabaseReference
-    private lateinit var usersRef: DatabaseReference
-    private lateinit var currentUser: FirebaseUser
+    private lateinit var database: DatabaseReference
+    private lateinit var conversationsRecyclerView: RecyclerView
+    private lateinit var conversationsAdapter: ConversationAdapter
+    private val conversationList = mutableListOf<Conversation>()
+    private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View {
+        inflater: LayoutInflater, container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
+        conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
+        conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        recyclerView = view.findViewById(R.id.inbox_recycler_view)
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
-
-        currentUser = FirebaseAuth.getInstance().currentUser!!
-        messagesRef = FirebaseDatabase.getInstance().getReference("messages")
-        usersRef = FirebaseDatabase.getInstance().getReference("Users") // Confirm correct path
-
-        inboxAdapter = SecretaryInboxAdapter(inboxList) { selectedInbox ->
-            // Handle click event - Open chat
+        conversationsAdapter = ConversationAdapter(conversationList) { conversation ->
+            openChatActivity(conversation.clientId)
         }
-        recyclerView.adapter = inboxAdapter
+        conversationsRecyclerView.adapter = conversationsAdapter
 
-        loadSecretaryInbox()
+        database = FirebaseDatabase.getInstance().reference
+
+        checkAuthStatus()
+        fetchConversations()
 
         return view
     }
 
-    private fun loadSecretaryInbox() {
-        val currentUserId = currentUser.uid
-        Log.d("FirebaseCheck", "Current User ID: $currentUserId") // Debugging
-        val uniqueChats = mutableMapOf<String, InboxItem>()
+    private fun checkAuthStatus() {
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null) {
+            Log.e("FirebaseAuth", "User is NOT authenticated!")
+        } else {
+            Log.d("FirebaseAuth", "Authenticated as: ${user.uid}")
+        }
+    }
 
-        messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                inboxList.clear()
-                val clientIds = mutableSetOf<String>()
+    private fun fetchConversations() {
+        if (currentUserId == null) return
 
-                Log.d("FirebaseCheck", "Messages snapshot retrieved: ${snapshot.exists()}")
+        val conversationsRef = database.child("conversations")
+        conversationsRef.orderByChild("participantIds/$currentUserId").equalTo(true)
+            .addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    conversationList.clear()
 
-                // Step 1: Collect all client IDs that the secretary has messages with
-                for (messageSnapshot in snapshot.children) {
-                    val message = messageSnapshot.getValue(Message::class.java)
+                    if (!snapshot.exists()) {
+                        Log.e("FirebaseDB", "No conversations found for user: $currentUserId")
+                        return
+                    }
 
-                    Log.d("FirebaseCheck", "Message Retrieved: ${messageSnapshot.value}")
+                    for (conversationSnapshot in snapshot.children) {
+                        val conversationId = conversationSnapshot.key ?: continue
+                        val clientId = conversationSnapshot.child("participantIds")
+                            .children.firstOrNull { it.key != currentUserId }?.key ?: continue
 
-                    if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
-                        val chatPartnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
-                        clientIds.add(chatPartnerId)
+                        if (!conversationSnapshot.child("participantIds").hasChild(currentUserId!!)) {
+                            Log.e("FirebaseDB", "User $currentUserId is NOT a participant in $conversationId")
+                            continue
+                        }
+
+                        val lastMessage = conversationSnapshot.child("messages").children.lastOrNull()
+                            ?.child("message")?.value.toString() ?: "No messages yet"
+
+                        val unreadCount = conversationSnapshot.child("unreadMessages/$currentUserId")
+                            .value?.toString()?.toIntOrNull() ?: 0
+
+                        // Fetch the client's name before adding to the list
+                        fetchClientName(clientId) { clientName ->
+                            val conversation = Conversation(
+                                conversationId, clientId, clientName, lastMessage, unreadCount
+                            )
+                            conversationList.add(conversation)
+                            conversationsAdapter.notifyDataSetChanged()
+                        }
                     }
                 }
 
-                Log.d("FirebaseCheck", "Client IDs found: $clientIds")
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryMessagesFragment", "Error fetching conversations: ${error.message}")
+                }
+            })
+    }
 
-                // Step 2: Fetch user names from Firebase
-                usersRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(userSnapshot: DataSnapshot) {
-                        for (chatPartnerId in clientIds) {
-                            val firstName = userSnapshot.child(chatPartnerId).child("firstName").value?.toString() ?: ""
-                            val lastName = userSnapshot.child(chatPartnerId).child("lastName").value?.toString() ?: ""
-                            val clientName = if (firstName.isNotEmpty() && lastName.isNotEmpty()) "$firstName $lastName" else "Unknown"
 
-                            Log.d("FirebaseCheck", "Fetched client name: $clientName for ID: $chatPartnerId")
+    private fun fetchClientName(clientId: String, callback: (String) -> Unit) {
+        val clientsRef = database.child("Users").child(clientId)
 
-                            // Step 3: Find the latest message for this chat partner
-                            for (messageSnapshot in snapshot.children) {
-                                val message = messageSnapshot.getValue(Message::class.java)
-                                if (message != null && (message.senderId == currentUserId || message.receiverId == currentUserId)) {
-                                    val partnerId = if (message.senderId == currentUserId) message.receiverId else message.senderId
+        clientsRef.get().addOnSuccessListener { snapshot ->
+            val firstName = snapshot.child("firstName").value?.toString() ?: "Unknown"
+            val lastName = snapshot.child("lastName").value?.toString() ?: ""
+            val fullName = "$firstName $lastName".trim()
+            callback(fullName)
+        }.addOnFailureListener {
+            callback("Unknown")
+        }
+    }
 
-                                    if (partnerId == chatPartnerId) {
-                                        val unreadCount = messageSnapshot.child("unreadCount").getValue(Int::class.java) ?: 0
-                                        val messageTimestamp = message.timestamp.toString().toLongOrNull() ?: 0L
-
-                                        // Step 4: Store only the latest message per chat
-                                        if (!uniqueChats.containsKey(chatPartnerId) || messageTimestamp > (uniqueChats[chatPartnerId]?.timestamp?.toLongOrNull() ?: 0L)) {
-                                            uniqueChats[chatPartnerId] = InboxItem(
-                                                chatPartnerId, // Generic chat partner ID
-                                                clientName, // Fetch the correct client name
-                                                message.message,
-                                                messageTimestamp.toString(),
-                                                unreadCount
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Step 5: Update UI with sorted inbox list
-                        inboxList.clear()
-                        inboxList.addAll(uniqueChats.values.sortedByDescending { it.timestamp })
-
-                        requireActivity().runOnUiThread {
-                            inboxAdapter.notifyDataSetChanged()
-                        }
-
-                        Log.d("FirebaseCheck", "Inbox list updated: ${inboxList.size} items")
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("FirebaseError", "Failed to load users", error.toException())
-                    }
-                })
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("FirebaseError", "Failed to load messages", error.toException())
-            }
-        })
+    private fun openChatActivity(clientId: String) {
+        val intent = Intent(requireContext(), ChatActivity::class.java)
+        intent.putExtra("CLIENT_ID", clientId)
+        startActivity(intent)
     }
 }
+
