@@ -18,7 +18,9 @@ data class Lawyer(
     val bio: String? = null,
     val rate: String? = null,
     val profileImage: String? = null,
+
     val contact: Contact? = null,
+
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",

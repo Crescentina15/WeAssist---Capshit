@@ -2,6 +2,7 @@ package com.remedio.weassist.Lawyer
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
@@ -60,10 +61,14 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         binding.lawyerGraduationYear.text = "Graduation Year: ${it.graduationYear}"
                         binding.lawyerCertifications.text = "Certifications: ${it.certifications}"
                         binding.lawyerJurisdiction.text = "Jurisdiction: ${it.jurisdiction}"
-                        binding.lawyerRate.text = "Rate: ${it.rate}"
+                        binding.lawyerRate.text = "Professional Rate: ${it.rate}"
+
+                        // Debugging logs
+                        Log.d("LawyerBackground", "Lawyer ID: $lawyerId")
+                        Log.d("LawyerBackground", "Law Firm ID: ${it.lawFirm}")
 
                         // Retrieve and display law firm details
-                        retrieveFirmDetails(it.employer)
+                        retrieveFirmDetails(it.lawFirm)
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
@@ -76,22 +81,26 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         })
     }
 
-    private fun retrieveFirmDetails(employerId: String?) {
-        if (employerId.isNullOrEmpty()) {
+    private fun retrieveFirmDetails(lawFirmId: String?) {
+        if (lawFirmId.isNullOrEmpty()) {
             binding.lawyerFirm.text = "Law Firm: Not Available"
             binding.lawyerLocation.text = "Location: Not Available"
             return
         }
 
-        val firmRef = FirebaseDatabase.getInstance().getReference("firms").child(employerId)
+        val firmRef = FirebaseDatabase.getInstance().getReference("firms").child(lawFirmId)
         firmRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val firmName = snapshot.child("name").getValue(String::class.java) ?: "Unknown"
-                    val location = snapshot.child("location").getValue(String::class.java) ?: "Unknown"
+                    val firmName = snapshot.child("lawFirm").getValue(String::class.java) ?: "Unknown"
+                    val officeAddress = snapshot.child("officeAddress").getValue(String::class.java) ?: "Unknown"
 
                     binding.lawyerFirm.text = "Law Firm: $firmName"
-                    binding.lawyerLocation.text = "Location: $location"
+                    binding.lawyerLocation.text = "Location: $officeAddress"
+
+                    // Debugging logs
+                    Log.d("LawyerBackground", "Law Firm Name: $firmName")
+                    Log.d("LawyerBackground", "Office Address: $officeAddress")
                 } else {
                     binding.lawyerFirm.text = "Law Firm: Not Available"
                     binding.lawyerLocation.text = "Location: Not Available"
