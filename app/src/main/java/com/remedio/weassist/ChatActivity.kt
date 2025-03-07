@@ -212,23 +212,51 @@ class ChatActivity : AppCompatActivity() {
 
     // Update listenForMessages to handle client IDs
     private fun listenForMessages() {
-        if (currentUserId == null) return
+        if (currentUserId == null) {
+            Log.e("ChatActivity", "Current user ID is null!")
+            return
+        }
+
+        // Log the IDs to help with debugging
+        Log.d("ChatActivity", "Listening for messages with currentUserId: $currentUserId")
+        Log.d("ChatActivity", "clientId: $clientId, secretaryId: $secretaryId")
 
         val receiverId = when {
-            clientId != null -> clientId!!
-            secretaryId != null -> secretaryId!!
+            clientId != null -> {
+                Log.d("ChatActivity", "Using clientId as receiverId: $clientId")
+                clientId!!
+            }
+            secretaryId != null -> {
+                Log.d("ChatActivity", "Using secretaryId as receiverId: $secretaryId")
+                secretaryId!!
+            }
             else -> {
                 Log.e("ChatActivity", "No receiver ID available")
                 return
             }
         }
 
+        // Generate conversation ID consistently
         val conversationId = generateConversationId(currentUserId!!, receiverId)
-        val messagesRef = database.child("conversations").child(conversationId).child("messages")
+        Log.d("ChatActivity", "Generated conversationId: $conversationId")
 
+        // Reset unread messages counter for this user
+        database.child("conversations").child(conversationId)
+            .child("unreadMessages")
+            .child(currentUserId!!)
+            .setValue(0)
+
+        // Listen for messages
+        val messagesRef = database.child("conversations").child(conversationId).child("messages")
         messagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 messagesList.clear()
+                if (!snapshot.exists()) {
+                    Log.d("ChatActivity", "No messages found in conversation: $conversationId")
+                    return
+                }
+
+                Log.d("ChatActivity", "Found ${snapshot.childrenCount} messages")
                 for (messageSnapshot in snapshot.children) {
                     val message = messageSnapshot.getValue(Message::class.java)
                     if (message != null) {
@@ -236,7 +264,9 @@ class ChatActivity : AppCompatActivity() {
                     }
                 }
                 messagesAdapter.notifyDataSetChanged()
-                rvChatMessages.scrollToPosition(messagesList.size - 1)
+                if (messagesList.isNotEmpty()) {
+                    rvChatMessages.scrollToPosition(messagesList.size - 1)
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {

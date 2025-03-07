@@ -34,9 +34,12 @@ class ClientMessageFragment : Fragment() {
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        conversationsAdapter = ConversationAdapter(conversationList) { conversation ->
-            openChatActivity(conversation.secretaryId)
-        }
+        // In ClientMessageFragment
+        conversationsAdapter = ConversationAdapter(
+            conversationList,
+            { conversation -> openChatActivity(conversation.secretaryId) },
+            currentUserId  // Pass current user ID (client)
+        )
         conversationsRecyclerView.adapter = conversationsAdapter
 
         database = FirebaseDatabase.getInstance().reference
@@ -107,12 +110,16 @@ class ClientMessageFragment : Fragment() {
 
                     if (!snapshot.exists()) {
                         Log.e("FirebaseDB", "No conversations found for user: $currentUserId")
+                        conversationsAdapter.notifyDataSetChanged()
                         return
                     }
 
+                    val tempConversationList = mutableListOf<Conversation>()
+                    var fetchCount = 0
+
                     for (conversationSnapshot in snapshot.children) {
                         val conversationId = conversationSnapshot.key ?: continue
-                        val secretaryId = conversationSnapshot.child("participantIds")
+                        val otherParticipantId = conversationSnapshot.child("participantIds")
                             .children.firstOrNull { it.key != currentUserId }?.key ?: continue
 
                         if (!conversationSnapshot.child("participantIds").hasChild(currentUserId!!)) {
@@ -121,18 +128,32 @@ class ClientMessageFragment : Fragment() {
                         }
 
                         val lastMessage = conversationSnapshot.child("messages").children.lastOrNull()
-                            ?.child("message")?.value.toString() ?: "No messages yet"
+                            ?.child("message")?.getValue(String::class.java) ?: "No messages yet"
 
                         val unreadCount = conversationSnapshot.child("unreadMessages/$currentUserId")
-                            .value?.toString()?.toIntOrNull() ?: 0
+                            .getValue(Int::class.java) ?: 0
 
-                        // Fetch the secretary's name before adding to the list
-                        fetchSecretaryName(secretaryId) { secretaryName ->
+                        fetchCount++
+                        fetchSecretaryName(otherParticipantId) { secretaryName ->
                             val conversation = Conversation(
-                                conversationId, secretaryId, secretaryName, lastMessage, unreadCount
+                                conversationId = conversationId,
+                                clientId = currentUserId ?: "",
+                                secretaryId = otherParticipantId,
+                                clientName = "", // Empty for client-side view
+                                secretaryName = secretaryName,
+                                lastMessage = lastMessage,
+                                unreadCount = unreadCount
                             )
-                            conversationList.add(conversation)
-                            conversationsAdapter.notifyDataSetChanged()
+
+                            tempConversationList.add(conversation)
+                            fetchCount--
+
+                            // Only update the adapter once all secretary names are fetched
+                            if (fetchCount == 0) {
+                                conversationList.clear()
+                                conversationList.addAll(tempConversationList)
+                                conversationsAdapter.notifyDataSetChanged()
+                            }
                         }
                     }
                 }
@@ -142,6 +163,7 @@ class ClientMessageFragment : Fragment() {
                 }
             })
     }
+
 
     private fun fetchSecretaryName(secretaryId: String, callback: (String) -> Unit) {
         val secretariesRef = database.child("secretaries").child(secretaryId).child("name")

@@ -8,7 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 
 class ConversationAdapter(
     private val conversationList: List<Conversation>,
-    private val onItemClick: (Conversation) -> Unit
+    private val onItemClick: (Conversation) -> Unit,
+    private val currentUserId: String? = null  // Add current user ID to determine the role
 ) : RecyclerView.Adapter<ConversationAdapter.ConversationViewHolder>() {
 
     class ConversationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -25,11 +26,26 @@ class ConversationAdapter(
 
     override fun onBindViewHolder(holder: ConversationViewHolder, position: Int) {
         val conversation = conversationList[position]
-        holder.nameTextView.text = conversation.secretaryName  // Replace with Secretary's name lookup
+
+        // Determine if current user is a secretary (by checking if they're conversing with client)
+        val isSecretaryView = currentUserId != null && conversation.clientId != currentUserId
+
+        // Display the appropriate name based on user role
+        if (isSecretaryView) {
+            // Secretary viewing client conversation
+            holder.nameTextView.text = conversation.clientName
+        } else {
+            // Client viewing secretary conversation
+            holder.nameTextView.text = conversation.secretaryName
+        }
+
         holder.lastMessageTextView.text = conversation.lastMessage
         holder.unreadCountTextView.text = conversation.unreadCount.toString()
+        holder.unreadCountTextView.visibility = if (conversation.unreadCount > 0) View.VISIBLE else View.GONE
 
-        holder.itemView.setOnClickListener { onItemClick(conversation) }
+        holder.itemView.setOnClickListener {
+            onItemClick(conversation)
+        }
     }
 
     override fun getItemCount(): Int = conversationList.size
