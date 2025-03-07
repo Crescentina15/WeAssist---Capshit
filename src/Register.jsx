@@ -11,7 +11,6 @@ const Register = () => {
     firmDescription: "",
     phoneNumber: "",
     email: "",
-    website: "",
     specialization: "",
     operatingHours: "",
     licenseNumber: "",
