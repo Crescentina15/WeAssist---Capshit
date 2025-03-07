@@ -1,10 +1,11 @@
-package com.remedio.weassist
+package com.remedio.weassist.MessageConversation
 
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.remedio.weassist.R
 
 class ConversationAdapter(
     private val conversationList: List<Conversation>,

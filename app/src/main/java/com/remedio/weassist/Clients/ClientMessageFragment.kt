@@ -1,6 +1,5 @@
 package com.remedio.weassist.Clients
 
-import InboxAdapter
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -12,9 +11,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.remedio.weassist.ChatActivity
-import com.remedio.weassist.Conversation
-import com.remedio.weassist.ConversationAdapter
+import com.remedio.weassist.MessageConversation.ChatActivity
+import com.remedio.weassist.MessageConversation.Conversation
+import com.remedio.weassist.MessageConversation.ConversationAdapter
 import com.remedio.weassist.R
 
 class ClientMessageFragment : Fragment() {

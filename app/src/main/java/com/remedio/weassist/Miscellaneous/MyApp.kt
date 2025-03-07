@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Miscellaneous
 
 
 import android.app.Application

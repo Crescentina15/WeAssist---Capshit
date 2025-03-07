@@ -1,4 +1,4 @@
-    package com.remedio.weassist
+    package com.remedio.weassist.MessageConversation
 
     data class Conversation(
         val conversationId: String = "",

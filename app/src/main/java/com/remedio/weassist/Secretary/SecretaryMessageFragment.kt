@@ -10,15 +10,11 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
-import com.remedio.weassist.ChatActivity
-import com.remedio.weassist.Clients.Message
-import com.remedio.weassist.Conversation
-import com.remedio.weassist.ConversationAdapter
-import com.remedio.weassist.InboxItem
+import com.remedio.weassist.MessageConversation.ChatActivity
+import com.remedio.weassist.MessageConversation.Conversation
+import com.remedio.weassist.MessageConversation.ConversationAdapter
 import com.remedio.weassist.R
-import com.remedio.weassist.SecretaryInboxAdapter
 
 class SecretaryMessageFragment : Fragment() {
     private lateinit var database: DatabaseReference

@@ -6,7 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.database.*
-import com.remedio.weassist.ChatActivity
+import com.remedio.weassist.MessageConversation.ChatActivity
 import com.remedio.weassist.Secretary.SetAppointmentActivity
 import com.remedio.weassist.databinding.ActivityLawyerBackgroundBinding
 

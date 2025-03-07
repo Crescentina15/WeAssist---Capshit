@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.MessageConversation
 
 import android.os.Bundle
 import android.util.Log
@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
 import com.remedio.weassist.Clients.MessageAdapter
+import com.remedio.weassist.R
 
 class ChatActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference

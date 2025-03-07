@@ -16,7 +16,7 @@
             android:name=".Lawyer.LawyerNotification"
             android:exported="false" />
         <activity
-            android:name=".MyApp"
+            android:name=".Miscellaneous.MyApp"
             android:exported="false" />
         <activity
             android:name=".Lawyer.LawyerBackgroundActivity"
@@ -82,13 +82,7 @@
             android:name=".Clients.ClientFrontPage"
             android:exported="false" />
         <activity
-            android:name=".ChatMessagesActivity"
-            android:exported="true" />
-        <activity
-            android:name=".ChatActivity"
-            android:exported="true" />
-        <activity
-            android:name=".Clients.ChatDetailActivity"
+            android:name=".MessageConversation.ChatActivity"
             android:exported="true" />
         <activity
             android:name=".Clients.ClientDashboard"
