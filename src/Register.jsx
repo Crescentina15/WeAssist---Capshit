@@ -7,8 +7,6 @@ import logo from "./assets/logo.png"
 const Register = () => {
   const [formData, setFormData] = useState({
     lawFirm: "",
-    firmType: "",
-    firmDescription: "",
     phoneNumber: "",
     email: "",
     specialization: "",
@@ -33,8 +31,6 @@ const Register = () => {
 
       await set(lawFirmAdminRef, {
         lawFirm: formData.lawFirm,
-        firmType: formData.firmType,
-        firmDescription: formData.firmDescription,
         phoneNumber: formData.phoneNumber,
         email: formData.email,
         operatingHours: formData.operatingHours,
@@ -60,8 +56,6 @@ const Register = () => {
         {error && <p className="error">{error}</p>}
         <form onSubmit={handleRegister}>
           <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required />
-          <input type="text" name="firmType" placeholder="Firm Type" onChange={handleChange} required />
-          <input type="text" name="firmDescription" placeholder="Firm Description" onChange={handleChange} required />
           <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
           <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
           <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
