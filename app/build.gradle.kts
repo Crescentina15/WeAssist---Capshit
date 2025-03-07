@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.firebase.auth.ktx)
     implementation(libs.generativeai)
     implementation(libs.common)
+    implementation(libs.firebase.functions.ktx)
     testImplementation(libs.junit)
 
     // Navigation Component dependencies

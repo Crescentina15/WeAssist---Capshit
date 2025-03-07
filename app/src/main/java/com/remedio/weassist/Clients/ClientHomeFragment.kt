@@ -116,14 +116,18 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun createSpecializationButtons(specializations: List<String>) {
-        specializationsLayout.removeAllViews() // Clear existing buttons
+        val context = context ?: return  // ✅ Ensure context is not null
+        val resources = resources ?: return  // ✅ Ensure resources are available
+        val container = view?.findViewById<GridLayout>(R.id.specializations_layout) ?: return  // ✅ Ensure layout exists
+
+        container.removeAllViews() // Clear existing buttons
 
         for (specialization in specializations) {
             val button = Button(context).apply {
-                text = specialization // Set the button text to the specialization name
+                text = specialization
                 layoutParams = GridLayout.LayoutParams().apply {
-                    width = resources.getDimensionPixelSize(R.dimen.button_width) // Set fixed width
-                    height = resources.getDimensionPixelSize(R.dimen.button_height) // Set fixed height
+                    width = resources.getDimensionPixelSize(R.dimen.button_width)
+                    height = resources.getDimensionPixelSize(R.dimen.button_height)
                     columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     setMargins(8, 8, 8, 8)
@@ -132,15 +136,16 @@ class ClientHomeFragment : Fragment() {
                     openLawyersList(specialization)
                 }
                 // Apply styling
-                backgroundTintList = context?.getColorStateList(R.color.purple_500) // Set button background color
-                setTextColor(context?.getColor(android.R.color.white) ?: 0) // Set text color to white
-                textSize = 16f // Set text size
-                setPadding(16, 8, 16, 8) // Add padding to the button text
+                backgroundTintList = context.getColorStateList(R.color.purple_500)
+                setTextColor(context.getColor(android.R.color.white))
+                textSize = 16f
+                setPadding(16, 8, 16, 8)
             }
 
-            specializationsLayout.addView(button)
+            container.addView(button)  // ✅ Ensure container is not null
         }
     }
+
 
     private fun openLawyersList(specialization: String) {
         val intent = Intent(requireContext(), LawyersListActivity::class.java)
