@@ -54,7 +54,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                     val lawyer = snapshot.getValue(Lawyer::class.java)
                     lawyer?.let {
                         binding.lawyerName.text = it.name
-                        binding.lawyerSpecialization.text = "Specialty: ${it.specialization}"
+                        binding.lawyerSpecialization.text = "Specialization: ${it.specialization}"
                         binding.lawyerBio.text = "Bio: ${it.bio}"
                         binding.lawyerExperience.text = "Experience: ${it.experience} years"
                         binding.lawyerLawSchool.text = "Law School: ${it.lawSchool}"
@@ -63,12 +63,17 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         binding.lawyerJurisdiction.text = "Jurisdiction: ${it.jurisdiction}"
                         binding.lawyerRate.text = "Professional Rate: ${it.rate}"
 
-                        // Debugging logs
-                        Log.d("LawyerBackground", "Lawyer ID: $lawyerId")
-                        Log.d("LawyerBackground", "Law Firm ID: ${it.lawFirm}")
+                        // Retrieve `adminUID` from lawyer's details
+                        val adminUID = snapshot.child("adminUID").getValue(String::class.java)
 
-                        // Retrieve and display law firm details
-                        retrieveFirmDetails(it.lawFirm)
+                        if (!adminUID.isNullOrEmpty()) {
+                            Log.d("LawFirmDetails", "Fetching law firm details for adminUID: $adminUID")
+                            retrieveLawFirmFromAdmin(adminUID) // ✅ Pass `adminUID` instead of `lawyerId`
+                        } else {
+                            Log.e("LawFirmDetails", "No adminUID found for lawyer: $lawyerId")
+                            binding.lawyerFirm.text = "Law Firm: Not Available"
+                            binding.lawyerLocation.text = "Location: Not Available"
+                        }
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
@@ -81,14 +86,10 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         })
     }
 
-    private fun retrieveFirmDetails(lawFirmId: String?) {
-        if (lawFirmId.isNullOrEmpty()) {
-            binding.lawyerFirm.text = "Law Firm: Not Available"
-            binding.lawyerLocation.text = "Location: Not Available"
-            return
-        }
 
-        val firmRef = FirebaseDatabase.getInstance().getReference("firms").child(lawFirmId)
+    // ✅ Fetch law firm details using `adminUID` (Not `lawFirm` name)
+    private fun retrieveLawFirmFromAdmin(adminUID: String) {
+        val firmRef = FirebaseDatabase.getInstance().getReference("law_firm_admin").child(adminUID)
         firmRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
@@ -98,9 +99,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                     binding.lawyerFirm.text = "Law Firm: $firmName"
                     binding.lawyerLocation.text = "Location: $officeAddress"
 
-                    // Debugging logs
-                    Log.d("LawyerBackground", "Law Firm Name: $firmName")
-                    Log.d("LawyerBackground", "Office Address: $officeAddress")
+                    Log.d("LawFirmDetails", "Law Firm: $firmName")
+                    Log.d("LawFirmDetails", "Office Address: $officeAddress")
                 } else {
                     binding.lawyerFirm.text = "Law Firm: Not Available"
                     binding.lawyerLocation.text = "Location: Not Available"
@@ -112,4 +112,5 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             }
         })
     }
+
 }
