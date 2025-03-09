@@ -49,20 +49,20 @@ const Register = () => {
   return (
     <div className="page-container">
       <header className="header">
-        <img src={logo}/>
+        <img src={logo} alt="Logo"/>
       </header>
       <div className="register-container">
         <h2>Register Law Firm Admin</h2>
         {error && <p className="error">{error}</p>}
-        <form onSubmit={handleRegister}>
-          <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required />
-          <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required />
-          <input type="email" name="email" placeholder="Email" onChange={handleChange} required />
-          <input type="password" name="password" placeholder="Password" onChange={handleChange} required />
-          <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required />
-          <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required />
-          <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required />
-          <button type="submit" className = "registerButton">Register</button>
+        <form onSubmit={handleRegister} autoComplete="off">
+          <input type="text" name="lawFirm" placeholder="Firm Name" onChange={handleChange} required autoComplete="off"/>
+          <input type="tel" name="phoneNumber" placeholder="Phone Number" onChange={handleChange} required autoComplete="off"/>
+          <input type="email" name="email" placeholder="Email" onChange={handleChange} required autoComplete="off"/>
+          <input type="password" name="password" placeholder="Password" onChange={handleChange} required autoComplete="new-password"/>
+          <input type="text" name="operatingHours" placeholder="Operating Hours" onChange={handleChange} required autoComplete="off"/>
+          <input type="text" name="licenseNumber" placeholder="License Number" onChange={handleChange} required autoComplete="off"/>
+          <input type="text" name="officeAddress" placeholder="Office Address" onChange={handleChange} required autoComplete="off"/>
+          <button type="submit" className="registerButton">Register</button>
         </form>
       </div>
     </div>
