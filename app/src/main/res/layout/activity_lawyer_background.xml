@@ -5,39 +5,47 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".Lawyer.LawyerBackgroundActivity">
+    tools:context=".Lawyer.LawyerBackgroundActivity"
+    android:background="@android:color/white">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- Profile Section -->
         <LinearLayout
             android:id="@+id/profile_section"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp"
+            android:padding="24dp"
             android:background="#ded2fc"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
+            <!-- Back Button -->
             <ImageButton
                 android:id="@+id/back_arrow"
                 android:layout_width="35dp"
-                android:layout_height="25dp"
+                android:layout_height="35dp"
                 android:src="@drawable/arrow_back"
-                app:tint="@color/black" />
+                app:tint="@color/black"
+                android:background="?attr/selectableItemBackgroundBorderless" />
 
+            <!-- Profile Image -->
             <ImageView
                 android:id="@+id/profile_image"
-                android:layout_width="120dp"
-                android:layout_height="110dp"
+                android:layout_width="130dp"
+                android:layout_height="130dp"
                 android:layout_gravity="center_horizontal"
-                android:layout_marginBottom="8dp"
+                android:layout_marginTop="8dp"
                 android:scaleType="centerCrop"
-                android:src="@drawable/account_circle_24" />
+                android:src="@drawable/account_circle_24"
+                android:background="@drawable/baseline_circle_24"
+                android:elevation="5dp" />
 
+            <!-- Name -->
             <TextView
                 android:id="@+id/lawyerName"
                 android:layout_width="wrap_content"
@@ -45,16 +53,17 @@
                 android:layout_gravity="center_horizontal"
                 android:text="Atty. [Lawyer Name]"
                 android:textColor="@android:color/black"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:layout_marginTop="8dp" />
 
+            <!-- Specialization, Firm, Location, Rating -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:layout_marginTop="10dp"
                 android:gravity="center"
-                android:layout_gravity="center_horizontal">
+                android:layout_marginTop="8dp">
 
                 <TextView
                     android:id="@+id/lawyerSpecialization"
@@ -62,7 +71,7 @@
                     android:layout_height="wrap_content"
                     android:text="Specialty: Family Lawyer"
                     android:textColor="@android:color/black"
-                    android:textSize="20sp"
+                    android:textSize="18sp"
                     android:textStyle="bold"
                     android:gravity="center" />
 
@@ -70,38 +79,39 @@
                     android:id="@+id/lawyerFirm"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="Law Firm: "
                     android:textColor="@android:color/black"
-                    android:textSize="20sp"
+                    android:textSize="18sp"
                     android:gravity="center"
-                    android:text="Law Firm: "/>
+                    android:layout_marginTop="4dp" />
 
                 <TextView
                     android:id="@+id/lawyerLocation"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Location: Banlad"
+                    android:text="📍 Location: Banlad"
                     android:textColor="@android:color/black"
-                    android:textSize="20sp"
-                    android:gravity="center" />
+                    android:textSize="16sp"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp" />
 
                 <TextView
                     android:id="@+id/lawyerRating"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Rating: 4.5"
+                    android:text="⭐ Rating: 4.5"
                     android:textColor="@android:color/black"
-                    android:textSize="20sp"
-                    android:gravity="center" />
+                    android:textSize="16sp"
+                    android:gravity="center"
+                    android:layout_marginTop="4dp" />
 
             </LinearLayout>
 
-
-
-            <!-- Buttons properly positioned -->
+            <!-- Buttons -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
+                android:layout_marginTop="16dp"
                 android:gravity="center"
                 android:orientation="horizontal">
 
@@ -113,7 +123,9 @@
                     android:layout_marginEnd="8dp"
                     android:backgroundTint="#7959A0"
                     android:text="Set Appointment"
-                    android:textColor="@android:color/white" />
+                    android:textColor="@android:color/white"
+                    android:padding="10dp"
+                    android:background="@drawable/rounded_button" />
 
                 <Button
                     android:id="@+id/btn_message"
@@ -122,10 +134,14 @@
                     android:layout_weight="1"
                     android:backgroundTint="#7959A0"
                     android:text="Message"
-                    android:textColor="@android:color/white" />
+                    android:textColor="@android:color/white"
+                    android:padding="10dp"
+                    android:background="@drawable/rounded_button" />
             </LinearLayout>
+
         </LinearLayout>
 
+        <!-- Scrollable Bio Section -->
         <ScrollView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -138,7 +154,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="15dp"
+                android:padding="20dp"
                 android:background="@android:color/white">
 
                 <TextView
@@ -146,23 +162,31 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Bio"
-                    android:textSize="25sp"
-                    android:textStyle="bold" />
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="@android:color/black"
+                    android:layout_marginBottom="8dp" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@android:color/darker_gray"
+                    android:layout_marginBottom="8dp"/>
 
                 <TextView
                     android:id="@+id/lawyer_experience"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textStyle="bold"
                     android:text="Experience"
-                    android:layout_marginTop="15dp" />
+                    android:textSize="16sp"
+                    android:layout_marginTop="8dp" />
 
                 <TextView
                     android:id="@+id/lawyer_law_school"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Law School"
-                    android:textStyle="bold"
+                    android:textSize="16sp"
                     android:layout_marginTop="8dp" />
 
                 <TextView
@@ -170,7 +194,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Graduation Year"
-                    android:textStyle="bold"
+                    android:textSize="16sp"
                     android:layout_marginTop="8dp" />
 
                 <TextView
@@ -178,7 +202,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Certifications"
-                    android:textStyle="bold"
+                    android:textSize="16sp"
                     android:layout_marginTop="8dp" />
 
                 <TextView
@@ -186,20 +210,18 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Jurisdiction"
-                    android:textStyle="bold"
+                    android:textSize="16sp"
                     android:layout_marginTop="8dp" />
-
-
 
                 <TextView
                     android:id="@+id/lawyer_rate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Rate"
-                    android:textStyle="bold"
+                    android:textSize="16sp"
                     android:layout_marginTop="8dp" />
 
-</LinearLayout>
+            </LinearLayout>
         </ScrollView>
 
     </androidx.constraintlayout.widget.ConstraintLayout>
