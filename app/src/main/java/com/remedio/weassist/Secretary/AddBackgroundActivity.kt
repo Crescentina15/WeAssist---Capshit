@@ -120,6 +120,7 @@ class AddBackgroundActivity : AppCompatActivity() {
         databaseReference.child(lawyerId!!).updateChildren(updates).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Toast.makeText(this, "Background saved successfully!", Toast.LENGTH_SHORT).show()
+                finish() // Navigate back to the previous screen
             } else {
                 Toast.makeText(this, "Failed to save background.", Toast.LENGTH_SHORT).show()
             }

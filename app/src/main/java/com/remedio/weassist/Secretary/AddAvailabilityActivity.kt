@@ -42,12 +42,19 @@ class AddAvailabilityActivity : AppCompatActivity() {
             val datePicker = DatePickerDialog(
                 this,
                 { _, year, month, dayOfMonth ->
-                    selectDate.setText("$year-${month + 1}-$dayOfMonth")
+                    val selectedCalendar = Calendar.getInstance()
+                    selectedCalendar.set(year, month, dayOfMonth)
+                    if (selectedCalendar.before(calendar)) {
+                        Toast.makeText(this, "You cannot select past dates", Toast.LENGTH_SHORT).show()
+                    } else {
+                        selectDate.setText("$year-${month + 1}-$dayOfMonth")
+                    }
                 },
                 calendar.get(Calendar.YEAR),
                 calendar.get(Calendar.MONTH),
                 calendar.get(Calendar.DAY_OF_MONTH)
             )
+            datePicker.datePicker.minDate = calendar.timeInMillis // Prevent past dates
             datePicker.show()
         }
 
