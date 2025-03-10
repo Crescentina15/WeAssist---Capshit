@@ -433,7 +433,222 @@ form button:hover {
   background-color: #d2d0df; 
 }
 
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
 
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+  list-style: none;
+  padding: 0px 0;
+  min-width: 150px;
+}
+
+.dropdown-menu li {
+  padding: 5px 5px;
+}
+
+.dropdown-item {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  color: black;
+
+}
+
+.dropdown-item:hover {
+  background: #f1f1f1;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #ddd;
+  margin: 4px 0;
+}
+
+.logout {
+  color: red;
+  padding: 5px;
+  margin: 4px 0;
+}
+
+/*PRIVACY DROPDOWN*/
+
+
+.privacy-container {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  color: #000; 
+  text-align: left; 
+}
+
+.breadcrumb {
+  font-size: 14px;
+  color: #666; 
+  margin-bottom: 10px;
+}
+
+.breadcrumb a {
+  color: #333;
+  text-decoration: none;
+}
+
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+
+
+h1 {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+
+h2 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-top: 30px;
+  margin-bottom: 10px;
+  text-align: left;
+}
+
+
+p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 15px;
+}
+
+
+.privacy-note {
+  font-style: italic;
+  color: #555;
+}
+
+
+ul {
+  list-style-type: disc;
+  margin-left: 20px;
+}
+
+ul li {
+  margin-bottom: 10px;
+}
+
+
+.policy-links {
+  font-size: 14px;
+}
+
+.policy-links a {
+  color: #333;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.policy-links a:hover {
+  text-decoration: underline;
+}
+
+
+/*PLANS & SUBSCRIPTION*/
+.plans-container {
+  text-align: center;
+  padding: 40px;
+  background-color: #f9f9f9;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.plans-grid {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.plan-card {
+  background: #f8f8f8; 
+  border-radius: 10px;
+  padding: 20px;
+  width: 300px;
+  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  position: relative;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out, background 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 280px; 
+}
+
+.plan-card:hover {
+  background: #e9d6ff; 
+  box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.highlighted {
+  background: #e6d4fc;
+  border: 2px solid #9b59b6;
+}
+
+.tag {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #9b59b6;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.price {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333;
+  margin: 10px 0;
+}
+
+.description {
+  color: #666;
+}
+
+.subscribe-btn {
+  background: #6a0dad;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: auto; 
+}
+
+.subscribe-btn:hover {
+  background: #5c0da0;
+}
 
 
 

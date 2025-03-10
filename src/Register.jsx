@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; 
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { ref, set } from "firebase/database";
 import { auth, db } from "./script/firebase"; 
-import logo from "./assets/logo.png"
+import logo from "./assets/logo.png";
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +17,7 @@ const Register = () => {
     password: ""
   });
   const [error, setError] = useState("");
+  const navigate = useNavigate(); 
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -39,7 +41,11 @@ const Register = () => {
         uid: user.uid
       });
 
-      alert("Registration successful!");
+      alert("Registration successful! Redirecting to payment...");
+
+      // Redirect to Payment page
+      navigate(`/plans-subscription?name=Law Firm Registration&price=₱4,800`);
+
     } catch (error) {
       setError(error.message);
       alert("Registration failed: " + error.message);

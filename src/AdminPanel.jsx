@@ -10,6 +10,7 @@ import { logEvent } from "firebase/analytics"; // Import logEvent
 const AdminPanel = ({ user, onLogout }) => {
   const [lawyers, setLawyers] = useState([]);
   const [adminLawFirm, setAdminLawFirm] = useState("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -29,10 +30,12 @@ const AdminPanel = ({ user, onLogout }) => {
       const lawyersRef = ref(db, "lawyers");
       onValue(lawyersRef, (snapshot) => {
         if (snapshot.exists()) {
-          const filteredLawyers = Object.entries(snapshot.val()).map(([id, lawyer]) => ({
-            id,
-            ...lawyer
-          })).filter(lawyer => lawyer.lawFirm === adminLawFirm);
+          const filteredLawyers = Object.entries(snapshot.val())
+            .map(([id, lawyer]) => ({
+              id,
+              ...lawyer
+            }))
+            .filter((lawyer) => lawyer.lawFirm === adminLawFirm);
           setLawyers(filteredLawyers);
           if (analytics) {
             logEvent(analytics, "lawyers_list_loaded", { law_firm: adminLawFirm, count: filteredLawyers.length });
@@ -59,14 +62,27 @@ const AdminPanel = ({ user, onLogout }) => {
             navigate("/managesecretary"); 
             if (analytics) logEvent(analytics, "navigate", { destination: "Manage Secretary" });
           }}>Manage Secretary</button>
-          <button className="nav-button" onClick={() => { 
-            navigate("/profile"); 
-            if (analytics) logEvent(analytics, "navigate", { destination: "Profile" });
-          }}>Profile</button>
-          <button className="nav-button logout-button" onClick={() => { 
-            onLogout(); 
-            if (analytics) logEvent(analytics, "logout", { admin_id: user.uid });
-          }}>Logout</button>
+
+          {/* Profile Dropdown */}
+          <div className="dropdown">
+            <button className="nav-button dropdown-toggle" onClick={() => setDropdownOpen(!dropdownOpen)}>
+              Profile
+            </button>
+            {dropdownOpen && (
+              <ul className="dropdown-menu">
+                <li><button className="dropdown-item" onClick={() => navigate("/Profile")}>Settings</button></li>
+                <li><button className="dropdown-item" onClick={() => navigate("/privacy")}>Privacy Policy</button></li>
+                <li><button className="dropdown-item" onClick={() => navigate("/plans-subscription")}>Plan & Subscription</button></li>
+                <li><hr className="dropdown-divider" /></li>
+                <li>
+                  <button className="dropdown-item logout" onClick={() => { 
+                    onLogout(); 
+                    if (analytics) logEvent(analytics, "logout", { admin_id: user.uid });
+                  }}>Logout</button>
+                </li>
+              </ul>
+            )}
+          </div>
         </nav>
       </header>
 
@@ -80,7 +96,7 @@ const AdminPanel = ({ user, onLogout }) => {
                   navigate(`/EditLawyer/${lawyer.id}`); 
                   if (analytics) logEvent(analytics, "edit_lawyer", { lawyer_id: lawyer.id });
                 }}>
-                    {lawyer.name} - {lawyer.specialization}
+                  {lawyer.name} - {lawyer.specialization}
                 </button>
               </li>
             ))}

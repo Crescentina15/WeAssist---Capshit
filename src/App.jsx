@@ -9,7 +9,9 @@ import Profile from "./Profile";
 import AddLawyer from "./AddLawyer";
 import ManageSecretary from "./ManageSecretary";
 import EditLawyer from "./EditLawyer";
-
+import Privacy from "./PrivacyPolicy";
+import PlansSubscription from "./PlansSubscription"; 
+import Payment from "./Payment"; // ✅ Import Payment Component
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -42,10 +44,10 @@ const App = () => {
           path="/login" 
           element={user ? <Navigate to="/" /> : <Login onLogin={setUser} />} 
         />
-      <Route 
-        path="/EditLawyer/:id" 
-        element={user ? <EditLawyer /> : <Navigate to="/login" />} 
-      />
+        <Route 
+          path="/EditLawyer/:id" 
+          element={user ? <EditLawyer /> : <Navigate to="/login" />} 
+        />
         <Route 
           path="/register" 
           element={user ? <Navigate to="/" /> : <Register />} 
@@ -62,9 +64,20 @@ const App = () => {
           path="/managesecretary" 
           element={user ? <ManageSecretary /> : <Navigate to="/login" />} 
         />
+        <Route 
+          path="/privacy" 
+          element={user ? <Privacy /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/plans-subscription" 
+          element={user ? <PlansSubscription /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/payment" 
+          element={user ? <Payment /> : <Navigate to="/login" />} // ✅ Payment Page Route
+        />
       </Routes>
     </Router>
-    
   );
 };
 
