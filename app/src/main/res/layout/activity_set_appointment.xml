@@ -81,7 +81,10 @@
             android:hint="Full name"
             android:padding="10dp"
             android:background="@drawable/edittext_container"
-            android:layout_marginTop="8dp" />
+            android:layout_marginTop="8dp"
+            android:focusable="false"
+            android:clickable="false"
+            android:cursorVisible="false" />
 
 
 

@@ -63,14 +63,17 @@ class SetAppointmentActivity : AppCompatActivity() {
     }
 
     private fun fetchClientName(clientId: String) {
-        val userRef = FirebaseDatabase.getInstance().getReference("users").child(clientId)
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(clientId)
 
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val name = snapshot.child("name").getValue(String::class.java)
-                    if (!name.isNullOrEmpty()) {
-                        editFullName.setText(name)
+                    val firstName = snapshot.child("firstName").getValue(String::class.java)
+                    val lastName = snapshot.child("lastName").getValue(String::class.java)
+
+                    if (!firstName.isNullOrEmpty() && !lastName.isNullOrEmpty()) {
+                        val fullName = "$firstName $lastName"
+                        editFullName.setText(fullName)
                     } else {
                         Toast.makeText(applicationContext, "Client name not found", Toast.LENGTH_SHORT).show()
                     }
@@ -82,6 +85,7 @@ class SetAppointmentActivity : AppCompatActivity() {
             }
         })
     }
+
 
     private fun fetchAvailability(lawyerId: String) {
         databaseReference = FirebaseDatabase.getInstance()
