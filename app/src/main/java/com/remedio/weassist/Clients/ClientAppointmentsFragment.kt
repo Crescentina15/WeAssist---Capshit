@@ -57,19 +57,56 @@ class ClientAppointmentsFragment : Fragment() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     appointmentList.clear()
                     if (snapshot.exists()) {
+                        val totalAppointments = snapshot.childrenCount
+                        var processedAppointments = 0
+
                         for (child in snapshot.children) {
                             val appointment = child.getValue(Appointment::class.java)
                             if (appointment != null) {
-                                Log.d("ClientCheck", "Adding accepted appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
-                                appointmentList.add(appointment)
+                                Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+
+                                // Fetch the lawyer's name
+                                val lawyersRef = database.child("lawyers")
+                                lawyersRef.child(appointment.lawyerId)
+                                    .addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                                            val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
+
+                                            // If lawyerName is not already set, set it
+                                            if (appointment.lawyerName.isNullOrEmpty()) {
+                                                appointment.lawyerName = lawyerName
+                                            }
+
+                                            appointmentList.add(appointment)
+                                            Log.d("ClientCheck", "Added appointment with lawyer: $lawyerName")
+
+                                            // Check if all appointments are processed
+                                            processedAppointments++
+                                            if (processedAppointments >= totalAppointments) {
+                                                updateAdapter()
+                                            }
+                                        }
+
+                                        override fun onCancelled(error: DatabaseError) {
+                                            Log.e("ClientCheck", "Error fetching lawyer: ${error.message}")
+                                            processedAppointments++
+                                            if (processedAppointments >= totalAppointments) {
+                                                updateAdapter()
+                                            }
+                                        }
+                                    })
+                            } else {
+                                processedAppointments++
                             }
                         }
-                        val adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
-                            showAppointmentDetails(selectedAppointment)
+
+                        // If there are no appointments or all were null, update adapter anyway
+                        if (totalAppointments == 0L || processedAppointments >= totalAppointments) {
+                            updateAdapter()
                         }
-                        appointmentRecyclerView.adapter = adapter
                     } else {
                         Log.d("ClientCheck", "No accepted appointments found in DB.")
+                        updateAdapter() // Update with empty list
                     }
                 }
 
@@ -77,6 +114,14 @@ class ClientAppointmentsFragment : Fragment() {
                     Log.e("ClientCheck", "Error fetching accepted appointments: ${error.message}")
                 }
             })
+    }
+
+    // Helper method to update the adapter
+    private fun updateAdapter() {
+        val adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
+            showAppointmentDetails(selectedAppointment)
+        }
+        appointmentRecyclerView.adapter = adapter
     }
 
     private fun showAppointmentDetails(appointment: Appointment) {

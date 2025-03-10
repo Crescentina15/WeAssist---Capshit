@@ -75,15 +75,13 @@ class AppointmentAdapter(
     }
 
     private fun bindClientViewHolder(holder: ClientAppointmentViewHolder, appointment: Appointment) {
-        // Update this method to only use views that exist in the client layout
-        // For example, if client layout doesn't have lawyerName view, don't try to use it here
-
-        holder.appointmentTitle?.text = "Appointment with ${appointment.fullName}"
+        // Change the title to show "Accepted with Atty. [lawyerName]" instead of "Appointment with [fullName]"
+        holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown" } accepted your appointment"
         holder.appointmentDate?.text = appointment.date
         holder.appointmentTime?.text = appointment.time
 
         // Only set these if they exist in client layout
-        holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName}"
+        holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName ?: "Unknown"}"
         holder.appointmentStatus?.text = appointment.status ?: "Pending"
 
         holder.lawyerProfileImage?.let { imageView ->
