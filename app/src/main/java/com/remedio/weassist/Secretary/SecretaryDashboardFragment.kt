@@ -148,13 +148,20 @@ class SecretaryDashboardFragment : Fragment() {
                         for (appointmentSnap in appointmentSnapshot.children) {
                             val appointment = appointmentSnap.getValue(Appointment::class.java) ?: continue
 
+                            // Store the original client name if needed elsewhere
+                            val clientName = appointment.fullName
+
                             // Fetch lawyer details
                             lawyerRef.child(appointment.lawyerId).addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(lawyerSnapshot: DataSnapshot) {
                                     val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
+                                    val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
 
                                     // Only add appointments from the same law firm
                                     if (lawyerLawFirm == secretaryLawFirm) {
+                                        // Replace the fullName with the lawyer's name
+                                        appointment.fullName = lawyerName
+
                                         appointmentList.add(appointment)
                                         appointmentAdapter.notifyDataSetChanged()
                                     }

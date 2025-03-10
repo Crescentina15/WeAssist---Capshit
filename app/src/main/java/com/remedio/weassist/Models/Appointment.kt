@@ -6,7 +6,7 @@ import kotlinx.android.parcel.Parcelize
 @Parcelize
 data class Appointment(
     val appointmentId: String = "",
-    val fullName: String = "",
+    var fullName: String = "",
     var lawyerName: String = "",
     val date: String = "",
     val time: String = "",
