@@ -7,6 +7,7 @@ import kotlinx.android.parcel.Parcelize
 data class Appointment(
     val appointmentId: String = "",
     val fullName: String = "",
+    var lawyerName: String = "",
     val date: String = "",
     val time: String = "",
     val problem: String = "",

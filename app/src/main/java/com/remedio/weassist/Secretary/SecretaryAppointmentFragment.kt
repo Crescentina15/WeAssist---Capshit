@@ -96,45 +96,68 @@ class SecretaryAppointmentFragment : Fragment() {
 
     private fun fetchAppointmentsForLawyers(lawyerIds: List<String>) {
         val appointmentsRef = database.child("appointments")
+        val lawyersRef = database.child("lawyers") // Assuming lawyers are stored here
         Log.d("SecretaryCheck", "Fetching appointments for lawyerIds: $lawyerIds")
 
-        appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                appointmentList.clear()
-                if (snapshot.exists()) {
-                    for (child in snapshot.children) {
-                        val appointment = child.getValue(Appointment::class.java)
-                        val clientId =
-                            child.child("clientId").getValue(String::class.java) ?: "Unknown"
+        // First, fetch all lawyer details to get their names
+        lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(lawyersSnapshot: DataSnapshot) {
+                // Create a map of lawyerId to lawyerName
+                val lawyerNames = mutableMapOf<String, String>()
+                for (lawyerSnapshot in lawyersSnapshot.children) {
+                    val lawyerId = lawyerSnapshot.key ?: continue
+                    val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
+                    lawyerNames[lawyerId] = lawyerName
+                }
 
-                        if (appointment != null && appointment.lawyerId in lawyerIds) {
-                            appointment.clientId =
-                                clientId // Assign clientId to the appointment object
+                // Now fetch appointments
+                appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        appointmentList.clear()
+                        if (snapshot.exists()) {
+                            for (child in snapshot.children) {
+                                val appointment = child.getValue(Appointment::class.java)
+                                val clientId = child.child("clientId").getValue(String::class.java) ?: "Unknown"
 
-                            Log.d(
-                                "SecretaryCheck",
-                                "Adding appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}, clientId=${appointment.clientId}"
+                                if (appointment != null && appointment.lawyerId in lawyerIds) {
+                                    appointment.clientId = clientId // Assign clientId
+
+                                    // Here's the important part: set the lawyer name based on the ID
+                                    appointment.lawyerName = lawyerNames[appointment.lawyerId] ?: "Unknown Lawyer"
+
+                                    Log.d("SecretaryCheck",
+                                        "Adding appointment: ${appointment.fullName}, " +
+                                                "lawyerId=${appointment.lawyerId}, " +
+                                                "lawyerName=${appointment.lawyerName}, " +
+                                                "clientId=${appointment.clientId}")
+
+                                    appointmentList.add(appointment)
+                                }
+                            }
+
+                            // Initialize the adapter with the correct parameters
+                            val adapter = AppointmentAdapter(
+                                appointments = appointmentList,
+                                isClickable = true,
+                                isClientView = false,
+                                onItemClickListener = { selectedAppointment ->
+                                    showAppointmentDetails(selectedAppointment)
+                                }
                             )
-                            appointmentList.add(appointment)
+                            appointmentRecyclerView.adapter = adapter
+                        } else {
+                            Log.d("SecretaryCheck", "No appointments found in DB.")
                         }
                     }
-                    // Initialize the adapter with the correct parameters
-                    val adapter = AppointmentAdapter(
-                        appointments = appointmentList,
-                        isClickable = true, // Enable clickability for the secretary view
-                        isClientView = false, // Use the secretary layout
-                        onItemClickListener = { selectedAppointment ->
-                            showAppointmentDetails(selectedAppointment)
-                        }
-                    )
-                    appointmentRecyclerView.adapter = adapter
-                } else {
-                    Log.d("SecretaryCheck", "No appointments found in DB.")
-                }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
+                    }
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
+                Log.e("SecretaryCheck", "Error fetching lawyers: ${error.message}")
             }
         })
     }

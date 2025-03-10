@@ -21,14 +21,27 @@
             android:layout_height="40dp"
             android:src="@drawable/account_circle_24" />
 
+        <!-- Appointment Title -->
         <TextView
             android:id="@+id/appointment_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Appointment with [Name]"
             android:textSize="16sp"
+            android:textStyle="bold"
             android:layout_marginTop="8dp"/>
 
+        <!-- Lawyer's Name (Newly Added) -->
+        <TextView
+            android:id="@+id/lawyer_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="With Lawyer: [Lawyer Name]"
+            android:textSize="14sp"
+            android:textColor="@color/black"
+            android:layout_marginTop="4dp"/>
+
+        <!-- Appointment Date -->
         <TextView
             android:id="@+id/appointment_date"
             android:layout_width="wrap_content"
@@ -37,6 +50,7 @@
             android:textSize="14sp"
             android:layout_marginTop="4dp"/>
 
+        <!-- Appointment Time -->
         <TextView
             android:id="@+id/appointment_time"
             android:layout_width="wrap_content"
@@ -45,7 +59,7 @@
             android:textSize="14sp"
             android:layout_marginTop="4dp"/>
 
-        <!-- Add this TextView for the appointment status -->
+        <!-- Appointment Status -->
         <TextView
             android:id="@+id/appointment_status"
             android:layout_width="wrap_content"

@@ -7,58 +7,118 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.remedio.weassist.R
-import com.remedio.weassist.Secretary.AppointmentDetailsDialog
 import com.squareup.picasso.Picasso
 
 class AppointmentAdapter(
     private val appointments: List<Appointment>,
-    private val isClickable: Boolean, // New parameter to control clickability
-    private val isClientView: Boolean = false, // New parameter to determine the layout
-    private val onItemClickListener: ((Appointment) -> Unit)? = null // New parameter for click listener
-) : RecyclerView.Adapter<AppointmentAdapter.AppointmentViewHolder>() {
+    private val isClickable: Boolean,
+    private val isClientView: Boolean = false,
+    private val onItemClickListener: ((Appointment) -> Unit)? = null
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppointmentViewHolder {
-        // Determine which layout to use based on isClientView
-        val layoutRes = if (isClientView) R.layout.item_appointment_client else R.layout.item_appointment
-        val view = LayoutInflater.from(parent.context).inflate(layoutRes, parent, false)
-        return AppointmentViewHolder(view)
+    companion object {
+        private const val VIEW_TYPE_SECRETARY = 0
+        private const val VIEW_TYPE_CLIENT = 1
     }
 
-    override fun onBindViewHolder(holder: AppointmentViewHolder, position: Int) {
+    override fun getItemViewType(position: Int): Int {
+        return if (isClientView) VIEW_TYPE_CLIENT else VIEW_TYPE_SECRETARY
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_CLIENT -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_appointment_client, parent, false)
+                ClientAppointmentViewHolder(view)
+            }
+            else -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_appointment, parent, false)
+                SecretaryAppointmentViewHolder(view)
+            }
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val appointment = appointments[position]
+
+        when (holder) {
+            is SecretaryAppointmentViewHolder -> bindSecretaryViewHolder(holder, appointment)
+            is ClientAppointmentViewHolder -> bindClientViewHolder(holder, appointment)
+        }
+
+        // Set click listener
+        if (isClickable) {
+            holder.itemView.setOnClickListener {
+                onItemClickListener?.invoke(appointment)
+            }
+        } else {
+            holder.itemView.isClickable = false
+            holder.itemView.isFocusable = false
+            holder.itemView.alpha = 0.6f
+        }
+    }
+
+    private fun bindSecretaryViewHolder(holder: SecretaryAppointmentViewHolder, appointment: Appointment) {
         holder.appointmentTitle.text = "Appointment with ${appointment.fullName}"
         holder.appointmentDate.text = appointment.date
         holder.appointmentTime.text = appointment.time
+        holder.lawyerName.text = "For Atty. ${appointment.lawyerName}"
+        holder.appointmentStatus.text = appointment.status ?: "Pending"
 
         if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
             Picasso.get().load(appointment.lawyerProfileImage).into(holder.lawyerProfileImage)
         } else {
             holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
         }
+    }
 
-        if (isClickable) {
-            // Enable click and open the appointment details dialog
-            holder.itemView.setOnClickListener {
-                onItemClickListener?.invoke(appointment)
+    private fun bindClientViewHolder(holder: ClientAppointmentViewHolder, appointment: Appointment) {
+        // Update this method to only use views that exist in the client layout
+        // For example, if client layout doesn't have lawyerName view, don't try to use it here
+
+        holder.appointmentTitle?.text = "Appointment with ${appointment.fullName}"
+        holder.appointmentDate?.text = appointment.date
+        holder.appointmentTime?.text = appointment.time
+
+        // Only set these if they exist in client layout
+        holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName}"
+        holder.appointmentStatus?.text = appointment.status ?: "Pending"
+
+        holder.lawyerProfileImage?.let { imageView ->
+            if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
+                Picasso.get().load(appointment.lawyerProfileImage).into(imageView)
+            } else {
+                imageView.setImageResource(R.drawable.account_circle_24)
             }
-        } else {
-            // Disable clickability
-            holder.itemView.isClickable = false
-            holder.itemView.isFocusable = false
-            holder.itemView.alpha = 0.6f // Optional: Reduce opacity to show it's non-interactable
         }
-
-        // Display the appointment status (e.g., "Accepted")
-        holder.appointmentStatus.text = appointment.status ?: "Pending"
     }
 
     override fun getItemCount(): Int = appointments.size
 
-    class AppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    // Secretary ViewHolder with all the views from item_appointment.xml
+    class SecretaryAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val lawyerProfileImage: ImageView = itemView.findViewById(R.id.lawyer_profile_image)
         val appointmentTitle: TextView = itemView.findViewById(R.id.appointment_title)
+        val lawyerName: TextView = itemView.findViewById(R.id.lawyer_name)
         val appointmentDate: TextView = itemView.findViewById(R.id.appointment_date)
         val appointmentTime: TextView = itemView.findViewById(R.id.appointment_time)
-        val appointmentStatus: TextView = itemView.findViewById(R.id.appointment_status) // Add this TextView in your XML
+        val appointmentStatus: TextView = itemView.findViewById(R.id.appointment_status)
+    }
+
+    // Client ViewHolder with ONLY the views that exist in item_appointment_client.xml
+    // Use nullable types (?) for views that might not exist in the client layout
+    class ClientAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        // Only include views that actually exist in item_appointment_client.xml
+        // Make all these nullable (?) if you're not sure which ones exist
+        val lawyerProfileImage: ImageView? = itemView.findViewById(R.id.lawyer_profile_image)
+        val appointmentTitle: TextView? = itemView.findViewById(R.id.appointment_title)
+        val appointmentDate: TextView? = itemView.findViewById(R.id.appointment_date)
+        val appointmentTime: TextView? = itemView.findViewById(R.id.appointment_time)
+
+        // These might be the problematic ones - make them nullable
+        val lawyerName: TextView? = itemView.findViewById(R.id.lawyer_name)
+        val appointmentStatus: TextView? = itemView.findViewById(R.id.appointment_status)
     }
 }
