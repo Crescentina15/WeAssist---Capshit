@@ -48,7 +48,6 @@ class AppointmentAdapter(
             is ClientAppointmentViewHolder -> bindClientViewHolder(holder, appointment)
         }
 
-        // Set click listener
         if (isClickable) {
             holder.itemView.setOnClickListener {
                 onItemClickListener?.invoke(appointment)
@@ -75,12 +74,9 @@ class AppointmentAdapter(
     }
 
     private fun bindClientViewHolder(holder: ClientAppointmentViewHolder, appointment: Appointment) {
-        // Change the title to show "Accepted with Atty. [lawyerName]" instead of "Appointment with [fullName]"
-        holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown" } accepted your appointment"
+        holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown"} accepted your appointment"
         holder.appointmentDate?.text = appointment.date
         holder.appointmentTime?.text = appointment.time
-
-        // Only set these if they exist in client layout
         holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName ?: "Unknown"}"
         holder.appointmentStatus?.text = appointment.status ?: "Pending"
 
@@ -95,7 +91,6 @@ class AppointmentAdapter(
 
     override fun getItemCount(): Int = appointments.size
 
-    // Secretary ViewHolder with all the views from item_appointment.xml
     class SecretaryAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val lawyerProfileImage: ImageView = itemView.findViewById(R.id.lawyer_profile_image)
         val appointmentTitle: TextView = itemView.findViewById(R.id.appointment_title)
@@ -105,24 +100,16 @@ class AppointmentAdapter(
         val appointmentStatus: TextView = itemView.findViewById(R.id.appointment_status)
     }
 
-    // Add this method to update the list of appointments
     fun updateAppointments(newAppointments: List<Appointment>) {
         this.appointments = newAppointments
-        notifyDataSetChanged() // Notify the adapter that the data has changed
+        notifyDataSetChanged()
     }
 
-
-    // Client ViewHolder with ONLY the views that exist in item_appointment_client.xml
-    // Use nullable types (?) for views that might not exist in the client layout
     class ClientAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        // Only include views that actually exist in item_appointment_client.xml
-        // Make all these nullable (?) if you're not sure which ones exist
         val lawyerProfileImage: ImageView? = itemView.findViewById(R.id.lawyer_profile_image)
         val appointmentTitle: TextView? = itemView.findViewById(R.id.appointment_title)
         val appointmentDate: TextView? = itemView.findViewById(R.id.appointment_date)
         val appointmentTime: TextView? = itemView.findViewById(R.id.appointment_time)
-
-        // These might be the problematic ones - make them nullable
         val lawyerName: TextView? = itemView.findViewById(R.id.lawyer_name)
         val appointmentStatus: TextView? = itemView.findViewById(R.id.appointment_status)
     }

@@ -1,5 +1,6 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -36,7 +37,19 @@ class LawyerAppointmentsFragment : Fragment() {
         recyclerView = view.findViewById(R.id.appointments_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         appointmentList = mutableListOf()
-        appointmentAdapter = AppointmentAdapter(appointmentList, isClickable = true) // ✅ Pass value
+
+        appointmentAdapter = AppointmentAdapter(
+            appointmentList,
+            isClickable = true,
+            isClientView = false
+        ) { appointment ->
+            val intent = Intent(requireContext(), ConsultationActivity::class.java).apply {
+                putExtra("client_name", appointment.fullName)
+                putExtra("consultation_time", appointment.time)
+                putExtra("appointment_id", appointment.appointmentId)
+            }
+            startActivity(intent)
+        }
 
         recyclerView.adapter = appointmentAdapter
 
@@ -52,7 +65,7 @@ class LawyerAppointmentsFragment : Fragment() {
             return
         }
 
-        val lawyerId = currentUser.uid // Get logged-in lawyer's ID
+        val lawyerId = currentUser.uid
         databaseRef = FirebaseDatabase.getInstance().reference
             .child("lawyers").child(lawyerId).child("appointments")
 
@@ -63,7 +76,7 @@ class LawyerAppointmentsFragment : Fragment() {
                     val appointment = appointmentSnapshot.getValue(Appointment::class.java)
                     appointment?.let { appointmentList.add(it) }
                 }
-                appointmentAdapter.notifyDataSetChanged()
+                appointmentAdapter.updateAppointments(appointmentList)
             }
 
             override fun onCancelled(error: DatabaseError) {
