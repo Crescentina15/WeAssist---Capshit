@@ -86,7 +86,6 @@ class SetAppointmentActivity : AppCompatActivity() {
         })
     }
 
-
     private fun fetchAvailability(lawyerId: String) {
         databaseReference = FirebaseDatabase.getInstance()
             .getReference("lawyers")
@@ -199,6 +198,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                     // Notify the lawyer about the new appointment
                     sendNotificationToLawyer(lawyerId!!, selectedDate!!, selectedTime!!)
 
+                    // Update the lawyer's availability and refresh spinners
+                    updateLawyerAvailability(lawyerId!!, selectedDate!!, selectedTime!!)
+
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
                     finish()
                 }
@@ -206,6 +208,37 @@ class SetAppointmentActivity : AppCompatActivity() {
                     Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    private fun updateLawyerAvailability(lawyerId: String, date: String, time: String) {
+        val availabilityRef = FirebaseDatabase.getInstance()
+            .getReference("lawyers")
+            .child(lawyerId)
+            .child("availability")
+
+        availabilityRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    for (availabilitySnapshot in snapshot.children) {
+                        val availabilityDate = availabilitySnapshot.child("date").getValue(String::class.java)
+                        val startTime = availabilitySnapshot.child("startTime").getValue(String::class.java)
+                        val endTime = availabilitySnapshot.child("endTime").getValue(String::class.java)
+
+                        if (availabilityDate == date && "$startTime - $endTime" == time) {
+                            availabilitySnapshot.ref.removeValue().addOnSuccessListener {
+                                // Refresh the availability spinners
+                                fetchAvailability(lawyerId)
+                            }
+                            break
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SetAppointmentActivity", "Failed to update lawyer availability: ${error.message}")
+            }
+        })
     }
 
     private fun sendNotificationToLawyer(lawyerId: String, date: String, time: String) {
