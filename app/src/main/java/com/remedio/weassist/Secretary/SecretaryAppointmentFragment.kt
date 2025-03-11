@@ -20,6 +20,7 @@ class SecretaryAppointmentFragment : Fragment() {
     private lateinit var appointmentRecyclerView: RecyclerView
     private lateinit var appointmentList: ArrayList<Appointment>
     private lateinit var lawyerIdList: ArrayList<String>
+    private lateinit var adapter: AppointmentAdapter
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -34,6 +35,17 @@ class SecretaryAppointmentFragment : Fragment() {
 
         appointmentList = ArrayList()
         lawyerIdList = ArrayList()
+
+        // Initialize the adapter
+        adapter = AppointmentAdapter(
+            appointments = appointmentList,
+            isClickable = true,
+            isClientView = false,
+            onItemClickListener = { selectedAppointment ->
+                showAppointmentDetails(selectedAppointment)
+            }
+        )
+        appointmentRecyclerView.adapter = adapter
 
         // Fetch the currently logged-in secretary's UID
         val currentUser = FirebaseAuth.getInstance().currentUser
@@ -83,6 +95,7 @@ class SecretaryAppointmentFragment : Fragment() {
                             }
                         }
                         fetchAppointmentsForLawyers(lawyerIdList)
+                        listenForAppointmentChanges(lawyerIdList)
                     } else {
                         Log.d("SecretaryCheck", "No lawyers found for lawFirm: $lawFirm")
                     }
@@ -120,9 +133,11 @@ class SecretaryAppointmentFragment : Fragment() {
                                 val clientId = child.child("clientId").getValue(String::class.java) ?: "Unknown"
 
                                 if (appointment != null && appointment.lawyerId in lawyerIds) {
+                                    // Set the appointment ID using the Firebase key
+                                    appointment.appointmentId = child.key ?: "Unknown"
                                     appointment.clientId = clientId // Assign clientId
 
-                                    // Here's the important part: set the lawyer name based on the ID
+                                    // Set the lawyer name based on the ID
                                     appointment.lawyerName = lawyerNames[appointment.lawyerId] ?: "Unknown Lawyer"
 
                                     Log.d("SecretaryCheck",
@@ -135,16 +150,8 @@ class SecretaryAppointmentFragment : Fragment() {
                                 }
                             }
 
-                            // Initialize the adapter with the correct parameters
-                            val adapter = AppointmentAdapter(
-                                appointments = appointmentList,
-                                isClickable = true,
-                                isClientView = false,
-                                onItemClickListener = { selectedAppointment ->
-                                    showAppointmentDetails(selectedAppointment)
-                                }
-                            )
-                            appointmentRecyclerView.adapter = adapter
+                            // Update the adapter with the new data
+                            adapter.updateAppointments(appointmentList)
                         } else {
                             Log.d("SecretaryCheck", "No appointments found in DB.")
                         }
@@ -158,6 +165,52 @@ class SecretaryAppointmentFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error fetching lawyers: ${error.message}")
+            }
+        })
+    }
+
+    private fun listenForAppointmentChanges(lawyerIds: List<String>) {
+        val appointmentsRef = database.child("appointments")
+        appointmentsRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handle new appointments
+                val appointment = snapshot.getValue(Appointment::class.java)
+                if (appointment != null && appointment.lawyerId in lawyerIds) {
+                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
+                    appointmentList.add(appointment)
+                    adapter.updateAppointments(appointmentList)
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handle updated appointments
+                val appointment = snapshot.getValue(Appointment::class.java)
+                if (appointment != null && appointment.lawyerId in lawyerIds) {
+                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
+                    val index = appointmentList.indexOfFirst { it.appointmentId == appointment.appointmentId }
+                    if (index != -1) {
+                        appointmentList[index] = appointment
+                        adapter.updateAppointments(appointmentList)
+                    }
+                }
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                // Handle removed appointments
+                val appointment = snapshot.getValue(Appointment::class.java)
+                if (appointment != null && appointment.lawyerId in lawyerIds) {
+                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
+                    appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
+                    adapter.updateAppointments(appointmentList)
+                }
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handle moved appointments (if needed)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryCheck", "Error listening for appointment changes: ${error.message}")
             }
         })
     }

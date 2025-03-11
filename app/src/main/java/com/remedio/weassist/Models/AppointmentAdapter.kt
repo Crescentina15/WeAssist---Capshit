@@ -10,7 +10,7 @@ import com.remedio.weassist.R
 import com.squareup.picasso.Picasso
 
 class AppointmentAdapter(
-    private val appointments: List<Appointment>,
+    private var appointments: List<Appointment>,
     private val isClickable: Boolean,
     private val isClientView: Boolean = false,
     private val onItemClickListener: ((Appointment) -> Unit)? = null
@@ -104,6 +104,13 @@ class AppointmentAdapter(
         val appointmentTime: TextView = itemView.findViewById(R.id.appointment_time)
         val appointmentStatus: TextView = itemView.findViewById(R.id.appointment_status)
     }
+
+    // Add this method to update the list of appointments
+    fun updateAppointments(newAppointments: List<Appointment>) {
+        this.appointments = newAppointments
+        notifyDataSetChanged() // Notify the adapter that the data has changed
+    }
+
 
     // Client ViewHolder with ONLY the views that exist in item_appointment_client.xml
     // Use nullable types (?) for views that might not exist in the client layout
