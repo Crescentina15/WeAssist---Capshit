@@ -1,6 +1,5 @@
 package com.remedio.weassist.Lawyer
 
-import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +15,9 @@ class LawyerAdapter(
     class LawyerViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val nameTextView: TextView = itemView.findViewById(R.id.lawyer_name)
         val specializationTextView: TextView = itemView.findViewById(R.id.lawyer_specialization)
+        val locationTextView: TextView = itemView.findViewById(R.id.lawyer_location)
+        val ratingsTextView: TextView = itemView.findViewById(R.id.lawyer_ratings)
+        val firmTextView: TextView = itemView.findViewById(R.id.lawyer_firm)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LawyerViewHolder {
@@ -27,6 +29,9 @@ class LawyerAdapter(
         val lawyer = lawyersList[position]
         holder.nameTextView.text = lawyer.name
         holder.specializationTextView.text = lawyer.specialization
+        holder.locationTextView.text = "Location: ${lawyer.location}"
+        holder.ratingsTextView.text = "Ratings: ${lawyer.rate}"
+        holder.firmTextView.text = "Law Firm: ${lawyer.lawFirm}"
 
         // Set click listener
         holder.itemView.setOnClickListener {
@@ -36,4 +41,3 @@ class LawyerAdapter(
 
     override fun getItemCount(): Int = lawyersList.size
 }
-

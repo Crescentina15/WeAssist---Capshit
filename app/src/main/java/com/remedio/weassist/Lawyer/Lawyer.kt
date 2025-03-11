@@ -18,8 +18,9 @@ data class Lawyer(
     val bio: String? = null,
     val rate: String? = null,
     val profileImage: String? = null,
-
-    val contact: Contact? = null,
+    val location: String = "",  // Ensure default value is provided
+    val ratings: String = "",   // Add this if needed
+    val contact: Contact? = null
 
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
@@ -37,6 +38,8 @@ data class Lawyer(
         parcel.readString(),
         parcel.readString(),
         parcel.readString(),
+        parcel.readString() ?: "", // Ensure non-nullable string
+        parcel.readString() ?: "", // Ensure non-nullable string for ratings if applicable
         parcel.readParcelable(Contact::class.java.classLoader)
     )
 
@@ -55,6 +58,8 @@ data class Lawyer(
         parcel.writeString(bio)
         parcel.writeString(rate)
         parcel.writeString(profileImage)
+        parcel.writeString(location)  // Make sure it's written as a String
+        parcel.writeString(ratings)   // Write ratings if applicable
         parcel.writeParcelable(contact, flags)
     }
 
