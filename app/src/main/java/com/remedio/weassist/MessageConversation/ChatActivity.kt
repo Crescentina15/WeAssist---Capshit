@@ -140,7 +140,6 @@ class ChatActivity : AppCompatActivity() {
     }
 
 
-    // Update sendMessage method to handle client IDs
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
         Log.d("ChatActivity", "Button Clicked! Message: $messageText")
@@ -171,6 +170,9 @@ class ChatActivity : AppCompatActivity() {
                 if (it.isSuccessful) {
                     Log.d("ChatActivity", "Message Sent Successfully!")
 
+                    // Create notification for the recipient
+                    createNotificationForRecipient(message)
+
                     // Now, add the participant IDs to the conversation
                     val participantsMap = mapOf(
                         currentUserId!! to true,
@@ -197,6 +199,55 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Creates a notification entry in Firebase for the message recipient
+     */
+    private fun createNotificationForRecipient(message: Message) {
+        val recipientId = message.receiverId
+
+        // Create notification data
+        val notification = hashMapOf(
+            "senderId" to message.senderId,
+            "message" to message.message,
+            "timestamp" to message.timestamp,
+            "type" to "message",
+            "isRead" to false,
+            "conversationId" to generateConversationId(message.senderId, message.receiverId)
+        )
+
+        // Add notification to recipient's notifications list
+        database.child("notifications").child(recipientId).push()
+            .setValue(notification)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Notification created for recipient: $recipientId")
+
+                // Increment unread message counter for recipient
+                val conversationId = generateConversationId(message.senderId, message.receiverId)
+                incrementUnreadCounter(conversationId, recipientId)
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to create notification: ${e.message}")
+            }
+    }
+
+    /**
+     * Increments the unread messages counter for a user in a specific conversation
+     */
+    private fun incrementUnreadCounter(conversationId: String, userId: String) {
+        val unreadRef = database.child("conversations").child(conversationId)
+            .child("unreadMessages").child(userId)
+
+        unreadRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val currentCount = snapshot.getValue(Int::class.java) ?: 0
+                unreadRef.setValue(currentCount + 1)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatActivity", "Error updating unread count: ${error.message}")
+            }
+        })
+    }
 
 
     /**

@@ -3,10 +3,12 @@ package com.remedio.weassist.Clients
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.TextView
@@ -41,6 +43,9 @@ class ClientHomeFragment : Fragment() {
         val searchButton: Button = view.findViewById(R.id.search_button)
         val notificationButton: ImageButton = view.findViewById(R.id.notification_icon) // Notifications button
 
+        // Setup notification badge
+        setupNotificationBadge(notificationButton)
+
         // Fetch user's first name from Firebase
         auth.currentUser?.let { fetchUserFirstName(it.uid) } ?: run {
             Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
@@ -62,6 +67,71 @@ class ClientHomeFragment : Fragment() {
         fetchSpecializations()
 
         return view
+    }
+
+    private fun setupNotificationBadge(notificationButton: ImageButton) {
+        val badge = LayoutInflater.from(context).inflate(R.layout.notification_badge, null)
+        val tvBadgeCount = badge.findViewById<TextView>(R.id.tvBadgeCount)
+
+        // Add the badge to the notification button
+        val params = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.gravity = Gravity.END or Gravity.TOP
+        params.setMargins(0, 0, 0, 0)
+
+        // Get the parent of the notification button (should be a FrameLayout or similar)
+        val buttonParent = notificationButton.parent as ViewGroup
+        val buttonIndex = buttonParent.indexOfChild(notificationButton)
+
+        // Create a new FrameLayout to hold the button and the badge
+        val frameLayout = FrameLayout(requireContext())
+
+        // Remove button from its parent
+        buttonParent.removeView(notificationButton)
+
+        // Add button to FrameLayout
+        frameLayout.addView(notificationButton)
+
+        // Add badge to FrameLayout
+        frameLayout.addView(badge, params)
+
+        // Add FrameLayout back to the original parent at the same position
+        buttonParent.addView(frameLayout, buttonIndex)
+
+        // Initially hide the badge
+        badge.visibility = View.GONE
+
+        // Listen for notification count changes
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // Listen to notifications
+        val notificationsRef = FirebaseDatabase.getInstance().getReference("notifications").child(currentUserId)
+        notificationsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var unreadCount = 0
+
+                for (notificationSnapshot in snapshot.children) {
+                    val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
+                    if (!isRead) {
+                        unreadCount++
+                    }
+                }
+
+                // Update badge visibility and count
+                if (unreadCount > 0) {
+                    badge.visibility = View.VISIBLE
+                    tvBadgeCount.text = if (unreadCount > 99) "99+" else unreadCount.toString()
+                } else {
+                    badge.visibility = View.GONE
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ClientHomeFragment", "Error loading notification count: ${error.message}")
+            }
+        })
     }
 
     private fun fetchUserFirstName(userId: String) {
@@ -145,7 +215,6 @@ class ClientHomeFragment : Fragment() {
             container.addView(button)  // ✅ Ensure container is not null
         }
     }
-
 
     private fun openLawyersList(specialization: String) {
         val intent = Intent(requireContext(), LawyersListActivity::class.java)

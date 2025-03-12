@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.generativeai)
     implementation(libs.common)
     implementation(libs.firebase.functions.ktx)
+    implementation(libs.androidx.ui.text.android)
+    implementation(libs.protolite.well.known.types)
     testImplementation(libs.junit)
 
     // Navigation Component dependencies
