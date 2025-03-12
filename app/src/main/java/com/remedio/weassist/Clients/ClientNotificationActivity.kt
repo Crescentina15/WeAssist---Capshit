@@ -1,14 +1,20 @@
 package com.remedio.weassist.Clients
 
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
@@ -48,6 +54,9 @@ class ClientNotificationActivity : AppCompatActivity() {
         rvNotifications.layoutManager = LinearLayoutManager(this)
         rvNotifications.adapter = notificationsAdapter
 
+        // Setup swipe to delete
+        setupSwipeToDelete()
+
         // Set up back button
         backButton.setOnClickListener {
             finish()
@@ -55,6 +64,142 @@ class ClientNotificationActivity : AppCompatActivity() {
 
         // Load notifications
         loadNotifications()
+    }
+
+    private fun setupSwipeToDelete() {
+        // Create a callback for the swipe action
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
+            0, // Drag direction flags (none in this case)
+            ItemTouchHelper.LEFT // Swipe direction flags (left to delete)
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                // Not handling drag & drop, so return false
+                return false
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val deletedItem = notificationsList[position]
+
+                // Remove from database
+                removeNotification(deletedItem)
+
+                // Remove from UI list
+                notificationsList.removeAt(position)
+                notificationsAdapter.notifyItemRemoved(position)
+
+                // Show empty view if needed
+                checkForEmptyList()
+
+                // Show a snackbar with undo option
+                Snackbar.make(
+                    rvNotifications,
+                    "Notification removed",
+                    Snackbar.LENGTH_LONG
+                ).setAction("UNDO") {
+                    // Restore the item in the database
+                    restoreNotification(deletedItem)
+
+                    // Restore the item in the UI
+                    notificationsList.add(position, deletedItem)
+                    notificationsAdapter.notifyItemInserted(position)
+
+                    // Update empty view visibility
+                    checkForEmptyList()
+                }.show()
+            }
+
+            // Optional: Add visual feedback for the swipe action
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val background = ColorDrawable(Color.RED)
+
+                // Draw the red background
+                background.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                background.draw(c)
+
+                // Optional: Draw a delete icon
+                val deleteIcon = ContextCompat.getDrawable(
+                    this@ClientNotificationActivity,
+                    android.R.drawable.ic_menu_delete
+                )
+
+                deleteIcon?.let {
+                    val iconMargin = (itemView.height - it.intrinsicHeight) / 2
+                    val iconTop = itemView.top + iconMargin
+                    val iconBottom = iconTop + it.intrinsicHeight
+                    val iconRight = itemView.right - iconMargin
+                    val iconLeft = iconRight - it.intrinsicWidth
+
+                    it.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    it.draw(c)
+                }
+
+                super.onChildDraw(
+                    c,
+                    recyclerView,
+                    viewHolder,
+                    dX,
+                    dY,
+                    actionState,
+                    isCurrentlyActive
+                )
+            }
+        }
+
+        // Attach the swipe callback to the RecyclerView
+        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(rvNotifications)
+    }
+
+    private fun removeNotification(notification: NotificationItem) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        database.child("notifications").child(currentUserId)
+            .child(notification.id).removeValue()
+            .addOnFailureListener { e ->
+                Log.e("ClientNotification", "Failed to remove notification: ${e.message}")
+            }
+    }
+
+    private fun restoreNotification(notification: NotificationItem) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        database.child("notifications").child(currentUserId)
+            .child(notification.id).setValue(mapOf(
+                "senderId" to notification.senderId,
+                "message" to notification.message,
+                "timestamp" to notification.timestamp,
+                "type" to notification.type,
+                "isRead" to notification.isRead,
+                "conversationId" to notification.conversationId
+            )).addOnFailureListener { e ->
+                Log.e("ClientNotification", "Failed to restore notification: ${e.message}")
+            }
+    }
+
+    private fun checkForEmptyList() {
+        if (notificationsList.isEmpty()) {
+            tvNoNotifications.visibility = View.VISIBLE
+            rvNotifications.visibility = View.GONE
+        } else {
+            tvNoNotifications.visibility = View.GONE
+            rvNotifications.visibility = View.VISIBLE
+        }
     }
 
     private fun loadNotifications() {
