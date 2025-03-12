@@ -62,7 +62,14 @@ class AppointmentAdapter(
     private fun bindSecretaryViewHolder(holder: SecretaryAppointmentViewHolder, appointment: Appointment) {
         holder.appointmentTitle.text = "Appointment with ${appointment.fullName}"
         holder.appointmentDate.text = appointment.date
-        holder.appointmentTime.text = appointment.time
+
+        // Check if the time is booked
+        if (appointment.status?.equals("Booked", ignoreCase = true) == true) {
+            holder.appointmentTime.text = "Time already booked, please select another schedule"
+        } else {
+            holder.appointmentTime.text = appointment.time
+        }
+
         holder.lawyerName.text = "For Atty. ${appointment.lawyerName}"
         holder.appointmentStatus.text = appointment.status ?: "Pending"
 
@@ -76,7 +83,14 @@ class AppointmentAdapter(
     private fun bindClientViewHolder(holder: ClientAppointmentViewHolder, appointment: Appointment) {
         holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown"} accepted your appointment"
         holder.appointmentDate?.text = appointment.date
-        holder.appointmentTime?.text = appointment.time
+
+        // Check if the time is booked
+        if (appointment.status?.equals("Booked", ignoreCase = true) == true) {
+            holder.appointmentTime?.text = "Time already booked, please select another schedule"
+        } else {
+            holder.appointmentTime?.text = appointment.time
+        }
+
         holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName ?: "Unknown"}"
         holder.appointmentStatus?.text = appointment.status ?: "Pending"
 
