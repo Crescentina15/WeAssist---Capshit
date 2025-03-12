@@ -88,6 +88,9 @@
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
         <activity
+            android:name=".Secretary.SecretaryNotificationActivity"
+            android:exported="false" />
+        <activity
             android:name=".Secretary.SecretaryDashboardActivity"
             android:exported="true" />
         <activity

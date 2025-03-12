@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -16,53 +17,55 @@ import com.remedio.weassist.R
 
 class ChatActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
-    private lateinit var tvSecretaryName: TextView
+    private lateinit var tvChatPartnerName: TextView
     private lateinit var etMessageInput: EditText
     private lateinit var btnSendMessage: ImageButton
     private lateinit var rvChatMessages: RecyclerView
     private lateinit var messagesAdapter: MessageAdapter
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
-    private var clientId: String? = null
 
-    private var lawyerId: String? = null
+    // Chat participant IDs
+    private var clientId: String? = null
     private var secretaryId: String? = null
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
+    private var conversationId: String? = null
 
-    // Update the onCreate method to retrieve clientId from intent
+    // Current user type
+    private var userType: String? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
-        tvSecretaryName = findViewById(R.id.name_secretary)
+        tvChatPartnerName = findViewById(R.id.name_secretary)
         etMessageInput = findViewById(R.id.etMessageInput)
         btnSendMessage = findViewById(R.id.btnSendMessage)
         rvChatMessages = findViewById(R.id.rvChatMessages)
         backButton = findViewById(R.id.back_button)
 
         database = FirebaseDatabase.getInstance().reference
-        lawyerId = intent.getStringExtra("LAWYER_ID")
-        secretaryId = intent.getStringExtra("SECRETARY_ID")
-        clientId = intent.getStringExtra("CLIENT_ID")
         currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
+        // Get conversation ID from intent if available
+        conversationId = intent.getStringExtra("CONVERSATION_ID")
+
+        // Get user IDs from intent
+        secretaryId = intent.getStringExtra("SECRETARY_ID")
+        clientId = intent.getStringExtra("CLIENT_ID")
+
+        Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId")
+
+        // Set up RecyclerView
         messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
 
-        // If SECRETARY_ID is provided with CLIENT_ID, this is secretary-client chat
-        if (secretaryId != null && clientId != null) {
-            getClientName(clientId!!)
-        }
-        // If SECRETARY_ID is provided alone, use it directly (client viewing secretary)
-        else if (secretaryId != null) {
-            getSecretaryNameDirect(secretaryId!!)
-        }
-        // Otherwise, fetch the secretary based on lawyer ID
-        else if (lawyerId != null) {
-            getSecretaryName(lawyerId!!)
+        // Determine current user type and set up chat
+        if (currentUserId != null) {
+            determineCurrentUserType()
         } else {
-            Log.e("ChatActivity", "No valid IDs provided!")
+            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
             finish()
         }
 
@@ -75,7 +78,141 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    // Add a method to get client name
+    private fun determineCurrentUserType() {
+        if (currentUserId == null) {
+            Log.e("ChatActivity", "No current user ID found!")
+            finish()
+            return
+        }
+
+        // Check if current user is a secretary
+        database.child("secretaries").child(currentUserId!!).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    userType = "secretary"
+                    Log.d("ChatActivity", "Current user is a secretary")
+
+                    // If we have a conversation ID but no client ID, try to extract it
+                    if (clientId == null && conversationId != null) {
+                        extractClientIdFromConversation(conversationId!!)
+                    } else {
+                        setupChatPartner()
+                    }
+                    return@addOnSuccessListener
+                }
+
+                // If not secretary, assume client
+                userType = "client"
+                Log.d("ChatActivity", "Current user is a client")
+
+                // If we have a conversation ID but no secretary ID, try to extract it
+                if (secretaryId == null && conversationId != null) {
+                    extractSecretaryIdFromConversation(conversationId!!)
+                } else {
+                    setupChatPartner()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Error determining user type: ${e.message}")
+                Toast.makeText(this, "Failed to load user data", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+    }
+
+    private fun extractClientIdFromConversation(conversationId: String) {
+        database.child("conversations").child(conversationId).child("participantIds")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (participantSnapshot in snapshot.children) {
+                            val participantId = participantSnapshot.key
+                            if (participantId != currentUserId) {
+                                // Verify this is a client
+                                database.child("Users").child(participantId!!).get()
+                                    .addOnSuccessListener { userSnapshot ->
+                                        if (userSnapshot.exists()) {
+                                            clientId = participantId
+                                            Log.d("ChatActivity", "Extracted clientId: $clientId from conversation")
+                                            setupChatPartner()
+                                        }
+                                    }
+                            }
+                        }
+                    } else {
+                        Log.e("ChatActivity", "No participants found in conversation")
+                        Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
+                }
+            })
+    }
+
+    private fun extractSecretaryIdFromConversation(conversationId: String) {
+        database.child("conversations").child(conversationId).child("participantIds")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (participantSnapshot in snapshot.children) {
+                            val participantId = participantSnapshot.key
+                            if (participantId != currentUserId) {
+                                // Verify this is a secretary
+                                database.child("secretaries").child(participantId!!).get()
+                                    .addOnSuccessListener { secretarySnapshot ->
+                                        if (secretarySnapshot.exists()) {
+                                            secretaryId = participantId
+                                            Log.d("ChatActivity", "Extracted secretaryId: $secretaryId from conversation")
+                                            setupChatPartner()
+                                        }
+                                    }
+                            }
+                        }
+                    } else {
+                        Log.e("ChatActivity", "No participants found in conversation")
+                        Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
+                }
+            })
+    }
+
+    private fun setupChatPartner() {
+        if (userType == null) {
+            // User type not determined yet, wait for determineCurrentUserType to complete
+            return
+        }
+
+        when (userType) {
+            "client" -> {
+                // Client chatting with secretary
+                if (secretaryId != null) {
+                    getSecretaryName(secretaryId!!)
+                } else {
+                    Log.e("ChatActivity", "No secretary ID provided!")
+                    Toast.makeText(this, "Secretary information not available", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+            "secretary" -> {
+                // Secretary chatting with client
+                if (clientId != null) {
+                    getClientName(clientId!!)
+                } else {
+                    Log.e("ChatActivity", "No client ID provided!")
+                    Toast.makeText(this, "Client information not available", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
+    }
+
     private fun getClientName(clientId: String) {
         database.child("Users").child(clientId).get()
             .addOnSuccessListener { clientSnapshot ->
@@ -83,75 +220,51 @@ class ChatActivity : AppCompatActivity() {
                     val firstName = clientSnapshot.child("firstName").value?.toString() ?: "Unknown"
                     val lastName = clientSnapshot.child("lastName").value?.toString() ?: ""
                     val fullName = "$firstName $lastName".trim()
-                    tvSecretaryName.text = fullName
+                    tvChatPartnerName.text = fullName
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Client not found!")
+                    Toast.makeText(this, "Client information not found", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Error fetching client data: ${e.message}")
+                Toast.makeText(this, "Failed to load client information", Toast.LENGTH_SHORT).show()
+                finish()
             }
     }
 
-
-    private fun getSecretaryNameDirect(secretaryId: String) {
+    private fun getSecretaryName(secretaryId: String) {
         database.child("secretaries").child(secretaryId).get()
             .addOnSuccessListener { secretarySnapshot ->
                 if (secretarySnapshot.exists()) {
                     val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
-                    tvSecretaryName.text = secretaryName
+                    tvChatPartnerName.text = secretaryName
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Secretary not found!")
+                    Toast.makeText(this, "Secretary information not found", Toast.LENGTH_SHORT).show()
+                    finish()
                 }
             }
-    }
-
-
-
-    private fun getSecretaryName(lawyerId: String) {
-        Log.d("ChatActivity", "Fetching secretary for lawyerId: $lawyerId") // Debug log
-
-        database.child("lawyers").child(lawyerId).get().addOnSuccessListener { lawyerSnapshot ->
-            if (lawyerSnapshot.exists()) {
-                secretaryId = lawyerSnapshot.child("secretaryID").value?.toString()
-
-                Log.d("ChatActivity", "Retrieved secretaryId: $secretaryId") // Debug log
-
-                if (!secretaryId.isNullOrEmpty()) {
-                    database.child("secretaries").child(secretaryId!!).get()
-                        .addOnSuccessListener { secretarySnapshot ->
-                            if (secretarySnapshot.exists()) {
-                                val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
-                                tvSecretaryName.text = "$secretaryName"
-
-                                Log.d("ChatActivity", "Secretary Name: $secretaryName") // Debug log
-
-                                listenForMessages()
-                            } else {
-                                Log.e("ChatActivity", "Secretary not found!")
-                            }
-                        }
-                } else {
-                    Log.e("ChatActivity", "No secretary ID found for lawyer!")
-                }
-            } else {
-                Log.e("ChatActivity", "Lawyer not found!")
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Error fetching secretary data: ${e.message}")
+                Toast.makeText(this, "Failed to load secretary information", Toast.LENGTH_SHORT).show()
+                finish()
             }
-        }
     }
-
 
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
         Log.d("ChatActivity", "Button Clicked! Message: $messageText")
 
         if (messageText.isNotEmpty() && currentUserId != null) {
-            val receiverId = when {
-                clientId != null -> clientId!!
-                secretaryId != null -> secretaryId!!
-                else -> {
-                    Log.e("ChatActivity", "No receiver ID available")
-                    return
-                }
+            val receiverId = determineReceiverId()
+            if (receiverId == null) {
+                Log.e("ChatActivity", "Could not determine receiver ID")
+                Toast.makeText(this, "Unable to send message: recipient not identified", Toast.LENGTH_SHORT).show()
+                return
             }
 
             val conversationId = generateConversationId(currentUserId!!, receiverId)
@@ -192,16 +305,25 @@ class ChatActivity : AppCompatActivity() {
                     etMessageInput.text.clear()  // Clear the input field
                 } else {
                     Log.e("ChatActivity", "Failed to send message: ${it.exception?.message}")
+                    Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
                 }
             }
         } else {
             Log.e("ChatActivity", "Message cannot be sent! Check messageText or currentUserId.")
+            if (messageText.isEmpty()) {
+                Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
-    /**
-     * Creates a notification entry in Firebase for the message recipient
-     */
+    private fun determineReceiverId(): String? {
+        return when (userType) {
+            "client" -> secretaryId
+            "secretary" -> clientId
+            else -> null
+        }
+    }
+
     private fun createNotificationForRecipient(message: Message) {
         val recipientId = message.receiverId
 
@@ -230,9 +352,6 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
-    /**
-     * Increments the unread messages counter for a user in a specific conversation
-     */
     private fun incrementUnreadCounter(conversationId: String, userId: String) {
         val unreadRef = database.child("conversations").child(conversationId)
             .child("unreadMessages").child(userId)
@@ -249,10 +368,6 @@ class ChatActivity : AppCompatActivity() {
         })
     }
 
-
-    /**
-     * Generates a unique conversation ID for two users
-     */
     private fun generateConversationId(user1: String, user2: String): String {
         return if (user1 < user2) {
             "conversation_${user1}_${user2}"
@@ -261,50 +376,35 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-
-    // Update listenForMessages to handle client IDs
     private fun listenForMessages() {
         if (currentUserId == null) {
             Log.e("ChatActivity", "Current user ID is null!")
             return
         }
 
-        // Log the IDs to help with debugging
-        Log.d("ChatActivity", "Listening for messages with currentUserId: $currentUserId")
-        Log.d("ChatActivity", "clientId: $clientId, secretaryId: $secretaryId")
-
-        val receiverId = when {
-            clientId != null -> {
-                Log.d("ChatActivity", "Using clientId as receiverId: $clientId")
-                clientId!!
-            }
-            secretaryId != null -> {
-                Log.d("ChatActivity", "Using secretaryId as receiverId: $secretaryId")
-                secretaryId!!
-            }
-            else -> {
-                Log.e("ChatActivity", "No receiver ID available")
-                return
-            }
+        val receiverId = determineReceiverId()
+        if (receiverId == null) {
+            Log.e("ChatActivity", "Could not determine receiver ID for messages")
+            return
         }
 
-        // Generate conversation ID consistently
-        val conversationId = generateConversationId(currentUserId!!, receiverId)
-        Log.d("ChatActivity", "Generated conversationId: $conversationId")
+        // If we have a conversation ID from intent, use it directly
+        val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
+        Log.d("ChatActivity", "Listening for messages with conversationId: $actualConversationId")
 
         // Reset unread messages counter for this user
-        database.child("conversations").child(conversationId)
+        database.child("conversations").child(actualConversationId)
             .child("unreadMessages")
             .child(currentUserId!!)
             .setValue(0)
 
         // Listen for messages
-        val messagesRef = database.child("conversations").child(conversationId).child("messages")
+        val messagesRef = database.child("conversations").child(actualConversationId).child("messages")
         messagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 messagesList.clear()
                 if (!snapshot.exists()) {
-                    Log.d("ChatActivity", "No messages found in conversation: $conversationId")
+                    Log.d("ChatActivity", "No messages found in conversation: $actualConversationId")
                     return
                 }
 
@@ -323,8 +423,8 @@ class ChatActivity : AppCompatActivity() {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ChatActivity", "Error fetching messages: ${error.message}")
+                Toast.makeText(applicationContext, "Failed to load messages", Toast.LENGTH_SHORT).show()
             }
         })
     }
-
 }

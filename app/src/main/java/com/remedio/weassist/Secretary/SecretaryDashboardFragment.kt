@@ -2,9 +2,12 @@ package com.remedio.weassist.Secretary
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -45,6 +48,16 @@ class SecretaryDashboardFragment : Fragment() {
         val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
         val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
         val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
+        val notificationButton = view.findViewById<ImageButton>(R.id.notification_icon)
+
+        // Setup notification badge
+        setupNotificationBadge(notificationButton)
+
+        // Set click listener for notification button
+        notificationButton.setOnClickListener {
+            val intent = Intent(requireContext(), SecretaryNotificationActivity::class.java)
+            startActivity(intent)
+        }
 
         manageAvailabilityButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("manage_availability") }
         addBackgroundButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_background") }
@@ -64,13 +77,76 @@ class SecretaryDashboardFragment : Fragment() {
             }
         }
 
-
-
         recyclerView.adapter = appointmentAdapter
 
         fetchAcceptedAppointments()
 
         return view
+    }
+
+    private fun setupNotificationBadge(notificationButton: ImageButton) {
+        val badge = LayoutInflater.from(context).inflate(R.layout.notification_badge, null)
+        val tvBadgeCount = badge.findViewById<TextView>(R.id.tvBadgeCount)
+
+        // Add the badge to the notification button
+        val params = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.gravity = Gravity.END or Gravity.TOP
+        params.setMargins(0, 0, 0, 0)
+
+        // Get the parent of the notification button (should be a FrameLayout or similar)
+        val buttonParent = notificationButton.parent as ViewGroup
+        val buttonIndex = buttonParent.indexOfChild(notificationButton)
+
+        // Create a new FrameLayout to hold the button and the badge
+        val frameLayout = FrameLayout(requireContext())
+
+        // Remove button from its parent
+        buttonParent.removeView(notificationButton)
+
+        // Add button to FrameLayout
+        frameLayout.addView(notificationButton)
+
+        // Add badge to FrameLayout
+        frameLayout.addView(badge, params)
+
+        // Add FrameLayout back to the original parent at the same position
+        buttonParent.addView(frameLayout, buttonIndex)
+
+        // Initially hide the badge
+        badge.visibility = View.GONE
+
+        // Listen for notification count changes
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+
+        // Listen to notifications
+        val notificationsRef = FirebaseDatabase.getInstance().getReference("notifications").child(currentUserId)
+        notificationsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var unreadCount = 0
+
+                for (notificationSnapshot in snapshot.children) {
+                    val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
+                    if (!isRead) {
+                        unreadCount++
+                    }
+                }
+
+                // Update badge visibility and count
+                if (unreadCount > 0) {
+                    badge.visibility = View.VISIBLE
+                    tvBadgeCount.text = if (unreadCount > 99) "99+" else unreadCount.toString()
+                } else {
+                    badge.visibility = View.GONE
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryDashboardFragment", "Error loading notification count: ${error.message}")
+            }
+        })
     }
 
     private fun loadSecretaryDetails() {
@@ -216,5 +292,4 @@ class SecretaryDashboardFragment : Fragment() {
                 Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
             }
     }
-
 }
