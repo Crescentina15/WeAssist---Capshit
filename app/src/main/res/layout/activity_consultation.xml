@@ -34,12 +34,12 @@
         android:gravity="top|start"/>
 
     <Button
-        android:id="@+id/btn_end_session"
+        android:id="@+id/btn_save_consultation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="End Session"
+        android:text="Save Logs"
         android:layout_marginTop="16dp"
-        android:backgroundTint="#FF0000"/>
+        android:backgroundTint="#2196F3"/>
 </LinearLayout>
 <!-- While ga consulation ari isuwat sa lawyers ang logs with the client -->
 <!-- Directed from the list na mapislit gikan sa dashboard -->
