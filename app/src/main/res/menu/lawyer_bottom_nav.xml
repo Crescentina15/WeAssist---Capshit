@@ -9,6 +9,13 @@
         app:iconSize="24dp" />
 
     <item
+        android:id="@+id/nav_history"
+        app:tint="@color/black"
+        android:icon="@drawable/history"
+        android:title="History"
+        app:iconSize="24dp"/>
+
+    <item
         android:id="@+id/nav_profile"
         app:tint="@color/black"
         android:icon="@drawable/profile"

@@ -16,6 +16,14 @@
     </fragment>
 
     <fragment
+        android:id="@+id/fragment_appointment_history"
+        android:label="HistoryLawyer"
+        tools:layout="@layout/fragment_appointment_history">
+        <!-- Define the actions and navigation here if needed -->
+    </fragment>
+
+
+    <fragment
         android:id="@+id/fragment_profile_lawyer"
         android:label="ProfileLawyer"
         tools:layout="@layout/fragment_lawyer_profile">
