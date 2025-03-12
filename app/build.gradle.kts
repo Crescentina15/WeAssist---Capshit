@@ -75,5 +75,7 @@ dependencies {
     implementation ("androidx.recyclerview:recyclerview:1.2.1")
     implementation("com.google.firebase:firebase-messaging-ktx:23.3.1")
 
+    implementation("com.cloudinary:cloudinary-android:2.0.0")
+    implementation("com.github.bumptech.glide:glide:4.12.0")
 
 }
