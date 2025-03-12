@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.UploadCallback
 import com.google.firebase.auth.FirebaseAuth
@@ -28,6 +29,11 @@ class ClientEditProfileActivity : AppCompatActivity() {
         profileImageView = findViewById(R.id.profile_picture)
         btnUploadImage = findViewById(R.id.btn_change_picture)
 
+        val userId = auth.currentUser?.uid
+        if (userId != null) {
+            fetchProfileImage(userId) // Load existing profile image
+        }
+
         btnUploadImage.setOnClickListener {
             pickImageLauncher.launch("image/*")
         }
@@ -38,6 +44,21 @@ class ClientEditProfileActivity : AppCompatActivity() {
             val userId = auth.currentUser?.uid ?: return@let
             uploadImageToCloudinary(it, userId)
         }
+    }
+
+    private fun fetchProfileImage(userId: String) {
+        database.child(userId).child("profileImageUrl").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val imageUrl = snapshot.getValue(String::class.java)
+                if (!imageUrl.isNullOrEmpty()) {
+                    Glide.with(this@ClientEditProfileActivity).load(imageUrl).into(profileImageView)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@ClientEditProfileActivity, "Failed to load profile image", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun uploadImageToCloudinary(imageUri: Uri, userId: String) {
@@ -64,6 +85,7 @@ class ClientEditProfileActivity : AppCompatActivity() {
     private fun saveImageUrlToFirebase(userId: String, imageUrl: String) {
         database.child(userId).child("profileImageUrl").setValue(imageUrl)
             .addOnSuccessListener {
+                Glide.with(this@ClientEditProfileActivity).load(imageUrl).into(profileImageView)
                 Toast.makeText(this, "Profile image updated!", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener {
