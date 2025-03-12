@@ -18,6 +18,14 @@ class ClientEditProfileActivity : AppCompatActivity() {
     private lateinit var auth: FirebaseAuth
     private lateinit var profileImageView: ImageView
     private lateinit var btnUploadImage: Button
+    private lateinit var btnSaveChanges: Button
+    private lateinit var btnCancel: Button
+    private lateinit var editUsername: EditText
+    private lateinit var editFirstName: EditText
+    private lateinit var editLastName: EditText
+    private lateinit var editAddress: EditText
+    private lateinit var editEmail: EditText
+    private lateinit var editContactNumber: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,14 +36,73 @@ class ClientEditProfileActivity : AppCompatActivity() {
 
         profileImageView = findViewById(R.id.profile_picture)
         btnUploadImage = findViewById(R.id.btn_change_picture)
+        btnSaveChanges = findViewById(R.id.btn_save_changes)
+        btnCancel = findViewById(R.id.btn_cancel)
+
+        editUsername = findViewById(R.id.edit_username)
+        editFirstName = findViewById(R.id.edit_first_name)
+        editLastName = findViewById(R.id.edit_last_name)
+        editAddress = findViewById(R.id.edit_address)
+        editEmail = findViewById(R.id.edit_email)
+        editContactNumber = findViewById(R.id.edit_contact_number)
 
         val userId = auth.currentUser?.uid
         if (userId != null) {
-            fetchProfileImage(userId) // Load existing profile image
+            fetchProfileData(userId)
         }
 
         btnUploadImage.setOnClickListener {
             pickImageLauncher.launch("image/*")
+        }
+
+        btnSaveChanges.setOnClickListener {
+            userId?.let { saveChanges(it) }
+        }
+
+        btnCancel.setOnClickListener {
+            finish()
+        }
+    }
+
+    private fun fetchProfileData(userId: String) {
+        database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    editUsername.setText(snapshot.child("username").getValue(String::class.java))
+                    editFirstName.setText(snapshot.child("firstName").getValue(String::class.java))
+                    editLastName.setText(snapshot.child("lastName").getValue(String::class.java))
+                    editAddress.setText(snapshot.child("address").getValue(String::class.java))
+                    editEmail.setText(snapshot.child("email").getValue(String::class.java))
+                    editContactNumber.setText(snapshot.child("contactNumber").getValue(String::class.java))
+
+                    val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                    if (!imageUrl.isNullOrEmpty()) {
+                        Glide.with(this@ClientEditProfileActivity).load(imageUrl).into(profileImageView)
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(this@ClientEditProfileActivity, "Failed to load profile data", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun saveChanges(userId: String) {
+        val updates = mapOf(
+            "username" to editUsername.text.toString().trim(),
+            "firstName" to editFirstName.text.toString().trim(),
+            "lastName" to editLastName.text.toString().trim(),
+            "address" to editAddress.text.toString().trim(),
+            "email" to editEmail.text.toString().trim(),
+            "contactNumber" to editContactNumber.text.toString().trim()
+        )
+
+        database.child(userId).updateChildren(updates).addOnSuccessListener {
+            Toast.makeText(this, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
+            finish()
+        }.addOnFailureListener {
+            Toast.makeText(this, "Failed to update profile: ${it.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -44,21 +111,6 @@ class ClientEditProfileActivity : AppCompatActivity() {
             val userId = auth.currentUser?.uid ?: return@let
             uploadImageToCloudinary(it, userId)
         }
-    }
-
-    private fun fetchProfileImage(userId: String) {
-        database.child(userId).child("profileImageUrl").addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val imageUrl = snapshot.getValue(String::class.java)
-                if (!imageUrl.isNullOrEmpty()) {
-                    Glide.with(this@ClientEditProfileActivity).load(imageUrl).into(profileImageView)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(this@ClientEditProfileActivity, "Failed to load profile image", Toast.LENGTH_SHORT).show()
-            }
-        })
     }
 
     private fun uploadImageToCloudinary(imageUri: Uri, userId: String) {
