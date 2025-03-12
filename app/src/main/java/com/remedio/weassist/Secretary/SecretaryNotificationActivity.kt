@@ -1,14 +1,20 @@
 package com.remedio.weassist.Secretary
 
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
@@ -46,6 +52,9 @@ class SecretaryNotificationActivity : AppCompatActivity() {
         rvNotifications.layoutManager = LinearLayoutManager(this)
         rvNotifications.adapter = notificationsAdapter
 
+        // Set up swipe-to-delete functionality
+        setupSwipeToDelete()
+
         // Set up back button
         backButton.setOnClickListener {
             finish()
@@ -53,6 +62,134 @@ class SecretaryNotificationActivity : AppCompatActivity() {
 
         // Load notifications
         loadNotifications()
+    }
+
+    private fun setupSwipeToDelete() {
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT
+        ) {
+            private val deleteBackground = ColorDrawable(Color.RED)
+            private val deleteIcon = ContextCompat.getDrawable(
+                this@SecretaryNotificationActivity,
+                android.R.drawable.ic_menu_delete
+            )
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false // We don't want drag & drop
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val deletedNotification = notificationsList[position]
+
+                // Remove from UI
+                notificationsList.removeAt(position)
+                notificationsAdapter.notifyItemRemoved(position)
+
+                // Remove from Firebase
+                removeNotificationFromDatabase(deletedNotification.id)
+
+                // Show undo option
+                Snackbar.make(
+                    rvNotifications,
+                    "Notification removed",
+                    Snackbar.LENGTH_LONG
+                ).setAction("UNDO") {
+                    // Restore notification if user clicks UNDO
+                    notificationsList.add(position, deletedNotification)
+                    notificationsAdapter.notifyItemInserted(position)
+                    restoreNotificationToDatabase(deletedNotification)
+
+                    // Show empty state if needed
+                    updateEmptyState()
+                }.show()
+
+                // Show empty state if needed
+                updateEmptyState()
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val iconMargin = (itemView.height - (deleteIcon?.intrinsicHeight ?: 0)) / 2
+
+                // Draw red background
+                deleteBackground.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                deleteBackground.draw(c)
+
+                // Draw delete icon
+                deleteIcon?.let {
+                    val iconLeft = itemView.right - iconMargin - it.intrinsicWidth
+                    val iconTop = itemView.top + iconMargin
+                    val iconRight = itemView.right - iconMargin
+                    val iconBottom = iconTop + it.intrinsicHeight
+
+                    it.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    it.draw(c)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+
+        val itemTouchHelper = ItemTouchHelper(swipeToDeleteCallback)
+        itemTouchHelper.attachToRecyclerView(rvNotifications)
+    }
+
+    private fun removeNotificationFromDatabase(notificationId: String) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        database.child("notifications").child(currentUserId).child(notificationId).removeValue()
+            .addOnFailureListener { e ->
+                Log.e("SecretaryNotification", "Error deleting notification: ${e.message}")
+            }
+    }
+
+    private fun restoreNotificationToDatabase(notification: NotificationItem) {
+        val currentUserId = auth.currentUser?.uid ?: return
+        val notificationRef = database.child("notifications").child(currentUserId).child(notification.id)
+
+        val notificationMap = hashMapOf(
+            "senderId" to notification.senderId,
+            "message" to notification.message,
+            "timestamp" to notification.timestamp,
+            "type" to notification.type,
+            "isRead" to notification.isRead
+        )
+
+        notification.conversationId?.let {
+            notificationMap["conversationId"] = it
+        }
+
+        notificationRef.setValue(notificationMap)
+            .addOnFailureListener { e ->
+                Log.e("SecretaryNotification", "Error restoring notification: ${e.message}")
+            }
+    }
+
+    private fun updateEmptyState() {
+        if (notificationsList.isEmpty()) {
+            tvNoNotifications.visibility = View.VISIBLE
+            rvNotifications.visibility = View.GONE
+        } else {
+            tvNoNotifications.visibility = View.GONE
+            rvNotifications.visibility = View.VISIBLE
+        }
     }
 
     private fun loadNotifications() {
