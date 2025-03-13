@@ -71,9 +71,9 @@ class ClientEditProfileActivity : AppCompatActivity() {
                     editUsername.setText(snapshot.child("username").getValue(String::class.java))
                     editFirstName.setText(snapshot.child("firstName").getValue(String::class.java))
                     editLastName.setText(snapshot.child("lastName").getValue(String::class.java))
-                    editAddress.setText(snapshot.child("address").getValue(String::class.java))
+                    editAddress.setText(snapshot.child("location").getValue(String::class.java))
                     editEmail.setText(snapshot.child("email").getValue(String::class.java))
-                    editContactNumber.setText(snapshot.child("contactNumber").getValue(String::class.java))
+                    editContactNumber.setText(snapshot.child("phone").getValue(String::class.java))
 
                     val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
                     if (!imageUrl.isNullOrEmpty()) {
@@ -93,9 +93,9 @@ class ClientEditProfileActivity : AppCompatActivity() {
             "username" to editUsername.text.toString().trim(),
             "firstName" to editFirstName.text.toString().trim(),
             "lastName" to editLastName.text.toString().trim(),
-            "address" to editAddress.text.toString().trim(),
+            "location" to editAddress.text.toString().trim(),
             "email" to editEmail.text.toString().trim(),
-            "contactNumber" to editContactNumber.text.toString().trim()
+            "phone" to editContactNumber.text.toString().trim()
         )
 
         database.child(userId).updateChildren(updates).addOnSuccessListener {

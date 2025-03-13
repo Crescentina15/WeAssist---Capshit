@@ -118,12 +118,40 @@ class AppointmentDetailsDialog : DialogFragment() {
                 // Send notification to client
                 sendNotificationToClient(appointment.clientId, secretaryId, secretaryName, appointment)
 
+                // Send notification to lawyer
+                sendNotificationToLawyer(appointment.lawyerId, secretaryId, secretaryName, appointment)
+
                 // Remove from the main appointments list
                 appointmentRef.removeValue()
             }
         }.addOnFailureListener {
             Log.e("Appointment", "Failed to fetch appointment data")
         }
+    }
+
+    private fun sendNotificationToLawyer(lawyerId: String, secretaryId: String, secretaryName: String, appointment: Appointment) {
+        val database = FirebaseDatabase.getInstance().reference
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+
+        val notificationData = mapOf(
+            "id" to notificationId,
+            "senderId" to secretaryId,
+            "senderName" to secretaryName,
+            "message" to "You have an appointment with ${appointment.fullName} on ${appointment.date} at ${appointment.time}.",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "type" to "appointment_accepted",
+            "isRead" to false,
+            "appointmentId" to appointment.appointmentId
+        )
+
+        database.child("notifications").child(lawyerId).child(notificationId)
+            .setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("Notification", "Notification sent to lawyer successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to send notification to lawyer: ${e.message}")
+            }
     }
 
     private fun sendNotificationToClient(clientId: String, secretaryId: String, secretaryName: String, appointment: Appointment) {
