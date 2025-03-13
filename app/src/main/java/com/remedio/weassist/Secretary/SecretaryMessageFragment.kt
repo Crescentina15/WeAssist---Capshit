@@ -33,6 +33,9 @@ class SecretaryMessageFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        // Add debug function call similar to ClientMessageFragment
+        fetchConversationsDebug()
+
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -45,52 +48,54 @@ class SecretaryMessageFragment : Fragment() {
         )
         conversationsRecyclerView.adapter = conversationsAdapter
 
+        // Set up swipe to delete functionality
+        setupSwipeToDelete()
+
         database = FirebaseDatabase.getInstance().reference
 
-        checkAuthStatus()
+        checkAuthStatus() // Check if the user is logged in
+
         fetchConversations()
-        setupSwipeToDelete()
 
         return view
     }
 
     private fun setupSwipeToDelete() {
-        val swipeCallback = object : ItemTouchHelper.SimpleCallback(
+        val deleteIcon = ContextCompat.getDrawable(requireContext(), android.R.drawable.ic_menu_delete)
+        val deleteBackground = ColorDrawable(Color.RED)
+
+        val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
             0, ItemTouchHelper.LEFT
         ) {
-            private val deleteBackground = ColorDrawable(Color.RED)
-
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                return false // We don't want to support moving items
+                return false // We don't support moving items
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
-                val conversation = conversationList[position]
+                val deletedConversation = conversationList[position]
 
-                // Remove from the local list first
+                // Remove from local list
                 conversationList.removeAt(position)
                 conversationsAdapter.notifyItemRemoved(position)
 
-                // Delete the conversation from Firebase
-                deleteConversation(conversation.conversationId)
+                // Remove from Firebase
+                removeConversation(deletedConversation.conversationId)
 
-                // Show undo option
+                // Show undo snackbar
                 Snackbar.make(
                     conversationsRecyclerView,
-                    "Conversation with ${conversation.clientName} removed",
+                    "Conversation with ${deletedConversation.clientName} removed",
                     Snackbar.LENGTH_LONG
                 ).setAction("UNDO") {
-                    // Add the conversation back to the list
-                    conversationList.add(position, conversation)
+                    // Restore the conversation if user clicks undo
+                    conversationList.add(position, deletedConversation)
                     conversationsAdapter.notifyItemInserted(position)
-
-                    // Restore in Firebase
-                    restoreConversation(conversation.conversationId)
+                    restoreConversation(deletedConversation.conversationId)
                 }.show()
             }
 
@@ -104,72 +109,68 @@ class SecretaryMessageFragment : Fragment() {
                 isCurrentlyActive: Boolean
             ) {
                 val itemView = viewHolder.itemView
+                val iconMargin = (itemView.height - deleteIcon!!.intrinsicHeight) / 2
 
                 // Draw the red delete background
-                when {
-                    dX < 0 -> { // Swiping to the left
-                        val deleteIconMargin = (itemView.height - 24) / 2
-                        val deleteIconTop = itemView.top + deleteIconMargin
-                        val deleteIconBottom = itemView.bottom - deleteIconMargin
-                        val deleteIconLeft = itemView.right - deleteIconMargin - 24
-                        val deleteIconRight = itemView.right - deleteIconMargin
+                deleteBackground.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                deleteBackground.draw(c)
 
-                        // Draw the background
-                        deleteBackground.setBounds(
-                            itemView.right + dX.toInt(),
-                            itemView.top,
-                            itemView.right,
-                            itemView.bottom
-                        )
-                        deleteBackground.draw(c)
-
-                        // You could also draw a delete icon here if you wanted
-                        // context?.let {
-                        //     val deleteIcon = ContextCompat.getDrawable(it, R.drawable.ic_delete)
-                        //     deleteIcon?.setBounds(deleteIconLeft, deleteIconTop, deleteIconRight, deleteIconBottom)
-                        //     deleteIcon?.draw(c)
-                        // }
-                    }
-                }
+                // Draw the delete icon
+                deleteIcon.setBounds(
+                    itemView.right - iconMargin - deleteIcon.intrinsicWidth,
+                    itemView.top + iconMargin,
+                    itemView.right - iconMargin,
+                    itemView.bottom - iconMargin
+                )
+                deleteIcon.draw(c)
 
                 super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
             }
         }
 
-        // Attach the swipe callback to the RecyclerView
-        val itemTouchHelper = ItemTouchHelper(swipeCallback)
+        // Attach the touch helper to the recycler view
+        val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
         itemTouchHelper.attachToRecyclerView(conversationsRecyclerView)
     }
 
-    private fun deleteConversation(conversationId: String) {
-        // Option 1: Completely delete the conversation
-        // database.child("conversations").child(conversationId).removeValue()
+    private fun removeConversation(conversationId: String) {
+        if (currentUserId == null) return
 
-        // Option 2: Hide the conversation from this user but don't delete it
-        // This is often better as the other participant might still want to see it
-        currentUserId?.let { userId ->
-            val conversationRef = database.child("conversations").child(conversationId)
-            conversationRef.child("hiddenFrom").child(userId).setValue(true)
-                .addOnSuccessListener {
-                    Log.d("SecretaryMessageFragment", "Conversation hidden successfully")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("SecretaryMessageFragment", "Error hiding conversation: ${e.message}")
-                }
-        }
+        // Option 1: Hide the conversation from the user's view without deleting all data
+        database.child("conversations").child(conversationId)
+            .child("participantIds").child(currentUserId!!)
+            .setValue(false)
+            .addOnSuccessListener {
+                Log.d("SecretaryMessageFragment", "Conversation hidden successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to hide conversation: ${e.message}")
+            }
+
+        // Option 2 (Alternative): Remove unread count for this user
+        database.child("conversations").child(conversationId)
+            .child("unreadMessages").child(currentUserId!!)
+            .setValue(0)
     }
 
     private fun restoreConversation(conversationId: String) {
-        currentUserId?.let { userId ->
-            val conversationRef = database.child("conversations").child(conversationId)
-            conversationRef.child("hiddenFrom").child(userId).removeValue()
-                .addOnSuccessListener {
-                    Log.d("SecretaryMessageFragment", "Conversation restored successfully")
-                }
-                .addOnFailureListener { e ->
-                    Log.e("SecretaryMessageFragment", "Error restoring conversation: ${e.message}")
-                }
-        }
+        if (currentUserId == null) return
+
+        // Restore participant status to visible
+        database.child("conversations").child(conversationId)
+            .child("participantIds").child(currentUserId!!)
+            .setValue(true)
+            .addOnSuccessListener {
+                Log.d("SecretaryMessageFragment", "Conversation restored successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to restore conversation: ${e.message}")
+            }
     }
 
     private fun checkAuthStatus() {
@@ -179,6 +180,45 @@ class SecretaryMessageFragment : Fragment() {
         } else {
             Log.d("FirebaseAuth", "Authenticated as: ${user.uid}")
         }
+        Log.d("AuthCheck", "Current User ID: $currentUserId")
+    }
+
+    private fun fetchConversationsDebug() {
+        val database = FirebaseDatabase.getInstance().reference
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+        if (currentUserId == null) {
+            Log.e("FirebaseDB", "Current User ID is NULL!")
+            return
+        }
+
+        database.child("conversations").get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    Log.d("FirebaseDB", "Fetched Data: ${snapshot.value}")
+                    for (conversationSnapshot in snapshot.children) {
+                        val conversationId = conversationSnapshot.key
+                        Log.d("FirebaseDB", "Conversation ID: $conversationId")
+
+                        val participants = conversationSnapshot.child("participantIds").children
+                        for (participant in participants) {
+                            Log.d("FirebaseDB", "Participant ID: ${participant.key}")
+                        }
+
+                        // Check if the current user is a participant
+                        if (conversationSnapshot.child("participantIds").hasChild(currentUserId)) {
+                            Log.d("FirebaseDB", "User $currentUserId is a participant in conversation: $conversationId")
+                        } else {
+                            Log.e("FirebaseDB", "User $currentUserId is NOT a participant in conversation: $conversationId")
+                        }
+                    }
+                } else {
+                    Log.e("FirebaseDB", "No conversations found in the database.")
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("FirebaseDB", "Error: ${e.message}")
+            }
     }
 
     private fun fetchConversations() {
@@ -201,19 +241,10 @@ class SecretaryMessageFragment : Fragment() {
 
                     for (conversationSnapshot in snapshot.children) {
                         val conversationId = conversationSnapshot.key ?: continue
-
-                        // Check if this conversation is hidden for the current user
-                        if (conversationSnapshot.child("hiddenFrom")
-                                .hasChild(currentUserId!!)) {
-                            continue // Skip this conversation as it's hidden
-                        }
-
                         val clientId = conversationSnapshot.child("participantIds")
                             .children.firstOrNull { it.key != currentUserId }?.key ?: continue
 
-                        if (!conversationSnapshot.child("participantIds")
-                                .hasChild(currentUserId!!)
-                        ) {
+                        if (!conversationSnapshot.child("participantIds").hasChild(currentUserId!!)) {
                             Log.e("FirebaseDB", "User $currentUserId is NOT a participant in $conversationId")
                             continue
                         }
@@ -239,7 +270,7 @@ class SecretaryMessageFragment : Fragment() {
                             tempConversationList.add(conversation)
                             fetchCount--
 
-                            // Only update the adapter once all conversations have been fetched
+                            // Only update the adapter once all client names are fetched
                             if (fetchCount == 0) {
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
@@ -270,14 +301,7 @@ class SecretaryMessageFragment : Fragment() {
 
     private fun openChatActivity(clientId: String) {
         val intent = Intent(requireContext(), ChatActivity::class.java)
-        // Make sure both these values are set correctly
-        intent.putExtra("SECRETARY_ID", currentUserId) // Secretary's own ID
-        intent.putExtra("CLIENT_ID", clientId) // Client's ID
-        // You might want to log these values to verify they're correct
-        Log.d(
-            "SecretaryMessageFragment",
-            "Opening chat with Secretary ID: $currentUserId, Client ID: $clientId"
-        )
+        intent.putExtra("CLIENT_ID", clientId)
         startActivity(intent)
     }
 }
