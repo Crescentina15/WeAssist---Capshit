@@ -187,7 +187,8 @@ class ClientNotificationActivity : AppCompatActivity() {
                 "timestamp" to notification.timestamp,
                 "type" to notification.type,
                 "isRead" to notification.isRead,
-                "conversationId" to notification.conversationId
+                "conversationId" to notification.conversationId,
+                "appointmentId" to notification.appointmentId // Added appointmentId
             )).addOnFailureListener { e ->
                 Log.e("ClientNotification", "Failed to restore notification: ${e.message}")
             }
@@ -232,6 +233,8 @@ class ClientNotificationActivity : AppCompatActivity() {
                     val type = notificationSnapshot.child("type").getValue(String::class.java) ?: "message"
                     val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
                     val conversationId = notificationSnapshot.child("conversationId").getValue(String::class.java)
+                    // Added this line to retrieve appointmentId
+                    val appointmentId = notificationSnapshot.child("appointmentId").getValue(String::class.java)
 
                     // Get sender name
                     fetchSenderName(senderId) { senderName ->
@@ -243,7 +246,8 @@ class ClientNotificationActivity : AppCompatActivity() {
                             timestamp = timestamp,
                             type = type,
                             isRead = isRead,
-                            conversationId = conversationId
+                            conversationId = conversationId,
+                            appointmentId = appointmentId // Added appointmentId
                         )
 
                         // Add to the list and sort by timestamp (newest first)
@@ -321,7 +325,7 @@ class ClientNotificationActivity : AppCompatActivity() {
                 }
             }
             "appointment_accepted" -> {
-                // Navigate to appointment details
+                // Navigate directly to appointment details with the ID
                 val appointmentId = notification.appointmentId
                 if (appointmentId != null) {
                     // Create an intent to navigate to appointment details
@@ -330,9 +334,9 @@ class ClientNotificationActivity : AppCompatActivity() {
                     startActivity(intent)
                 } else {
                     // Fallback if no appointment ID is available
-                    Toast.makeText(this, notification.message, Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "Appointment ID not found", Toast.LENGTH_SHORT).show()
 
-                    // Navigate to the new host activity for appointments fragment
+                    // Navigate to the appointments list as a fallback
                     val intent = Intent(this, ClientAppointmentsActivity::class.java)
                     startActivity(intent)
                 }

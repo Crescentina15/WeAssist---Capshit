@@ -3,7 +3,6 @@ package com.remedio.weassist.Clients
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
@@ -28,8 +27,6 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var tvProblem: TextView
     private lateinit var progressBar: ProgressBar
     private lateinit var btnBack: ImageButton
-    private lateinit var btnReschedule: Button
-    private lateinit var btnCancel: Button
 
     private lateinit var auth: FirebaseAuth
     private lateinit var appointmentId: String
@@ -71,18 +68,6 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
         tvProblem = findViewById(R.id.tvProblemDescription)
         progressBar = findViewById(R.id.progressBar)
         btnBack = findViewById(R.id.btnBack)
-        btnReschedule = findViewById(R.id.btnReschedule)
-        btnCancel = findViewById(R.id.btnCancel)
-
-        // Set up buttons
-        btnReschedule.setOnClickListener {
-            // Implement reschedule functionality
-            Toast.makeText(this, "Reschedule functionality coming soon", Toast.LENGTH_SHORT).show()
-        }
-
-        btnCancel.setOnClickListener {
-            cancelAppointment()
-        }
     }
 
     private fun loadAppointmentDetails() {
@@ -157,9 +142,8 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
             lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
-                        val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
-                        val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-                        tvLawyerName.text = "Lawyer: $firstName $lastName"
+                        val name = snapshot.child("name").getValue(String::class.java) ?: ""
+                        tvLawyerName.text = "Lawyer: $name"
                     } else {
                         tvLawyerName.text = "Lawyer: Not available"
                     }
@@ -193,88 +177,5 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
         } ?: run {
             tvSecretaryName.text = "Secretary: Not assigned"
         }
-
-        // Enable or disable reschedule/cancel buttons based on appointment status
-        val canModify = appointment.status == "Pending" || appointment.status == "Accepted"
-        btnReschedule.isEnabled = canModify
-        btnCancel.isEnabled = canModify
-    }
-
-    private fun cancelAppointment() {
-        // Show confirmation dialog
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Cancel Appointment")
-            .setMessage("Are you sure you want to cancel this appointment?")
-            .setPositiveButton("Yes") { _, _ ->
-                performCancellation()
-            }
-            .setNegativeButton("No", null)
-            .show()
-    }
-
-    private fun performCancellation() {
-        progressBar.visibility = View.VISIBLE
-
-        val userId = auth.currentUser?.uid ?: return
-        val database = FirebaseDatabase.getInstance().reference
-
-        // Update status to "Cancelled" in user's appointments
-        database.child("users").child(userId).child("appointments").child(appointmentId)
-            .child("status").setValue("Cancelled")
-            .addOnSuccessListener {
-                // Update in accepted_appointment if it exists there
-                database.child("accepted_appointment").child(appointmentId)
-                    .child("status").setValue("Cancelled")
-                    .addOnSuccessListener {
-                        progressBar.visibility = View.GONE
-                        Toast.makeText(this, "Appointment cancelled successfully", Toast.LENGTH_SHORT).show()
-                        tvStatus.text = "Status: Cancelled"
-                        btnReschedule.isEnabled = false
-                        btnCancel.isEnabled = false
-
-                        // Check if the appointment has a lawyer and secretary assigned
-                        database.child("accepted_appointment").child(appointmentId).get()
-                            .addOnSuccessListener { snapshot ->
-                                val appointment = snapshot.getValue(Appointment::class.java)
-
-                                // Notify lawyer if assigned
-                                appointment?.lawyerId?.let { lawyerId ->
-                                    database.child("lawyers").child(lawyerId).child("appointments")
-                                        .child(appointmentId).child("status").setValue("Cancelled")
-                                }
-
-                                // Notify secretary if assigned
-                                appointment?.secretaryId?.let { secretaryId ->
-                                    database.child("secretaries").child(secretaryId).child("appointments")
-                                        .child(appointmentId).child("status").setValue("Cancelled")
-
-                                    // Create a notification for the secretary
-                                    val notificationId = database.child("notifications").child(secretaryId).push().key
-                                    if (notificationId != null) {
-                                        val notification = mapOf(
-                                            "senderId" to userId,
-                                            "message" to "Appointment on ${appointment.date} at ${appointment.time} has been cancelled by the client",
-                                            "timestamp" to System.currentTimeMillis(),
-                                            "type" to "appointment_cancelled",
-                                            "isRead" to false,
-                                            "appointmentId" to appointmentId
-                                        )
-
-                                        database.child("notifications").child(secretaryId).child(notificationId)
-                                            .setValue(notification)
-                                    }
-                                }
-                            }
-                    }
-                    .addOnFailureListener { e ->
-                        progressBar.visibility = View.GONE
-                        Log.e("AppointmentDetails", "Error updating accepted_appointment: ${e.message}")
-                    }
-            }
-            .addOnFailureListener { e ->
-                progressBar.visibility = View.GONE
-                Toast.makeText(this, "Failed to cancel appointment: ${e.message}", Toast.LENGTH_SHORT).show()
-                Log.e("AppointmentDetails", "Error cancelling appointment: ${e.message}")
-            }
     }
 }
