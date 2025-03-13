@@ -54,7 +54,24 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
             finish()
         }
 
-        // Load appointment details
+        // Display intent extras if available while loading full details
+        intent.getStringExtra("LAWYER_NAME")?.let { name ->
+            tvLawyerName.text = "Lawyer: $name"
+        }
+        intent.getStringExtra("DATE")?.let { date ->
+            tvAppointmentDate.text = "Date: $date"
+        }
+        intent.getStringExtra("TIME")?.let { time ->
+            tvAppointmentTime.text = "Time: $time"
+        }
+        intent.getStringExtra("PROBLEM")?.let { problem ->
+            tvProblem.text = problem
+        }
+        intent.getStringExtra("STATUS")?.let { status ->
+            tvStatus.text = "Status: $status"
+        }
+
+        // Load complete appointment details
         loadAppointmentDetails()
     }
 

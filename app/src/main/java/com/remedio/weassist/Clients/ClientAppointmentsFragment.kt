@@ -1,5 +1,6 @@
 package com.remedio.weassist.Clients
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.fragment.app.Fragment
@@ -13,7 +14,6 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.Models.AppointmentAdapter
 import com.remedio.weassist.R
-import com.remedio.weassist.Secretary.AppointmentDetailsDialog
 
 class ClientAppointmentsFragment : Fragment() {
 
@@ -63,38 +63,45 @@ class ClientAppointmentsFragment : Fragment() {
                         for (child in snapshot.children) {
                             val appointment = child.getValue(Appointment::class.java)
                             if (appointment != null) {
+                                // Store the appointment ID from Firebase
+                                appointment.appointmentId = child.key ?: ""
+
                                 Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
 
-                                // Fetch the lawyer's name
-                                val lawyersRef = database.child("lawyers")
-                                lawyersRef.child(appointment.lawyerId)
-                                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                                        override fun onDataChange(lawyerSnapshot: DataSnapshot) {
-                                            val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
-
-                                            // If lawyerName is not already set, set it
-                                            if (appointment.lawyerName.isNullOrEmpty()) {
+                                // Fetch the lawyer's name if not already set
+                                if (appointment.lawyerName.isEmpty()) {
+                                    val lawyersRef = database.child("lawyers")
+                                    lawyersRef.child(appointment.lawyerId)
+                                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                                            override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                                                val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
                                                 appointment.lawyerName = lawyerName
+
+                                                appointmentList.add(appointment)
+                                                Log.d("ClientCheck", "Added appointment with lawyer: $lawyerName")
+
+                                                // Check if all appointments are processed
+                                                processedAppointments++
+                                                if (processedAppointments >= totalAppointments) {
+                                                    updateAdapter()
+                                                }
                                             }
 
-                                            appointmentList.add(appointment)
-                                            Log.d("ClientCheck", "Added appointment with lawyer: $lawyerName")
-
-                                            // Check if all appointments are processed
-                                            processedAppointments++
-                                            if (processedAppointments >= totalAppointments) {
-                                                updateAdapter()
+                                            override fun onCancelled(error: DatabaseError) {
+                                                Log.e("ClientCheck", "Error fetching lawyer: ${error.message}")
+                                                processedAppointments++
+                                                if (processedAppointments >= totalAppointments) {
+                                                    updateAdapter()
+                                                }
                                             }
-                                        }
-
-                                        override fun onCancelled(error: DatabaseError) {
-                                            Log.e("ClientCheck", "Error fetching lawyer: ${error.message}")
-                                            processedAppointments++
-                                            if (processedAppointments >= totalAppointments) {
-                                                updateAdapter()
-                                            }
-                                        }
-                                    })
+                                        })
+                                } else {
+                                    appointmentList.add(appointment)
+                                    processedAppointments++
+                                    if (processedAppointments >= totalAppointments) {
+                                        updateAdapter()
+                                    }
+                                }
                             } else {
                                 processedAppointments++
                             }
@@ -125,12 +132,19 @@ class ClientAppointmentsFragment : Fragment() {
     }
 
     private fun showAppointmentDetails(appointment: Appointment) {
-        // Display the appointment details in a dialog
-        val isSecretaryView = false // Since this is the client view, set it to false
-        val dialog = AppointmentDetailsDialog.newInstance(appointment, isSecretaryView)
-        dialog.show(
-            requireActivity().supportFragmentManager,
-            "AppointmentDetailsDialog"
-        )
+        // Start the ClientAppointmentDetailsActivity
+        val intent = Intent(requireContext(), ClientAppointmentDetailsActivity::class.java)
+
+        // Pass appointment ID and other relevant details
+        intent.putExtra("APPOINTMENT_ID", appointment.appointmentId)
+        intent.putExtra("LAWYER_NAME", appointment.lawyerName)
+        intent.putExtra("DATE", appointment.date)
+        intent.putExtra("TIME", appointment.time)
+        intent.putExtra("PROBLEM", appointment.problem)
+        intent.putExtra("STATUS", appointment.status)
+        intent.putExtra("FULL_NAME", appointment.fullName)
+        intent.putExtra("LAWYER_PROFILE_IMAGE", appointment.lawyerProfileImage)
+
+        startActivity(intent)
     }
 }
