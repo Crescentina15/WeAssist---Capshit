@@ -1,14 +1,20 @@
 package com.remedio.weassist.Secretary
 
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
@@ -43,8 +49,127 @@ class SecretaryMessageFragment : Fragment() {
 
         checkAuthStatus()
         fetchConversations()
+        setupSwipeToDelete()
 
         return view
+    }
+
+    private fun setupSwipeToDelete() {
+        val swipeCallback = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT
+        ) {
+            private val deleteBackground = ColorDrawable(Color.RED)
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false // We don't want to support moving items
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val conversation = conversationList[position]
+
+                // Remove from the local list first
+                conversationList.removeAt(position)
+                conversationsAdapter.notifyItemRemoved(position)
+
+                // Delete the conversation from Firebase
+                deleteConversation(conversation.conversationId)
+
+                // Show undo option
+                Snackbar.make(
+                    conversationsRecyclerView,
+                    "Conversation with ${conversation.clientName} removed",
+                    Snackbar.LENGTH_LONG
+                ).setAction("UNDO") {
+                    // Add the conversation back to the list
+                    conversationList.add(position, conversation)
+                    conversationsAdapter.notifyItemInserted(position)
+
+                    // Restore in Firebase
+                    restoreConversation(conversation.conversationId)
+                }.show()
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+
+                // Draw the red delete background
+                when {
+                    dX < 0 -> { // Swiping to the left
+                        val deleteIconMargin = (itemView.height - 24) / 2
+                        val deleteIconTop = itemView.top + deleteIconMargin
+                        val deleteIconBottom = itemView.bottom - deleteIconMargin
+                        val deleteIconLeft = itemView.right - deleteIconMargin - 24
+                        val deleteIconRight = itemView.right - deleteIconMargin
+
+                        // Draw the background
+                        deleteBackground.setBounds(
+                            itemView.right + dX.toInt(),
+                            itemView.top,
+                            itemView.right,
+                            itemView.bottom
+                        )
+                        deleteBackground.draw(c)
+
+                        // You could also draw a delete icon here if you wanted
+                        // context?.let {
+                        //     val deleteIcon = ContextCompat.getDrawable(it, R.drawable.ic_delete)
+                        //     deleteIcon?.setBounds(deleteIconLeft, deleteIconTop, deleteIconRight, deleteIconBottom)
+                        //     deleteIcon?.draw(c)
+                        // }
+                    }
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+
+        // Attach the swipe callback to the RecyclerView
+        val itemTouchHelper = ItemTouchHelper(swipeCallback)
+        itemTouchHelper.attachToRecyclerView(conversationsRecyclerView)
+    }
+
+    private fun deleteConversation(conversationId: String) {
+        // Option 1: Completely delete the conversation
+        // database.child("conversations").child(conversationId).removeValue()
+
+        // Option 2: Hide the conversation from this user but don't delete it
+        // This is often better as the other participant might still want to see it
+        currentUserId?.let { userId ->
+            val conversationRef = database.child("conversations").child(conversationId)
+            conversationRef.child("hiddenFrom").child(userId).setValue(true)
+                .addOnSuccessListener {
+                    Log.d("SecretaryMessageFragment", "Conversation hidden successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("SecretaryMessageFragment", "Error hiding conversation: ${e.message}")
+                }
+        }
+    }
+
+    private fun restoreConversation(conversationId: String) {
+        currentUserId?.let { userId ->
+            val conversationRef = database.child("conversations").child(conversationId)
+            conversationRef.child("hiddenFrom").child(userId).removeValue()
+                .addOnSuccessListener {
+                    Log.d("SecretaryMessageFragment", "Conversation restored successfully")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("SecretaryMessageFragment", "Error restoring conversation: ${e.message}")
+                }
+        }
     }
 
     private fun checkAuthStatus() {
@@ -76,6 +201,13 @@ class SecretaryMessageFragment : Fragment() {
 
                     for (conversationSnapshot in snapshot.children) {
                         val conversationId = conversationSnapshot.key ?: continue
+
+                        // Check if this conversation is hidden for the current user
+                        if (conversationSnapshot.child("hiddenFrom")
+                                .hasChild(currentUserId!!)) {
+                            continue // Skip this conversation as it's hidden
+                        }
+
                         val clientId = conversationSnapshot.child("participantIds")
                             .children.firstOrNull { it.key != currentUserId }?.key ?: continue
 
@@ -122,8 +254,6 @@ class SecretaryMessageFragment : Fragment() {
                 }
             })
     }
-
-
 
     private fun fetchClientName(clientId: String, callback: (String) -> Unit) {
         val clientsRef = database.child("Users").child(clientId)
