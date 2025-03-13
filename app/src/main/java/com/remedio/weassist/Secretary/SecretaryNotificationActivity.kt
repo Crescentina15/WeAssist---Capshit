@@ -323,7 +323,7 @@ class SecretaryNotificationActivity : AppCompatActivity() {
                         val appointmentId = snapshot.getValue(String::class.java)
                         if (appointmentId != null) {
                             // Fixed: Use SecretaryAppointmentActivity instead of SecretaryAppointmentFragment
-                            val intent = Intent(this, SecretaryAppointmentActivity::class.java)
+                            val intent = Intent(this, SecretaryAppointmentDetailsActivity::class.java)
                             intent.putExtra("APPOINTMENT_ID", appointmentId)
                             startActivity(intent)
                         }

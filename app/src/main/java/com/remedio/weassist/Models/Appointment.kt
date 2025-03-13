@@ -15,7 +15,8 @@ data class Appointment(
     val lawyerProfileImage: String? = null,
     val status: String? = "pending", // Default to pending
     var clientId: String = "",
-    var secretaryId: String = ""
+    var secretaryId: String = "",
+    var problemDescription: String = "" // Add this property
 ) : Parcelable
 
 data class Secretary(

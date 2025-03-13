@@ -100,7 +100,9 @@
         <activity
             android:name=".Secretary.SecretaryAppointmentActivity"
             android:exported="false" />
-
+        <activity
+            android:name=".Secretary.SecretaryAppointmentDetailsActivity"
+            android:exported="false" />
         <activity
             android:name=".Secretary.SecretaryNotificationActivity"
             android:exported="false" />
