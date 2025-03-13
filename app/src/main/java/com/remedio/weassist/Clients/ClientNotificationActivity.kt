@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -294,27 +295,48 @@ class ClientNotificationActivity : AppCompatActivity() {
         database.child("notifications").child(auth.currentUser?.uid ?: return)
             .child(notification.id).child("isRead").setValue(true)
 
-        // Open chat activity if it's a message notification
-        if (notification.type == "message" && notification.conversationId != null) {
-            val intent = Intent(this, ChatActivity::class.java)
+        // Handle different notification types
+        when (notification.type) {
+            "message" -> {
+                if (notification.conversationId != null) {
+                    val intent = Intent(this, ChatActivity::class.java)
 
-            // Determine if the sender is a secretary
-            database.child("secretaries").child(notification.senderId).get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        // If sender is a secretary
-                        intent.putExtra("SECRETARY_ID", notification.senderId)
-                    } else {
-                        // Check if sender is a client
-                        database.child("Users").child(notification.senderId).get()
-                            .addOnSuccessListener { userSnapshot ->
-                                if (userSnapshot.exists()) {
-                                    intent.putExtra("CLIENT_ID", notification.senderId)
-                                }
+                    // Determine if the sender is a secretary
+                    database.child("secretaries").child(notification.senderId).get()
+                        .addOnSuccessListener { snapshot ->
+                            if (snapshot.exists()) {
+                                // If sender is a secretary
+                                intent.putExtra("SECRETARY_ID", notification.senderId)
+                            } else {
+                                // Check if sender is a client
+                                database.child("Users").child(notification.senderId).get()
+                                    .addOnSuccessListener { userSnapshot ->
+                                        if (userSnapshot.exists()) {
+                                            intent.putExtra("CLIENT_ID", notification.senderId)
+                                        }
+                                    }
                             }
-                    }
+                            startActivity(intent)
+                        }
+                }
+            }
+            "appointment_accepted" -> {
+                // Navigate to appointment details
+                val appointmentId = notification.appointmentId
+                if (appointmentId != null) {
+                    // Create an intent to navigate to appointment details
+                    val intent = Intent(this, ClientAppointmentDetailsActivity::class.java)
+                    intent.putExtra("APPOINTMENT_ID", appointmentId)
+                    startActivity(intent)
+                } else {
+                    // Fallback if no appointment ID is available
+                    Toast.makeText(this, notification.message, Toast.LENGTH_LONG).show()
+
+                    // Navigate to the new host activity for appointments fragment
+                    val intent = Intent(this, ClientAppointmentsActivity::class.java)
                     startActivity(intent)
                 }
+            }
         }
     }
 }

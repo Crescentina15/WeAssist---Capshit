@@ -81,6 +81,13 @@
         <activity
             android:name=".Clients.ClientEditProfileActivity"
             android:exported="true" />
+
+        <activity
+            android:name=".Clients.ClientAppointmentDetailsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".Clients.ClientAppointmentsActivity"
+            android:exported="false" />
         <activity
             android:name=".Clients.ClientFrontPage"
             android:exported="false" />

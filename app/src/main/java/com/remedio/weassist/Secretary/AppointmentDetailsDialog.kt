@@ -74,8 +74,9 @@ class AppointmentDetailsDialog : DialogFragment() {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     for (data in snapshot.children) {
                         val secretaryId = data.key // Get the dynamic secretary ID
+                        val secretaryName = data.child("name").getValue(String::class.java) ?: "Secretary"
                         if (secretaryId != null) {
-                            acceptAppointment(appointmentId, secretaryId)
+                            acceptAppointment(appointmentId, secretaryId, secretaryName)
                         }
                     }
                 }
@@ -86,7 +87,7 @@ class AppointmentDetailsDialog : DialogFragment() {
             })
     }
 
-    private fun acceptAppointment(appointmentId: String, secretaryId: String) {
+    private fun acceptAppointment(appointmentId: String, secretaryId: String, secretaryName: String) {
         val database = FirebaseDatabase.getInstance().reference
 
         // Retrieve the appointment from Firebase first
@@ -114,6 +115,9 @@ class AppointmentDetailsDialog : DialogFragment() {
                 val secretaryAppointmentsRef = database.child("secretaries").child(secretaryId).child("appointments").child(appointmentId)
                 secretaryAppointmentsRef.setValue(updatedAppointment)
 
+                // Send notification to client
+                sendNotificationToClient(appointment.clientId, secretaryId, secretaryName, appointment)
+
                 // Remove from the main appointments list
                 appointmentRef.removeValue()
             }
@@ -122,6 +126,28 @@ class AppointmentDetailsDialog : DialogFragment() {
         }
     }
 
+    private fun sendNotificationToClient(clientId: String, secretaryId: String, secretaryName: String, appointment: Appointment) {
+        val database = FirebaseDatabase.getInstance().reference
+        val notificationId = database.child("notifications").child(clientId).push().key ?: return
+
+        val notificationData = mapOf(
+            "senderId" to secretaryId,
+            "message" to "Your appointment on ${appointment.date} at ${appointment.time} has been accepted",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "type" to "appointment_accepted",
+            "isRead" to false,
+            "appointmentId" to appointment.appointmentId
+        )
+
+        database.child("notifications").child(clientId).child(notificationId)
+            .setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("Notification", "Notification sent to client successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to send notification to client: ${e.message}")
+            }
+    }
 
     private fun deleteAppointment(appointmentId: String) {
         val appointmentRef = FirebaseDatabase.getInstance().reference.child("appointments").child(appointmentId)
