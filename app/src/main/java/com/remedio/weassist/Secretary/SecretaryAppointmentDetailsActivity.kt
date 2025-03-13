@@ -123,7 +123,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         tvStatus.text = "Status: ${appointment.status}"
         tvAppointmentDate.text = "Date: ${appointment.date}"
         tvAppointmentTime.text = "Time: ${appointment.time}"
-        tvProblemDescription.text = appointment.problemDescription
+        tvProblemDescription.text = appointment.problem
 
         // Set status color based on status
         when (appointment.status) {
