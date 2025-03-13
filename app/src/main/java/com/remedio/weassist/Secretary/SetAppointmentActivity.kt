@@ -193,10 +193,13 @@ class SetAppointmentActivity : AppCompatActivity() {
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
                     val notificationMessage = "Your appointment on $selectedDate at $selectedTime has been successfully booked."
-                    sendNotificationToClient(clientId!!, notificationMessage) // ✅ Send notification to the client
+                    sendNotificationToClient(clientId!!, notificationMessage) // Send notification to the client
 
                     // Notify the lawyer about the new appointment
                     sendNotificationToLawyer(lawyerId!!, selectedDate!!, selectedTime!!)
+
+                    // Send notification to all secretaries associated with this lawyer
+                    sendNotificationToSecretaries(lawyerId!!, selectedDate!!, selectedTime!!, appointmentId)
 
                     // Update the lawyer's availability and refresh spinners
                     updateLawyerAvailability(lawyerId!!, selectedDate!!, selectedTime!!)
@@ -316,5 +319,52 @@ class SetAppointmentActivity : AppCompatActivity() {
                     Log.e("SetAppointmentActivity", "Failed to send notification")
                 }
         }
+    }
+
+    private fun sendNotificationToSecretaries(lawyerId: String, date: String, time: String, appointmentId: String) {
+        // Get the secretaryID for this lawyer
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+
+        lawyerRef.child("secretaryID").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val secretaryId = snapshot.getValue(String::class.java)
+                    if (secretaryId != null && secretaryId.isNotEmpty()) {
+                        // Send notification to the secretary
+                        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(secretaryId)
+                        val notificationId = notificationRef.push().key
+
+                        if (notificationId != null) {
+                            // Get client name for the notification message
+                            val clientName = editFullName.text.toString().trim()
+
+                            val notificationData = mapOf(
+                                "id" to notificationId,  // Changed from "notificationId" to match your NotificationItem class
+                                "senderId" to clientId,
+                                "message" to "New appointment: $clientName on $date at $time",
+                                "timestamp" to System.currentTimeMillis(),  // Using Long directly instead of String
+                                "type" to "appointment",
+                                "isRead" to false,
+                                "appointmentId" to appointmentId // For navigation to appointment details
+                            )
+
+                            notificationRef.child(notificationId).setValue(notificationData)
+                                .addOnSuccessListener {
+                                    Log.d("SetAppointmentActivity", "Notification sent to secretary: $secretaryId")
+                                }
+                                .addOnFailureListener {
+                                    Log.e("SetAppointmentActivity", "Failed to send notification to secretary: ${it.message}")
+                                }
+                        }
+                    } else {
+                        Log.d("SetAppointmentActivity", "No secretary associated with this lawyer")
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SetAppointmentActivity", "Failed to fetch secretary ID: ${error.message}")
+            }
+        })
     }
 }

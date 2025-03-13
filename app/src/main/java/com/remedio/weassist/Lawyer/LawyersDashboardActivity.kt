@@ -6,13 +6,10 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.fragment.app.Fragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
-import com.remedio.weassist.AppointmentHistory
-import com.remedio.weassist.Clients.ClientNotificationActivity
 import com.remedio.weassist.R
 
 class LawyersDashboardActivity : AppCompatActivity() {
@@ -54,7 +51,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
                 }
                 R.id.nav_history -> {
                     profileSection.visibility = View.GONE // Show header for Appointments
-                    AppointmentHistory()
+                    LawyerAppointmentHistory()
                 }
                 R.id.nav_profile -> {
                     profileSection.visibility = View.GONE // Hide header for Profile

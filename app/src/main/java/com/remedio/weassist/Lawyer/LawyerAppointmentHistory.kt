@@ -1,4 +1,4 @@
-package com.remedio.weassist
+package com.remedio.weassist.Lawyer
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -10,9 +10,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.Models.ConsultationAdapter
+import com.remedio.weassist.R
 
 
-class AppointmentHistory : Fragment() {
+class LawyerAppointmentHistory : Fragment() {
 
     private lateinit var database: DatabaseReference
     private lateinit var recyclerView: RecyclerView

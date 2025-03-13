@@ -317,20 +317,15 @@ class SecretaryNotificationActivity : AppCompatActivity() {
                 }
             }
             "appointment" -> {
-                // Get appointment ID from the database
                 database.child("notifications").child(auth.currentUser?.uid ?: return)
                     .child(notification.id).child("appointmentId").get()
                     .addOnSuccessListener { snapshot ->
                         val appointmentId = snapshot.getValue(String::class.java)
                         if (appointmentId != null) {
-                            // You might want to navigate to appointment details screen
-                            // For example:
-                            // val intent = Intent(this, AppointmentDetailsActivity::class.java)
-                            // intent.putExtra("APPOINTMENT_ID", appointmentId)
-                            // startActivity(intent)
-
-                            // For now, just log
-                            Log.d("SecretaryNotification", "Appointment notification clicked: $appointmentId")
+                            // Fixed: Use SecretaryAppointmentActivity instead of SecretaryAppointmentFragment
+                            val intent = Intent(this, SecretaryAppointmentActivity::class.java)
+                            intent.putExtra("APPOINTMENT_ID", appointmentId)
+                            startActivity(intent)
                         }
                     }
             }
