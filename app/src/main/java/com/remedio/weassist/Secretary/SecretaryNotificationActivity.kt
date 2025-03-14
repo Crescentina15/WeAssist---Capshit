@@ -240,7 +240,8 @@ class SecretaryNotificationActivity : AppCompatActivity() {
                             timestamp = timestamp,
                             type = type,
                             isRead = isRead,
-                            conversationId = conversationId
+                            conversationId = conversationId,
+                            appointmentId = additionalData["appointmentId"]
                         )
 
                         // Add to the list and sort by timestamp (newest first)
@@ -317,17 +318,12 @@ class SecretaryNotificationActivity : AppCompatActivity() {
                 }
             }
             "appointment" -> {
-                database.child("notifications").child(auth.currentUser?.uid ?: return)
-                    .child(notification.id).child("appointmentId").get()
-                    .addOnSuccessListener { snapshot ->
-                        val appointmentId = snapshot.getValue(String::class.java)
-                        if (appointmentId != null) {
-                            // Fixed: Use SecretaryAppointmentActivity instead of SecretaryAppointmentFragment
-                            val intent = Intent(this, SecretaryAppointmentDetailsActivity::class.java)
-                            intent.putExtra("APPOINTMENT_ID", appointmentId)
-                            startActivity(intent)
-                        }
-                    }
+                // Navigate to SecretaryDashboardActivity with intent to open the appointment fragment
+                val intent = Intent(this, SecretaryDashboardActivity::class.java)
+                intent.putExtra("OPEN_APPOINTMENT_FRAGMENT", true)
+                intent.putExtra("APPOINTMENT_ID", notification.appointmentId)
+                intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) // Clear top to avoid stacking activities
+                startActivity(intent)
             }
             "system" -> {
                 // Handle system notifications - these typically don't navigate anywhere
