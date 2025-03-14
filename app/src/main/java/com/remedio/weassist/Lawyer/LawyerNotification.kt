@@ -1,5 +1,8 @@
 package com.remedio.weassist.Lawyer
 
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -7,8 +10,11 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.NotificationAdapter
@@ -93,16 +99,16 @@ class LawyerNotification : AppCompatActivity() {
                 // Sort notifications by timestamp (newest first)
                 notificationsList.sortByDescending { it.timestamp }
 
-                // Update UI based on notifications
-                if (notificationsList.isEmpty()) {
-                    emptyView.visibility = View.VISIBLE
-                    recyclerView.visibility = View.GONE
-                } else {
-                    emptyView.visibility = View.GONE
-                    recyclerView.visibility = View.VISIBLE
+                // Update the notifications list
+                notifications.clear()
+                notifications.addAll(notificationsList)
 
+                // Update UI based on notifications
+                checkForEmptyList()
+
+                if (notifications.isNotEmpty()) {
                     // Initialize adapter with the notification click handler
-                    notificationAdapter = NotificationAdapter(notificationsList) { notification ->
+                    notificationAdapter = NotificationAdapter(notifications) { notification ->
                         // Mark notification as read when clicked
                         markNotificationAsRead(lawyerId, notification.id)
 
@@ -122,6 +128,9 @@ class LawyerNotification : AppCompatActivity() {
                     }
 
                     recyclerView.adapter = notificationAdapter
+
+                    // Set up swipe-to-remove functionality
+                    setupSwipeToDelete(lawyerId)
                 }
             }
 
@@ -134,15 +143,172 @@ class LawyerNotification : AppCompatActivity() {
         })
     }
 
+    private fun checkForEmptyList() {
+        if (notifications.isEmpty()) {
+            emptyView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            emptyView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
+    }
+
+    private fun setupSwipeToDelete(userId: String) {
+        // Create a callback for swipe actions - only LEFT swipe allowed
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                // We're not using drag & drop functionality
+                return false
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+
+                // Make sure the position is valid
+                if (position >= 0 && position < notifications.size) {
+                    val deletedItem = notifications[position]
+
+                    // Remove from database
+                    removeNotification(userId, deletedItem.id)
+
+                    // Remove from UI list
+                    notifications.removeAt(position)
+                    notificationAdapter.notifyItemRemoved(position)
+
+                    // Show empty view if needed
+                    checkForEmptyList()
+
+                    // Show a snackbar with undo option
+                    Snackbar.make(
+                        recyclerView,
+                        "Notification removed",
+                        Snackbar.LENGTH_LONG
+                    ).setAction("UNDO") {
+                        // Restore the item in the database
+                        restoreNotification(userId, deletedItem)
+
+                        // Restore the item in the UI
+                        notifications.add(position, deletedItem)
+                        notificationAdapter.notifyItemInserted(position)
+
+                        // Update empty view visibility
+                        checkForEmptyList()
+                    }.show()
+                }
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+                val background = ColorDrawable(Color.RED)
+
+                // Draw the red background
+                background.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                background.draw(c)
+
+                // Draw a delete icon
+                val deleteIcon = ContextCompat.getDrawable(
+                    this@LawyerNotification,
+                    android.R.drawable.ic_menu_delete
+                )
+
+                deleteIcon?.let {
+                    val iconMargin = (itemView.height - it.intrinsicHeight) / 2
+                    val iconTop = itemView.top + iconMargin
+                    val iconBottom = iconTop + it.intrinsicHeight
+                    val iconRight = itemView.right - iconMargin
+                    val iconLeft = iconRight - it.intrinsicWidth
+
+                    it.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    it.draw(c)
+                }
+
+                super.onChildDraw(
+                    c,
+                    recyclerView,
+                    viewHolder,
+                    dX,
+                    dY,
+                    actionState,
+                    isCurrentlyActive
+                )
+            }
+        }
+
+        // Attach the swipe callback to the RecyclerView
+        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+    }
+
+    private fun removeNotification(userId: String, notificationId: String) {
+        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
+            .child(userId).child(notificationId)
+
+        // Save the notification data temporarily (for potential restoration)
+        notificationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Store the notification data for potential restoration
+                val notificationData = snapshot.value
+
+                // Remove the notification from the database
+                notificationRef.removeValue()
+                    .addOnFailureListener { e ->
+                        Log.e("Notification", "Failed to delete notification: ${e.message}")
+                        Toast.makeText(this@LawyerNotification, "Failed to remove notification", Toast.LENGTH_SHORT).show()
+                    }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Notification", "Failed to get notification data: ${error.message}")
+            }
+        })
+    }
+
+    private fun restoreNotification(userId: String, notification: NotificationItem) {
+        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
+            .child(userId).child(notification.id)
+
+        // Create a map of notification data
+        val notificationMap = HashMap<String, Any?>()
+        notificationMap["senderId"] = notification.senderId
+        notificationMap["senderName"] = notification.senderName
+        notificationMap["message"] = notification.message
+        notificationMap["timestamp"] = notification.timestamp
+        notificationMap["type"] = notification.type
+        notificationMap["isRead"] = notification.isRead
+        notification.appointmentId?.let { notificationMap["appointmentId"] = it }
+
+        // Restore the notification in the database
+        notificationRef.setValue(notificationMap)
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to restore notification: ${e.message}")
+                Toast.makeText(this@LawyerNotification, "Failed to restore notification", Toast.LENGTH_SHORT).show()
+            }
+    }
+
     private fun markNotificationAsRead(userId: String, notificationId: String) {
         val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
             .child(userId).child(notificationId)
 
         // Update the isRead field to true
         notificationRef.child("isRead").setValue(true)
-            .addOnSuccessListener {
-                Log.d("Notification", "Notification marked as read")
-            }
             .addOnFailureListener { e ->
                 Log.e("Notification", "Failed to mark notification as read: ${e.message}")
             }
