@@ -318,10 +318,9 @@ class SecretaryNotificationActivity : AppCompatActivity() {
                 }
             }
             "appointment" -> {
-                // Navigate to SecretaryDashboardActivity with intent to open the appointment fragment
+                // Simply redirect to the dashboard with the appointment tab selected
                 val intent = Intent(this, SecretaryDashboardActivity::class.java)
-                intent.putExtra("OPEN_APPOINTMENT_FRAGMENT", true)
-                intent.putExtra("APPOINTMENT_ID", notification.appointmentId)
+                intent.putExtra("OPEN_APPOINTMENT_TAB", true)
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP) // Clear top to avoid stacking activities
                 startActivity(intent)
             }
