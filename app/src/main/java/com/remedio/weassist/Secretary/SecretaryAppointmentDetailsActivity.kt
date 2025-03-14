@@ -14,6 +14,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.R
@@ -31,6 +32,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var btnAccept: Button
     private lateinit var btnDecline: Button
     private lateinit var cardViewActions: CardView
+    private var currentSecretaryName: String = "Secretary"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +61,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         val appointmentId = intent.getStringExtra("APPOINTMENT_ID")
         if (appointmentId != null) {
             loadAppointmentDetails(appointmentId)
+            fetchCurrentSecretaryName()
         } else {
             Toast.makeText(this, "Error: Appointment ID not found", Toast.LENGTH_SHORT).show()
             finish()
@@ -72,6 +75,22 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         btnDecline.setOnClickListener {
             appointmentId?.let { id -> updateAppointmentStatus(id, "Declined") }
         }
+    }
+
+    private fun fetchCurrentSecretaryName() {
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(currentUserId)
+
+        secretaryRef.child("name").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                currentSecretaryName = snapshot.getValue(String::class.java) ?: "Secretary"
+                tvSecretaryName.text = "Secretary: $currentSecretaryName"
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error fetching secretary name: ${error.message}")
+            }
+        })
     }
 
     private fun loadAppointmentDetails(appointmentId: String) {
@@ -139,7 +158,12 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
         // For demonstration, use a placeholder for secretary name
         // In a real app, you would fetch this from the database
-        tvSecretaryName.text = "Secretary: Current Secretary"
+        val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        if (currentUserId.isNotEmpty()) {
+            tvSecretaryName.text = "Secretary: $currentSecretaryName"
+        } else {
+            tvSecretaryName.text = "Secretary: Not Assigned"
+        }
     }
 
     private fun fetchLawyerName(lawyerId: String) {
@@ -220,7 +244,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                                     .child("appointments")
                                     .child(appointmentId)
 
-                                lawyerAppointmentsRef.setValue(true)
+                                lawyerAppointmentsRef.setValue(appointment)
                                     .addOnSuccessListener {
                                         // Add to secretary's appointments
                                         val secretaryAppointmentsRef = database.getReference("secretaries")
@@ -228,8 +252,12 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                                             .child("appointments")
                                             .child(appointmentId)
 
-                                        secretaryAppointmentsRef.setValue(true)
+                                        secretaryAppointmentsRef.setValue(appointment)
                                             .addOnSuccessListener {
+                                                // Send notifications to client and lawyer
+                                                sendNotificationToClient(appointment.clientId, currentSecretaryId, appointment)
+                                                sendNotificationToLawyer(appointment.lawyerId, currentSecretaryId, appointment)
+
                                                 showLoading(false)
 
                                                 Toast.makeText(
@@ -295,6 +323,56 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 ).show()
             }
         })
+    }
+
+    private fun sendNotificationToClient(clientId: String, secretaryId: String, appointment: Appointment) {
+        val database = FirebaseDatabase.getInstance().reference
+        val notificationId = database.child("notifications").child(clientId).push().key ?: return
+
+        val notificationData = mapOf(
+            "id" to notificationId,
+            "senderId" to secretaryId,
+            "senderName" to currentSecretaryName,
+            "message" to "Your appointment on ${appointment.date} at ${appointment.time} has been accepted",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "type" to "appointment_accepted",
+            "isRead" to false,
+            "appointmentId" to appointment.appointmentId
+        )
+
+        database.child("notifications").child(clientId).child(notificationId)
+            .setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("Notification", "Notification sent to client successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to send notification to client: ${e.message}")
+            }
+    }
+
+    private fun sendNotificationToLawyer(lawyerId: String, secretaryId: String, appointment: Appointment) {
+        val database = FirebaseDatabase.getInstance().reference
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+
+        val notificationData = mapOf(
+            "id" to notificationId,
+            "senderId" to secretaryId,
+            "senderName" to currentSecretaryName,
+            "message" to "You have an appointment with ${appointment.fullName} on ${appointment.date} at ${appointment.time}.",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "type" to "appointment_accepted",
+            "isRead" to false,
+            "appointmentId" to appointment.appointmentId
+        )
+
+        database.child("notifications").child(lawyerId).child(notificationId)
+            .setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("Notification", "Notification sent to lawyer successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to send notification to lawyer: ${e.message}")
+            }
     }
 
     private fun showLoading(isLoading: Boolean) {

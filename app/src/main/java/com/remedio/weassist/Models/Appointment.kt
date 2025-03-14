@@ -16,6 +16,7 @@ data class Appointment(
     val status: String? = "pending", // Default to pending
     var clientId: String = "",
     var secretaryId: String = "",
+    //val clientUid: String = ""
     //var problemDescription: String = "" // Add this property
 ) : Parcelable
 
