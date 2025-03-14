@@ -1,5 +1,6 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -216,12 +217,13 @@ class SecretaryAppointmentFragment : Fragment() {
     }
 
     private fun showAppointmentDetails(appointment: Appointment) {
-        // Display the appointment details in a dialog
-        val isSecretaryView = true // Set this to true for the secretary view
-        val dialog = AppointmentDetailsDialog.newInstance(appointment, isSecretaryView)
-        dialog.show(
-            requireActivity().supportFragmentManager,
-            "AppointmentDetailsDialog"
-        )
+        // Create an intent to start the SecretaryAppointmentDetailsActivity
+        val intent = Intent(requireContext(), SecretaryAppointmentDetailsActivity::class.java)
+
+        // Pass the appointment ID to the activity
+        intent.putExtra("APPOINTMENT_ID", appointment.appointmentId)
+
+        // Start the activity
+        startActivity(intent)
     }
 }
