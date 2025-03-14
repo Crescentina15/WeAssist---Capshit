@@ -10,6 +10,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -164,22 +165,25 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
         statusRef.setValue(newStatus)
             .addOnSuccessListener {
-                showLoading(false)
-                Toast.makeText(
-                    this,
-                    "Appointment has been $newStatus",
-                    Toast.LENGTH_SHORT
-                ).show()
+                if (newStatus == "Accepted") {
+                    // Add appointment to accepted_appointment node
+                    addToAcceptedAppointments(appointmentId)
+                } else {
+                    // Update UI for declined appointment
+                    showLoading(false)
+                    Toast.makeText(
+                        this,
+                        "Appointment has been $newStatus",
+                        Toast.LENGTH_SHORT
+                    ).show()
 
-                // Update UI
-                tvStatus.text = "Status: $newStatus"
-                when (newStatus) {
-                    "Accepted" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark))
-                    "Declined" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_red_dark))
+                    // Update UI
+                    tvStatus.text = "Status: $newStatus"
+                    tvStatus.setTextColor(resources.getColor(android.R.color.holo_red_dark))
+
+                    // Hide action buttons after status update
+                    cardViewActions.visibility = View.GONE
                 }
-
-                // Hide action buttons after status update
-                cardViewActions.visibility = View.GONE
             }
             .addOnFailureListener { e ->
                 showLoading(false)
@@ -190,6 +194,107 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                     Toast.LENGTH_SHORT
                 ).show()
             }
+    }
+
+    private fun addToAcceptedAppointments(appointmentId: String) {
+        val database = FirebaseDatabase.getInstance()
+        val appointmentsRef = database.getReference("appointments").child(appointmentId)
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val appointment = snapshot.getValue(Appointment::class.java)
+                    appointment?.let {
+                        // Set appointment ID and secretary ID
+                        it.appointmentId = appointmentId
+                        it.secretaryId = currentSecretaryId
+
+                        // Add to accepted_appointment node
+                        val acceptedAppointmentsRef = database.getReference("accepted_appointment").child(appointmentId)
+                        acceptedAppointmentsRef.setValue(it)
+                            .addOnSuccessListener {
+                                // Also add to lawyer's appointments
+                                val lawyerAppointmentsRef = database.getReference("lawyers")
+                                    .child(appointment.lawyerId)
+                                    .child("appointments")
+                                    .child(appointmentId)
+
+                                lawyerAppointmentsRef.setValue(true)
+                                    .addOnSuccessListener {
+                                        // Add to secretary's appointments
+                                        val secretaryAppointmentsRef = database.getReference("secretaries")
+                                            .child(currentSecretaryId)
+                                            .child("appointments")
+                                            .child(appointmentId)
+
+                                        secretaryAppointmentsRef.setValue(true)
+                                            .addOnSuccessListener {
+                                                showLoading(false)
+
+                                                Toast.makeText(
+                                                    this@SecretaryAppointmentDetailsActivity,
+                                                    "Appointment has been Accepted",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+
+                                                // Update UI
+                                                tvStatus.text = "Status: Accepted"
+                                                tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark))
+
+                                                // Hide action buttons after status update
+                                                cardViewActions.visibility = View.GONE
+                                            }
+                                            .addOnFailureListener { e ->
+                                                showLoading(false)
+                                                Log.e("SecretaryAppointment", "Error adding to secretary appointments: ${e.message}")
+                                                Toast.makeText(
+                                                    this@SecretaryAppointmentDetailsActivity,
+                                                    "Error finalizing appointment acceptance",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                    }
+                                    .addOnFailureListener { e ->
+                                        showLoading(false)
+                                        Log.e("SecretaryAppointment", "Error adding to lawyer appointments: ${e.message}")
+                                        Toast.makeText(
+                                            this@SecretaryAppointmentDetailsActivity,
+                                            "Error adding appointment to lawyer",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                            }
+                            .addOnFailureListener { e ->
+                                showLoading(false)
+                                Log.e("SecretaryAppointment", "Error adding to accepted appointments: ${e.message}")
+                                Toast.makeText(
+                                    this@SecretaryAppointmentDetailsActivity,
+                                    "Failed to add to accepted appointments",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                } else {
+                    showLoading(false)
+                    Toast.makeText(
+                        this@SecretaryAppointmentDetailsActivity,
+                        "Appointment not found",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                showLoading(false)
+                Log.e("SecretaryAppointment", "Error retrieving appointment: ${error.message}")
+                Toast.makeText(
+                    this@SecretaryAppointmentDetailsActivity,
+                    "Error retrieving appointment details",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        })
     }
 
     private fun showLoading(isLoading: Boolean) {

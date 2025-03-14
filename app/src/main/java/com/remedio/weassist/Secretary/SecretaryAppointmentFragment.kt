@@ -1,14 +1,20 @@
 package com.remedio.weassist.Secretary
 
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
@@ -22,6 +28,7 @@ class SecretaryAppointmentFragment : Fragment() {
     private lateinit var appointmentList: ArrayList<Appointment>
     private lateinit var lawyerIdList: ArrayList<String>
     private lateinit var adapter: AppointmentAdapter
+    private lateinit var deleteDrawable: ColorDrawable
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -37,6 +44,9 @@ class SecretaryAppointmentFragment : Fragment() {
         appointmentList = ArrayList()
         lawyerIdList = ArrayList()
 
+        // Initialize delete background
+        deleteDrawable = ColorDrawable(Color.RED)
+
         // Initialize the adapter
         adapter = AppointmentAdapter(
             appointments = appointmentList,
@@ -47,6 +57,9 @@ class SecretaryAppointmentFragment : Fragment() {
             }
         )
         appointmentRecyclerView.adapter = adapter
+
+        // Set up swipe-to-delete functionality
+        setupSwipeToDelete()
 
         // Fetch the currently logged-in secretary's UID
         val currentUser = FirebaseAuth.getInstance().currentUser
@@ -60,6 +73,145 @@ class SecretaryAppointmentFragment : Fragment() {
         }
 
         return view
+    }
+
+    private fun setupSwipeToDelete() {
+        val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+            override fun onMove(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder): Boolean {
+                return false // We don't want drag and drop
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.bindingAdapterPosition
+                val deletedAppointment = appointmentList[position]
+
+                // Remove from Firebase
+                removeAppointment(deletedAppointment)
+
+                // Remove from the list and notify adapter
+                appointmentList.removeAt(position)
+                adapter.notifyItemRemoved(position)
+
+                // Show undo option
+                val snackbar = Snackbar.make(
+                    requireView(),
+                    "Appointment for ${deletedAppointment.fullName} removed",
+                    Snackbar.LENGTH_LONG
+                )
+
+                snackbar.setAction("UNDO") {
+                    // Restore the appointment in Firebase
+                    restoreAppointment(deletedAppointment)
+
+                    // Re-add to list at the same position
+                    appointmentList.add(position, deletedAppointment)
+                    adapter.notifyItemInserted(position)
+                }
+
+                snackbar.show()
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+
+                // Draw the red delete background
+                val background = deleteDrawable
+                background.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                background.draw(c)
+
+                // Draw delete icon if needed
+                val deleteIcon = ContextCompat.getDrawable(requireContext(), android.R.drawable.ic_menu_delete)
+                deleteIcon?.let {
+                    val iconMargin = (itemView.height - it.intrinsicHeight) / 2
+                    val iconTop = itemView.top + (itemView.height - it.intrinsicHeight) / 2
+                    val iconBottom = iconTop + it.intrinsicHeight
+                    val iconLeft = itemView.right - iconMargin - it.intrinsicWidth
+                    val iconRight = itemView.right - iconMargin
+
+                    it.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    it.draw(c)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+
+        val itemTouchHelper = ItemTouchHelper(swipeToDeleteCallback)
+        itemTouchHelper.attachToRecyclerView(appointmentRecyclerView)
+    }
+
+    private fun removeAppointment(appointment: Appointment) {
+        val appointmentRef = database.child("appointments").child(appointment.appointmentId)
+
+        // Optionally, you can move it to a "deletedAppointments" node instead of deleting completely
+        // For audit purposes and easy restoration
+        appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    // First copy to "deletedAppointments"
+                    database.child("deletedAppointments")
+                        .child(appointment.appointmentId)
+                        .setValue(snapshot.value)
+                        .addOnSuccessListener {
+                            // Then delete from main appointments
+                            appointmentRef.removeValue()
+                                .addOnSuccessListener {
+                                    Log.d("AppointmentRemoval", "Appointment successfully removed: ${appointment.appointmentId}")
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("AppointmentRemoval", "Error removing appointment: ${e.message}")
+                                }
+                        }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("AppointmentRemoval", "Database error: ${error.message}")
+            }
+        })
+    }
+
+    private fun restoreAppointment(appointment: Appointment) {
+        // Get the appointment from deletedAppointments
+        database.child("deletedAppointments").child(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        // Restore to appointments
+                        database.child("appointments")
+                            .child(appointment.appointmentId)
+                            .setValue(snapshot.value)
+                            .addOnSuccessListener {
+                                // Remove from deletedAppointments
+                                database.child("deletedAppointments")
+                                    .child(appointment.appointmentId)
+                                    .removeValue()
+
+                                Log.d("AppointmentRestore", "Appointment successfully restored: ${appointment.appointmentId}")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("AppointmentRestore", "Error restoring appointment: ${e.message}")
+                            }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("AppointmentRestore", "Database error: ${error.message}")
+                }
+            })
     }
 
     private fun fetchSecretaryLawFirm(secretaryId: String) {
