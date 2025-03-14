@@ -7,5 +7,12 @@
     <item name="android:paddingEnd">10dp</item>
     <item name="android:layout_margin">4dp</item>
     <item name="android:fontFamily">@font/inria_serif_bold</item>
+
   </style>
+  <style name="CircleImage">
+    <item name="cornerFamily">rounded</item>
+    <item name="cornerSize">50%</item>
+  </style>
+
+
 </resources>

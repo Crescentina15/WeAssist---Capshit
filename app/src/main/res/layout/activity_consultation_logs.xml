@@ -45,7 +45,7 @@
         android:id="@+id/btn_save_log"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Save and Exit"
+        android:text="Save and End Session"
         android:layout_marginTop="16dp"
         android:backgroundTint="#00008B"/>
 </LinearLayout>

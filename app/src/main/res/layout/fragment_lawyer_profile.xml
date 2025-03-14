@@ -24,15 +24,18 @@
             app:layout_constraintEnd_toEndOf="parent" />
 
         <!-- Profile Image -->
-        <ImageView
-            android:id="@+id/lawyer_profile_image"
-            android:layout_width="190dp"
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/profile_image"
+            android:layout_width="200dp"
             android:layout_height="190dp"
             android:layout_marginTop="90dp"
             android:src="@drawable/account_circle_24"
-            android:contentDescription="lawyer_profile_picture"
+            android:contentDescription="profile_picture_desc"
             android:scaleType="centerCrop"
             android:background="@drawable/baseline_circle_24"
+            app:strokeColor="@color/black"
+            app:strokeWidth="1dp"
+            app:shapeAppearanceOverlay="@style/CircleImage"
             app:layout_constraintTop_toTopOf="@id/lawyer_header"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
@@ -46,7 +49,7 @@
             android:textSize="30sp"
             android:textStyle="bold"
             android:textColor="@color/black"
-            app:layout_constraintTop_toBottomOf="@id/lawyer_profile_image"
+            app:layout_constraintTop_toBottomOf="@id/profile_image"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
