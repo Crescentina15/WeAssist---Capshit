@@ -18,7 +18,7 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private var nameTextView: TextView? = null
-    private var profilePicture: ImageView? = null
+    private var profileImage: ImageView? = null
     private var editProfileButton: LinearLayout? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -27,9 +27,9 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("secretaries")
 
-        // ✅ Use `view.findViewById()`
+        // ✅ Use correct ID from XML
         nameTextView = view.findViewById(R.id.secretary_name)
-        profilePicture = view.findViewById(R.id.profile_picture)
+        profileImage = view.findViewById(R.id.profile_image) // Updated to match XML ID
         editProfileButton = view.findViewById(R.id.secretary_edit_profile)
 
         auth.currentUser?.let { fetchSecretaryData(it.uid) }
@@ -40,19 +40,25 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
     }
 
     private fun fetchSecretaryData(userId: String) {
-        database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+        database.child(userId).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // ✅ Check if Fragment is still attached
-                if (!isAdded || view == null) return
+                if (!isAdded || view == null) return // ✅ Prevent crashes if fragment is not attached
 
-                // ✅ Check if `nameTextView` and `profilePicture` are still available
                 nameTextView?.text = snapshot.child("name").getValue(String::class.java) ?: "N/A"
 
                 val profilePicUrl = snapshot.child("profilePicture").getValue(String::class.java)
+
+
                 if (!profilePicUrl.isNullOrEmpty()) {
-                    profilePicture?.let { imageView ->
-                        Glide.with(requireContext()).load(profilePicUrl).into(imageView)
+                    profileImage?.let { imageView ->
+                        Glide.with(requireContext())
+                            .load(profilePicUrl)
+                            .placeholder(R.drawable.account_circle_24)
+                            .error(R.drawable.account_circle_24)
+                            .into(imageView)
                     }
+                } else {
+                    profileImage?.setImageResource(R.drawable.account_circle_24) // Set default image if URL is null
                 }
             }
 
