@@ -1,15 +1,19 @@
 package com.remedio.weassist.Lawyer
 
-
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageButton
-import android.widget.Toast
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.R
+import java.util.*
 
 class LawyerEditProfileActivity : AppCompatActivity() {
 
@@ -25,6 +29,10 @@ class LawyerEditProfileActivity : AppCompatActivity() {
     private lateinit var editLicenseNumber: EditText
     private lateinit var btnSaveChanges: Button
     private lateinit var btnCancel: Button
+
+    private lateinit var profileImage: ImageView
+    private lateinit var btnChangeProfileImage: Button
+    private var imageUri: Uri? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,7 +53,9 @@ class LawyerEditProfileActivity : AppCompatActivity() {
         btnSaveChanges = findViewById(R.id.btn_save_lawyer_profile)
         btnCancel = findViewById(R.id.btn_cancel_lawyer_profile)
 
-        // Load lawyer data from Firebase
+        profileImage = findViewById(R.id.lawyer_profile_image)
+        btnChangeProfileImage = findViewById(R.id.btn_change_profile_image)
+
         val currentUser = auth.currentUser
         if (currentUser != null) {
             loadLawyerData(currentUser.uid)
@@ -54,6 +64,13 @@ class LawyerEditProfileActivity : AppCompatActivity() {
         // Back button functionality
         findViewById<ImageButton>(R.id.back_arrow)?.setOnClickListener {
             finish()
+        }
+
+        // Change profile picture button
+        btnChangeProfileImage.setOnClickListener {
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "image/*"
+            startActivityForResult(intent, 100)
         }
 
         // Save changes button click
@@ -80,6 +97,11 @@ class LawyerEditProfileActivity : AppCompatActivity() {
                     editExperience.setText(snapshot.child("experience").getValue(String::class.java) ?: "")
                     editLawFirm.setText(snapshot.child("lawFirm").getValue(String::class.java) ?: "")
                     editLicenseNumber.setText(snapshot.child("licenseNumber").getValue(String::class.java) ?: "")
+
+                    val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                    if (!profileImageUrl.isNullOrEmpty()) {
+                        Glide.with(this@LawyerEditProfileActivity).load(profileImageUrl).into(profileImage)
+                    }
                 } else {
                     Toast.makeText(this@LawyerEditProfileActivity, "Lawyer data not found", Toast.LENGTH_SHORT).show()
                 }
@@ -111,5 +133,47 @@ class LawyerEditProfileActivity : AppCompatActivity() {
                 Toast.makeText(this, "Failed to update profile: ${it.message}", Toast.LENGTH_SHORT).show()
             }
     }
-}
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == Activity.RESULT_OK && data != null) {
+            imageUri = data.data
+            profileImage.setImageURI(imageUri) // Show selected image
+            uploadImageToCloudinary(imageUri)
+        }
+    }
+
+    private fun uploadImageToCloudinary(imageUri: Uri?) {
+        imageUri?.let { uri ->
+            val uniqueFileName = "lawyer_profile_" + UUID.randomUUID().toString()
+
+            MediaManager.get().upload(uri)
+                .option("public_id", uniqueFileName)
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String?) {}
+                    override fun onProgress(requestId: String?, bytes: Long, totalBytes: Long) {}
+                    override fun onSuccess(requestId: String?, resultData: MutableMap<*, *>?) {
+                        val imageUrl = resultData?.get("secure_url").toString()
+                        saveImageUrlToFirebase(imageUrl)
+                    }
+                    override fun onError(requestId: String?, error: ErrorInfo?) {
+                        Toast.makeText(this@LawyerEditProfileActivity, "Upload failed: ${error?.description}", Toast.LENGTH_SHORT).show()
+                    }
+                    override fun onReschedule(requestId: String?, error: ErrorInfo?) {
+                        Toast.makeText(this@LawyerEditProfileActivity, "Upload rescheduled", Toast.LENGTH_SHORT).show()
+                    }
+                }).dispatch()
+        }
+    }
+
+    private fun saveImageUrlToFirebase(imageUrl: String) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child(userId).child("profileImageUrl").setValue(imageUrl)
+            .addOnSuccessListener {
+                Toast.makeText(this, "Profile picture updated!", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener {
+                Toast.makeText(this, "Failed to update picture", Toast.LENGTH_SHORT).show()
+            }
+    }
+}
