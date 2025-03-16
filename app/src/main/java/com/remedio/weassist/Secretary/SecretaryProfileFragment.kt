@@ -1,5 +1,6 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -11,6 +12,7 @@ import androidx.fragment.app.Fragment
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.LoginAndRegister.Login
 import com.remedio.weassist.R
 
 class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
@@ -20,6 +22,7 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
     private var nameTextView: TextView? = null
     private var profileImage: ImageView? = null
     private var editProfileButton: LinearLayout? = null
+    private var logoutButton: LinearLayout? = null // Added logout button reference
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -27,27 +30,30 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("secretaries")
 
-        // ✅ Use correct ID from XML
         nameTextView = view.findViewById(R.id.secretary_name)
-        profileImage = view.findViewById(R.id.profile_image) // Updated to match XML ID
+        profileImage = view.findViewById(R.id.profile_image)
         editProfileButton = view.findViewById(R.id.secretary_edit_profile)
+        logoutButton = view.findViewById(R.id.secretary_log_out) // Initialize logout button
 
         auth.currentUser?.let { fetchSecretaryData(it.uid) }
 
         editProfileButton?.setOnClickListener {
             startActivity(Intent(requireContext(), EditSecretaryProfileActivity::class.java))
         }
+
+        logoutButton?.setOnClickListener {
+            logoutUser()
+        }
     }
 
     private fun fetchSecretaryData(userId: String) {
         database.child(userId).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded || view == null) return // ✅ Prevent crashes if fragment is not attached
+                if (!isAdded || view == null) return // Prevent crashes if fragment is not attached
 
                 nameTextView?.text = snapshot.child("name").getValue(String::class.java) ?: "N/A"
 
                 val profilePicUrl = snapshot.child("profilePicture").getValue(String::class.java)
-
 
                 if (!profilePicUrl.isNullOrEmpty()) {
                     profileImage?.let { imageView ->
@@ -67,6 +73,25 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
             }
         })
     }
+
+    private fun logoutUser() {
+        auth.signOut() // Sign out from Firebase
+        clearUserSession() // Clear saved user details
+        showToast("Logged out successfully")
+
+        // Redirect to login screen
+        val intent = Intent(requireContext(), Login::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+    }
+    private fun clearUserSession() {
+        val sharedPreferences = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        editor.clear() // Remove all saved login details
+        editor.apply()
+    }
+
+
 
     private fun showToast(message: String) {
         if (isAdded) {
