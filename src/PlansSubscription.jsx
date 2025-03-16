@@ -47,4 +47,26 @@ const PlansSubscription = () => {
   );
 };
 
+const handleCheckout = async (amount) => {
+  try {
+    const response = await fetch("http://localhost:5000/create-checkout-session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ amount }),
+    });
+
+    const data = await response.json();
+    if (data.url) {
+      window.location.href = data.url; // Redirect to Stripe Checkout
+    }
+  } catch (error) {
+    console.error("Error creating checkout session:", error);
+  }
+};
+
+// Example inside your button component
+<button onClick={() => handleCheckout(500)}>Choose Plan</button>
+
 export default PlansSubscription;
