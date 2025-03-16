@@ -6,17 +6,18 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.LoginAndRegister.Login
 import com.remedio.weassist.Miscellaneous.PrivacyActivity
-import com.remedio.weassist.R
-import com.remedio.weassist.Miscellaneous.ReportActivity
 import com.remedio.weassist.Miscellaneous.SecurityActivity
+import com.remedio.weassist.R
 
 class LawyerProfileFragment : Fragment() {
 
@@ -27,6 +28,7 @@ class LawyerProfileFragment : Fragment() {
     private lateinit var securityButton: LinearLayout
     private lateinit var privacyButton: LinearLayout
     private lateinit var logoutButton: LinearLayout
+    private lateinit var lawyerProfileImage: ImageView
     private val PREFS_NAME = "LoginPrefs"
 
     override fun onCreateView(
@@ -41,6 +43,7 @@ class LawyerProfileFragment : Fragment() {
 
         // Initialize UI elements
         usernameTextView = view.findViewById(R.id.lawyer_name)
+        lawyerProfileImage = view.findViewById(R.id.profile_image)
         editProfileButton = view.findViewById(R.id.lawyer_edit_profile)
         securityButton = view.findViewById(R.id.lawyer_security)
         privacyButton = view.findViewById(R.id.lawyer_privacy)
@@ -67,16 +70,27 @@ class LawyerProfileFragment : Fragment() {
         logoutButton.setOnClickListener { logoutUser() }
     }
 
+    override fun onResume() {
+        super.onResume()
+        auth.currentUser?.uid?.let { fetchUserData(it) }
+    }
+
     private fun fetchUserData(userId: String) {
         database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!isAdded) return // Prevent crash if fragment is detached
 
                 if (snapshot.exists()) {
-                    val name = snapshot.child("name").getValue(String::class.java) ?: ""
+                    val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
+                    val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java) ?: ""
 
                     // Update UI
-                    usernameTextView.text = if (name.isNotEmpty()) name else "N/A"
+                    usernameTextView.text = name
+
+                    // Load profile image
+                    if (profileImageUrl.isNotEmpty()) {
+                        Glide.with(requireContext()).load(profileImageUrl).into(lawyerProfileImage)
+                    }
                 } else {
                     showToast("User data not found!")
                 }
@@ -89,7 +103,6 @@ class LawyerProfileFragment : Fragment() {
             }
         })
     }
-
 
     private fun logoutUser() {
         if (!isAdded) return // Prevent crash if fragment is detached
