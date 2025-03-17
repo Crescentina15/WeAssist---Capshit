@@ -36,7 +36,7 @@ class AddAvailabilityActivity : AppCompatActivity() {
         // Initialize Firebase Realtime Database (Fixed reference to lowercase "lawyers")
         database = FirebaseDatabase.getInstance().getReference("lawyers")
 
-        // Date picker
+        // Date picker with month/date/year format
         selectDate.setOnClickListener {
             val calendar = Calendar.getInstance()
             val datePicker = DatePickerDialog(
@@ -47,7 +47,9 @@ class AddAvailabilityActivity : AppCompatActivity() {
                     if (selectedCalendar.before(calendar)) {
                         Toast.makeText(this, "You cannot select past dates", Toast.LENGTH_SHORT).show()
                     } else {
-                        selectDate.setText("$year-${month + 1}-$dayOfMonth")
+                        // Format as month/date/year
+                        // For two-digit month and day format (03/07/2025)
+                        selectDate.setText(String.format("%02d/%02d/%d", month + 1, dayOfMonth, year))
                     }
                 },
                 calendar.get(Calendar.YEAR),
@@ -79,7 +81,10 @@ class AddAvailabilityActivity : AppCompatActivity() {
     private fun showTimePicker(editText: EditText) {
         val calendar = Calendar.getInstance()
         val timePicker = TimePickerDialog(this, { _, hour, minute ->
-            editText.setText(String.format("%02d:%02d", hour, minute))
+            // Convert to 12-hour format with AM/PM
+            val hourOfDay = if (hour == 0) 12 else if (hour > 12) hour - 12 else hour
+            val amPm = if (hour < 12) "AM" else "PM"
+            editText.setText(String.format("%d:%02d %s", hourOfDay, minute, amPm))
         }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), false)
         timePicker.show()
     }
@@ -89,28 +94,46 @@ class AddAvailabilityActivity : AppCompatActivity() {
 
         availabilityRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                // Parse the new times to compare
+                val newStartTime = parseTimeToMinutes(start)
+                val newEndTime = parseTimeToMinutes(end)
+
+                // Make sure end time is after start time
+                if (newEndTime <= newStartTime) {
+                    Toast.makeText(
+                        applicationContext,
+                        "End time must be after start time",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    return
+                }
+
                 for (availabilitySnapshot in snapshot.children) {
                     val existingDate = availabilitySnapshot.child("date").value.toString()
                     val existingStart = availabilitySnapshot.child("startTime").value.toString()
                     val existingEnd = availabilitySnapshot.child("endTime").value.toString()
 
-                    // Check if the same date and overlapping time slot exists
-                    if (existingDate == date &&
-                        ((start >= existingStart && start < existingEnd) || (end > existingStart && end <= existingEnd))
-                    ) {
-                        Toast.makeText(
-                            applicationContext,
-                            "Time slot already taken",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        return
+                    // Only check overlaps on the same date
+                    if (existingDate == date) {
+                        val existingStartTime = parseTimeToMinutes(existingStart)
+                        val existingEndTime = parseTimeToMinutes(existingEnd)
+
+                        // Check for any type of overlap
+                        if (!(newEndTime <= existingStartTime || newStartTime >= existingEndTime)) {
+                            Toast.makeText(
+                                applicationContext,
+                                "Time slot overlaps with existing availability",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return
+                        }
                     }
                 }
 
                 // Generate a unique ID for availability entry
                 val availabilityId = availabilityRef.push().key ?: return
                 val availability = mapOf(
-                    "id" to availabilityId,  // Include unique ID for easier reference
+                    "id" to availabilityId,
                     "date" to date,
                     "startTime" to start,
                     "endTime" to end
@@ -142,5 +165,24 @@ class AddAvailabilityActivity : AppCompatActivity() {
                 ).show()
             }
         })
+    }
+
+    // Helper function to convert time strings to minutes since midnight for comparison
+    private fun parseTimeToMinutes(timeStr: String): Int {
+        val parts = timeStr.split(":")
+        val hourMinParts = parts[1].split(" ")
+
+        var hour = parts[0].toInt()
+        val minute = hourMinParts[0].toInt()
+        val amPm = hourMinParts[1]
+
+        // Convert to 24-hour format for calculation
+        if (amPm.equals("PM", ignoreCase = true) && hour < 12) {
+            hour += 12
+        } else if (amPm.equals("AM", ignoreCase = true) && hour == 12) {
+            hour = 0
+        }
+
+        return hour * 60 + minute
     }
 }

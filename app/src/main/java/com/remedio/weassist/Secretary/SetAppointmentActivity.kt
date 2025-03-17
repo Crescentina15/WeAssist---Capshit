@@ -5,6 +5,9 @@ import android.util.Log
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.R
@@ -12,11 +15,11 @@ import com.remedio.weassist.R
 class SetAppointmentActivity : AppCompatActivity() {
 
     private lateinit var databaseReference: DatabaseReference
-    private lateinit var dateSpinner: Spinner
-    private lateinit var timeSpinner: Spinner
-    private lateinit var editFullName: EditText
-    private lateinit var editProblem: EditText
-    private lateinit var btnSetAppointment: Button
+    private lateinit var dateDropdown: AutoCompleteTextView
+    private lateinit var timeDropdown: AutoCompleteTextView
+    private lateinit var editFullName: TextInputEditText
+    private lateinit var editProblem: TextInputEditText
+    private lateinit var btnSetAppointment: MaterialButton
     private lateinit var backArrow: ImageButton
 
     private var lawyerId: String? = null
@@ -24,14 +27,24 @@ class SetAppointmentActivity : AppCompatActivity() {
     private var selectedTime: String? = null
     private var clientId: String? = null
 
+    private var datesList = mutableListOf<String>()
+    private var timeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
+    // Data class to represent time slot information
+    data class TimeSlotInfo(
+        val timeSlot: String,
+        val isAvailable: Boolean
+    )
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_set_appointment)
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
 
-        dateSpinner = findViewById(R.id.date_spinner)
-        timeSpinner = findViewById(R.id.time_spinner)
+        // Find views using the updated IDs from the new layout
+        dateDropdown = findViewById(R.id.date_dropdown)
+        timeDropdown = findViewById(R.id.time_dropdown)
         editFullName = findViewById(R.id.edit_full_name)
         editProblem = findViewById(R.id.edit_problem)
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
@@ -51,11 +64,14 @@ class SetAppointmentActivity : AppCompatActivity() {
         }
 
         if (lawyerId != null) {
-            fetchAvailability(lawyerId!!)
+            fetchAvailabilityAndBookings(lawyerId!!)
         } else {
             Log.e("SetAppointmentActivity", "Lawyer ID is null")
             Toast.makeText(this, "Lawyer not found", Toast.LENGTH_SHORT).show()
         }
+
+        setupDateDropdown()
+        setupTimeDropdown()
 
         btnSetAppointment.setOnClickListener {
             saveAppointment()
@@ -86,16 +102,20 @@ class SetAppointmentActivity : AppCompatActivity() {
         })
     }
 
-    private fun fetchAvailability(lawyerId: String) {
-        databaseReference = FirebaseDatabase.getInstance()
+    private fun fetchAvailabilityAndBookings(lawyerId: String) {
+        val availabilityRef = FirebaseDatabase.getInstance()
             .getReference("lawyers")
             .child(lawyerId)
             .child("availability")
 
-        databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
+        // First, fetch all available time slots
+        availabilityRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val dateMap = mutableMapOf<String, MutableList<String>>()
+                    // Temporary map to store all available time slots
+                    val tempTimeSlotMap = mutableMapOf<String, MutableList<TimeSlotInfo>>()
+                    datesList.clear()
+                    datesList.add("Select Date")
 
                     for (availabilitySnapshot in snapshot.children) {
                         val date = availabilitySnapshot.child("date").getValue(String::class.java)
@@ -104,11 +124,19 @@ class SetAppointmentActivity : AppCompatActivity() {
 
                         if (date != null && startTime != null && endTime != null) {
                             val timeSlot = "$startTime - $endTime"
-                            dateMap.putIfAbsent(date, mutableListOf())
-                            dateMap[date]?.add(timeSlot)
+
+                            if (!datesList.contains(date)) {
+                                datesList.add(date)
+                            }
+
+                            val timeSlots = tempTimeSlotMap[date] ?: mutableListOf()
+                            timeSlots.add(TimeSlotInfo(timeSlot, true)) // All slots are initially available
+                            tempTimeSlotMap[date] = timeSlots
                         }
                     }
-                    setupDateSpinner(dateMap)
+
+                    // Now fetch all existing appointments to find booked slots
+                    fetchExistingAppointments(lawyerId, tempTimeSlotMap)
                 } else {
                     Toast.makeText(applicationContext, "No availability found", Toast.LENGTH_SHORT).show()
                 }
@@ -120,39 +148,113 @@ class SetAppointmentActivity : AppCompatActivity() {
         })
     }
 
-    private fun setupDateSpinner(dateMap: Map<String, List<String>>) {
-        val dates = mutableListOf("Select Date") + dateMap.keys
-        val dateAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, dates)
-        dateAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        dateSpinner.adapter = dateAdapter
+    private fun fetchExistingAppointments(lawyerId: String, availableTimeSlots: MutableMap<String, MutableList<TimeSlotInfo>>) {
+        val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
 
-        dateSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                if (position > 0) {
-                    selectedDate = dates[position]
-                    updateTimeSpinner(dateMap[selectedDate] ?: emptyList())
-                } else {
-                    selectedDate = null
-                    updateTimeSpinner(emptyList())
+        // Query appointments for this lawyer
+        appointmentsRef.orderByChild("lawyerId").equalTo(lawyerId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (appointmentSnapshot in snapshot.children) {
+                            val date = appointmentSnapshot.child("date").getValue(String::class.java)
+                            val time = appointmentSnapshot.child("time").getValue(String::class.java)
+
+                            if (date != null && time != null) {
+                                // Mark this slot as booked (keep it in the list but mark as unavailable)
+                                availableTimeSlots[date]?.let { timeSlots ->
+                                    for (i in timeSlots.indices) {
+                                        if (timeSlots[i].timeSlot == time) {
+                                            timeSlots[i] = TimeSlotInfo("${timeSlots[i].timeSlot} (Already Taken)", false)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // After processing all appointments, finalize the time slot map
+                    timeSlotMap.clear()
+                    for ((date, timeSlots) in availableTimeSlots) {
+                        timeSlotMap[date] = timeSlots
+                    }
+
+                    // Now setup the UI with complete data
+                    setupDateDropdown()
                 }
-            }
 
-            override fun onNothingSelected(parent: AdapterView<*>) {}
-        }
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SetAppointmentActivity", "Failed to fetch appointments: ${error.message}")
+
+                    // Fallback to just using available slots without booking information
+                    timeSlotMap.clear()
+                    for ((date, timeSlots) in availableTimeSlots) {
+                        timeSlotMap[date] = timeSlots
+                    }
+                    setupDateDropdown()
+                }
+            })
     }
 
-    private fun updateTimeSpinner(timeSlots: List<String>) {
-        val times = mutableListOf("Select Time") + timeSlots
-        val timeAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, times)
-        timeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        timeSpinner.adapter = timeAdapter
+    private fun setupDateDropdown() {
+        val dateAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, datesList)
+        dateDropdown.setAdapter(dateAdapter)
 
-        timeSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                selectedTime = if (position > 0) times[position] else null
+        dateDropdown.setOnItemClickListener { _, _, position, _ ->
+            if (position > 0) {
+                selectedDate = datesList[position]
+                updateTimeDropdown(timeSlotMap[selectedDate] ?: emptyList())
+            } else {
+                selectedDate = null
+                updateTimeDropdown(emptyList())
             }
+        }
 
-            override fun onNothingSelected(parent: AdapterView<*>) {}
+        // Clear any previous selection
+        dateDropdown.setText("", false)
+        dateDropdown.hint = "Choose a date"
+    }
+
+    private fun setupTimeDropdown() {
+        timeDropdown.setOnItemClickListener { _, _, position, _ ->
+            val times = timeSlotMap[selectedDate] ?: emptyList()
+            if (position >= 0 && position < times.size) {
+                val timeSlotInfo = times[position]
+
+                if (timeSlotInfo.isAvailable) {
+                    selectedTime = timeSlotInfo.timeSlot
+                    btnSetAppointment.isEnabled = true
+                } else {
+                    selectedTime = null
+                    btnSetAppointment.isEnabled = false
+                    Toast.makeText(this, "This time slot is already taken", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                selectedTime = null
+                btnSetAppointment.isEnabled = false
+            }
+        }
+
+        // Clear any previous selection
+        timeDropdown.setText("", false)
+        timeDropdown.hint = "Choose a time slot"
+    }
+
+    private fun updateTimeDropdown(timeSlots: List<TimeSlotInfo>) {
+        // Create a list of display strings for the dropdown
+        val displayTimeSlots = timeSlots.map { it.timeSlot }
+
+        val timeAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, displayTimeSlots)
+        timeDropdown.setAdapter(timeAdapter)
+
+        // Clear any previous selection
+        timeDropdown.setText("", false)
+
+        if (timeSlots.isEmpty()) {
+            timeDropdown.hint = "No times available"
+            btnSetAppointment.isEnabled = false
+        } else {
+            timeDropdown.hint = "Choose a time slot"
         }
     }
 
@@ -160,13 +262,35 @@ class SetAppointmentActivity : AppCompatActivity() {
         val fullName = editFullName.text.toString().trim()
         val problem = editProblem.text.toString().trim()
 
-        if (lawyerId == null || selectedDate == null || selectedTime == null) {
-            Toast.makeText(this, "Please select a date and time", Toast.LENGTH_SHORT).show()
+        if (lawyerId == null) {
+            Toast.makeText(this, "Lawyer information not available", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (fullName.isEmpty() || problem.isEmpty()) {
-            Toast.makeText(this, "Please enter full name and problem", Toast.LENGTH_SHORT).show()
+        if (selectedDate == null || selectedDate == "Select Date") {
+            Toast.makeText(this, "Please select a date", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (selectedTime == null || selectedTime?.isEmpty() == true) {
+            Toast.makeText(this, "Please select a time", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Add an additional check to make sure the selected time is available
+        val selectedTimeSlotInfo = timeSlotMap[selectedDate]?.find { it.timeSlot == selectedTime }
+        if (selectedTimeSlotInfo == null || !selectedTimeSlotInfo.isAvailable) {
+            Toast.makeText(this, "This time slot is not available. Please select another time.", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (fullName.isEmpty()) {
+            Toast.makeText(this, "Name is required", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (problem.isEmpty()) {
+            Toast.makeText(this, "Please describe your problem", Toast.LENGTH_SHORT).show()
             return
         }
 
@@ -190,6 +314,8 @@ class SetAppointmentActivity : AppCompatActivity() {
                 "status" to "Pending"
             )
 
+            btnSetAppointment.isEnabled = false
+
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
                     // Notify the client about the appointment
@@ -201,49 +327,17 @@ class SetAppointmentActivity : AppCompatActivity() {
                     // Send notification to all secretaries associated with this lawyer
                     sendNotificationToSecretaries(lawyerId!!, selectedDate!!, selectedTime!!, appointmentId)
 
-                    // Update the lawyer's availability and refresh spinners
-                    updateLawyerAvailability(lawyerId!!, selectedDate!!, selectedTime!!)
-
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 .addOnFailureListener {
+                    btnSetAppointment.isEnabled = true
                     Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
                 }
         }
     }
 
-    private fun updateLawyerAvailability(lawyerId: String, date: String, time: String) {
-        val availabilityRef = FirebaseDatabase.getInstance()
-            .getReference("lawyers")
-            .child(lawyerId)
-            .child("availability")
-
-        availabilityRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    for (availabilitySnapshot in snapshot.children) {
-                        val availabilityDate = availabilitySnapshot.child("date").getValue(String::class.java)
-                        val startTime = availabilitySnapshot.child("startTime").getValue(String::class.java)
-                        val endTime = availabilitySnapshot.child("endTime").getValue(String::class.java)
-
-                        if (availabilityDate == date && "$startTime - $endTime" == time) {
-                            availabilitySnapshot.ref.removeValue().addOnSuccessListener {
-                                // Refresh the availability spinners
-                                fetchAvailability(lawyerId)
-                            }
-                            break
-                        }
-                    }
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("SetAppointmentActivity", "Failed to update lawyer availability: ${error.message}")
-            }
-        })
-    }
-
+    // The rest of your notification and utility functions remain the same
     private fun sendNotificationToClient(lawyerId: String, date: String, time: String) {
         // Get the lawyer reference
         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
@@ -327,7 +421,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
         }
     }
-
 
     private fun sendNotificationToSecretaries(lawyerId: String, date: String, time: String, appointmentId: String) {
         // Get the secretaryID for this lawyer
