@@ -19,6 +19,7 @@ class LawyersListActivity : AppCompatActivity() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var lawyerAdapter: LawyerAdapter
     private lateinit var databaseReference: DatabaseReference
+    private lateinit var lawFirmAdminReference: DatabaseReference
     private var lawyerList = ArrayList<Lawyer>()
 
     private var fromManageAvailability = false
@@ -42,8 +43,9 @@ class LawyersListActivity : AppCompatActivity() {
 
         // Initialize Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference("lawyers")
+        lawFirmAdminReference = FirebaseDatabase.getInstance().getReference("law_firm_admin")
 
-        // Load lawyers from Firebase
+        // Load lawyers from Firebase with firm locations
         loadLawyers(specialization, lawFirm)
 
         // Handle back button click
@@ -53,6 +55,31 @@ class LawyersListActivity : AppCompatActivity() {
     }
 
     private fun loadLawyers(specialization: String?, lawFirm: String?) {
+        // First, load all law firm admins to have their data available
+        lawFirmAdminReference.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(adminSnapshot: DataSnapshot) {
+                // Create a map of law firm names to their office addresses
+                val firmLocationMap = HashMap<String, String>()
+
+                for (adminData in adminSnapshot.children) {
+                    val admin = adminData.value as? Map<String, Any> ?: continue
+                    val firmName = admin["lawFirm"]?.toString() ?: continue
+                    val officeAddress = admin["officeAddress"]?.toString() ?: ""
+
+                    firmLocationMap[firmName] = officeAddress
+                }
+
+                // Now load lawyers with firm locations
+                loadLawyersWithFirmLocations(specialization, lawFirm, firmLocationMap)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(applicationContext, "Failed to load firm data.", Toast.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun loadLawyersWithFirmLocations(specialization: String?, lawFirm: String?, firmLocationMap: Map<String, String>) {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 lawyerList.clear()
@@ -67,19 +94,31 @@ class LawyersListActivity : AppCompatActivity() {
                             email = contactData["email"]?.toString() ?: "",
                             address = contactData["address"]?.toString() ?: ""
                         )
-
                         is String -> Contact(phone = contactData)
                         else -> Contact()
                     }
+
+                    val lawyerFirm = lawyerData["lawFirm"]?.toString() ?: ""
+                    // Get the office address from the firm location map
+                    val firmLocation = firmLocationMap[lawyerFirm] ?: ""
 
                     val lawyer = Lawyer(
                         id = lawyerId,
                         name = lawyerData["name"]?.toString() ?: "",
                         specialization = lawyerData["specialization"]?.toString() ?: "",
-                        lawFirm = lawyerData["lawFirm"]?.toString() ?: "",
+                        lawFirm = lawyerFirm,
                         licenseNumber = lawyerData["licenseNumber"]?.toString() ?: "",
                         experience = lawyerData["experience"]?.toString() ?: "",
-                        bio = lawyerData["bio"]?.toString() ?: "",
+                        lawSchool = lawyerData["lawSchool"]?.toString(),
+                        graduationYear = lawyerData["graduationYear"]?.toString(),
+                        certifications = lawyerData["certifications"]?.toString(),
+                        jurisdiction = lawyerData["jurisdiction"]?.toString(),
+                        employer = lawyerData["employer"]?.toString(),
+                        bio = lawyerData["bio"]?.toString(),
+                        rate = lawyerData["rate"]?.toString(),
+                        profileImage = lawyerData["profileImage"]?.toString(),
+                        location = firmLocation,  // Set the firm's office address as location
+                        ratings = lawyerData["ratings"]?.toString() ?: "",
                         contact = contact
                     )
 
@@ -122,6 +161,8 @@ class LawyersListActivity : AppCompatActivity() {
                         intent.putExtra("LAWYER_ID", selectedLawyer.id)
                         intent.putExtra("LAWYER_NAME", selectedLawyer.name)
                         intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
+                        // Also pass the location from law firm admin
+                        intent.putExtra("LOCATION", selectedLawyer.location)
 
                         startActivity(intent)
                     }
@@ -131,8 +172,7 @@ class LawyersListActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT)
-                    .show()
+                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT).show()
             }
         })
     }

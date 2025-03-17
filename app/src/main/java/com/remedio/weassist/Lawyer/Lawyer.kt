@@ -20,9 +20,10 @@ data class Lawyer(
     val profileImage: String? = null,
     val location: String = "",  // Ensure default value is provided
     val ratings: String = "",   // Add this if needed
-    val contact: Contact? = null
+    val contact: Contact? = null,
+    val lawFirmAdminId: String = ""
 
-) : Parcelable {
+    ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",
         parcel.readString() ?: "",
