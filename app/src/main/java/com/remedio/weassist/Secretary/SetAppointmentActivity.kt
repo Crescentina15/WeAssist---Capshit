@@ -192,7 +192,8 @@ class SetAppointmentActivity : AppCompatActivity() {
 
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
-                    // Removed the sendNotificationToClient call
+                    // Notify the client about the appointment
+                    sendNotificationToClient(lawyerId!!, selectedDate!!, selectedTime!!)
 
                     // Notify the lawyer about the new appointment
                     sendNotificationToLawyer(lawyerId!!, selectedDate!!, selectedTime!!)
@@ -241,6 +242,53 @@ class SetAppointmentActivity : AppCompatActivity() {
                 Log.e("SetAppointmentActivity", "Failed to update lawyer availability: ${error.message}")
             }
         })
+    }
+
+    private fun sendNotificationToClient(lawyerId: String, date: String, time: String) {
+        // Get the lawyer reference
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+
+        lawyerRef.get().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val snapshot = task.result
+
+                // Get lawyer name for the message content only
+                val lawyerName = if (snapshot != null && snapshot.exists() && snapshot.child("name").exists()) {
+                    snapshot.child("name").getValue(String::class.java) ?: "your lawyer"
+                } else {
+                    "your lawyer"
+                }
+
+                // Create notification with correct fields
+                if (clientId != null) {
+                    val notificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(clientId!!)
+                    val notificationId = notificationRef.push().key
+
+                    if (notificationId != null) {
+                        val message = "You have set an appointment with Attorney. $lawyerName on $date at $time."
+
+                        val notificationData = HashMap<String, Any>()
+                        notificationData["id"] = notificationId
+                        notificationData["senderId"] = lawyerId
+                        notificationData["senderName"] = ""  // Explicitly use "Appointment Confirmation" as the header
+                        notificationData["message"] = message
+                        notificationData["timestamp"] = System.currentTimeMillis()
+                        notificationData["type"] = "appointment"
+                        notificationData["isRead"] = false
+
+                        notificationRef.child(notificationId).setValue(notificationData)
+                            .addOnSuccessListener {
+                                Log.d("SetAppointmentActivity", "Notification sent successfully")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SetAppointmentActivity", "Failed to send notification: ${e.message}")
+                            }
+                    }
+                }
+            } else {
+                Log.e("SetAppointmentActivity", "Failed to get lawyer data", task.exception)
+            }
+        }
     }
 
     private fun sendNotificationToLawyer(lawyerId: String, date: String, time: String) {

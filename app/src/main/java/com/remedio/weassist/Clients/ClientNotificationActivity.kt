@@ -269,14 +269,13 @@ class ClientNotificationActivity : AppCompatActivity() {
         database.child("secretaries").child(senderId).get().addOnSuccessListener { snapshot ->
             if (snapshot.exists()) {
                 val name = snapshot.child("name").getValue(String::class.java) ?: "Unknown"
-                callback(name)
+                callback("Secretary $name".trim().ifEmpty { "Unknown" })
             } else {
                 // If not a secretary, check in lawyers
                 database.child("lawyers").child(senderId).get().addOnSuccessListener { lawyerSnapshot ->
                     if (lawyerSnapshot.exists()) {
-                        val firstName = lawyerSnapshot.child("firstName").getValue(String::class.java) ?: ""
-                        val lastName = lawyerSnapshot.child("lastName").getValue(String::class.java) ?: ""
-                        callback("$firstName $lastName".trim().ifEmpty { "Unknown Lawyer" })
+                        val fullName = lawyerSnapshot.child("name").getValue(String::class.java) ?: ""
+                        callback("Appointment Confirmation")
                     } else {
                         // If not a lawyer, check in users
                         database.child("Users").child(senderId).get().addOnSuccessListener { userSnapshot ->
