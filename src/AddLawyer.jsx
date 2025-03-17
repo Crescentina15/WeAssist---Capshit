@@ -42,7 +42,6 @@ const AddLawyer = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, lawyer.email, lawyer.password);
       const lawyerUID = userCredential.user.uid;
   
-      // Fetch the secretary for the same law firm
       const secretariesRef = ref(db, "secretaries");
       const secretariesSnap = await get(secretariesRef);
   
@@ -50,12 +49,11 @@ const AddLawyer = () => {
       if (secretariesSnap.exists()) {
         Object.entries(secretariesSnap.val()).forEach(([secID, secData]) => {
           if (secData.lawFirm === lawFirmAdmin.lawFirm) {
-            secretaryID = secID; // Assign secretary ID if it belongs to the same firm
+            secretaryID = secID;
           }
         });
       }
   
-      // Store lawyer details in database
       await set(ref(db, `lawyers/${lawyerUID}`), {
         name: lawyer.name,
         email: lawyer.email,
@@ -65,9 +63,9 @@ const AddLawyer = () => {
         experience: lawyer.experience,
         role: "lawyer",
         profileImage: image ? URL.createObjectURL(image) : "",
-        lawFirm: lawFirmAdmin.lawFirm, // Link to law firm
-        adminUID: lawFirmAdmin.uid, // Link to firm admin
-        secretaryID: secretaryID || "", // Auto-assign secretary ID
+        lawFirm: lawFirmAdmin.lawFirm,
+        adminUID: lawFirmAdmin.uid,
+        secretaryID: secretaryID || "",
       });
   
       await sendEmailVerification(userCredential.user);
@@ -81,12 +79,10 @@ const AddLawyer = () => {
     }
   };
   
-
   return (
     <div className="profile-card">
       <h2>Add Lawyer</h2>
       
-    
       <div className="profile-image-container">
         {image ? (
           <img src={URL.createObjectURL(image)} alt="Profile" className="profile-image" />
@@ -105,16 +101,16 @@ const AddLawyer = () => {
         />
       </div>
 
-     
-      <input type="text" placeholder="Full Name" value={lawyer.name} onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} autoComplete="off" />
-      <input type="email" placeholder="Email" value={lawyer.email} onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })} autoComplete="off" />
-      <input type="password" placeholder="Password" value={lawyer.password} onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} autoComplete="new-password" />
-      <input type="text" placeholder="Phone" value={lawyer.phone} onChange={(e) => setLawyer({ ...lawyer, phone: e.target.value })} autoComplete="off" />
-      <input type="text" placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} autoComplete="off" />
-      <input type="text" placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} autoComplete="off" />
-      <input type="text" placeholder="Experience" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} autoComplete="off" />
+      <div className="input-grid">
+        <input type="text" className="full-width" placeholder="Full Name" value={lawyer.name} onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} autoComplete="off" />
+        <input type="email" placeholder="Email" value={lawyer.email} onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })} autoComplete="off" />
+        <input type="password" placeholder="Password" value={lawyer.password} onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} autoComplete="new-password" />
+        <input type="text" placeholder="Phone" value={lawyer.phone} onChange={(e) => setLawyer({ ...lawyer, phone: e.target.value })} autoComplete="off" />
+        <input type="text" placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} autoComplete="off" />
+        <input type="text" placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} autoComplete="off" />
+        <input type="text" placeholder="Experience" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} autoComplete="off" />
+      </div>
 
-      
       <button onClick={addLawyer} className="cancel-button">Add Lawyer</button>
       <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
     </div>

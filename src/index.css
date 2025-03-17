@@ -249,7 +249,8 @@ input::placeholder {
 
 
 body {
-  font-family: Arial, sans-serif;
+  background-color: #f5f7fa;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   margin: 0;
   padding: 0;
   background-color: #f8f8f8;
@@ -655,31 +656,32 @@ ul li {
 /* ADD LAWYERS & MANAGE SECRETARIES */
 
 .profile-card {
-  width: 1100px;  
-  max-width: 95%;
-  padding: 50px; 
+  width: 850px; /* Increased width further */
+  max-width: 100%;
+  padding: 100px;
   background: white;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
   text-align: center;
-  margin: 50px auto;
+  margin: 0px 0px 0px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
 }
 
+
 .profile-card h2 {
   text-align: center;
 }
 
 .profile-card input {
-  width: 80%; /* Ensure input fields are not too wide */
-  max-width: 600px; /* Restrict max width */
+  width: 100%; /* Ensure input fields are not too wide */
+  max-width: 1000px; /* Restrict max width */
   padding: 12px;
-  margin: 10px 0;
-  border-radius: 5px;
-  border: 1px solid #ccc;
+  margin: 0px 0px 0px;
+  border-radius: px;
+  border: 2px solid #ccc;
   text-align: center;
 }
 
@@ -704,6 +706,7 @@ h2 {
   margin-bottom: 20px;
   font-size: 22px;
   color: #333;
+  text-align: start;
 }
 
 
@@ -767,43 +770,93 @@ button:hover {
 
 .file-input {
   margin-top: 10px;
-  width: 90%;
+  width: 80%;
   text-align: center;
 }
 .profile-card {
-  max-width: 400px;
-  margin: auto;
+  max-width: 800px;
+  margin: 0px 10;
   text-align: left;
-  padding: 15px;
+  padding: 5px;
 }
 .profile-display {
   color: black;
   font-size: 16px;
   text-align: left;
-  margin: 5px 0;
-  padding: 15px;
-  border-radius: 10px;
+  margin: 0px 10;
+  padding: 10px;
+  border-radius: 0px;
 }
 .form-container input,
 .profile-card input {
   margin-bottom: 15px;
 }
 
-/* PROFILE */
+.input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  gap: 0px 40px; 
+  width: 90%;
+  max-width: 800px; 
+  margin-top: 10px;
+}
 
-.profile-card {
-  width: 400px;
-  margin: 40px auto;
-  padding: 20px;
-  background: white;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
+.input-grid input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
   text-align: center;
 }
 
-.profile-header {
-  padding-bottom: 10px;
-  border-bottom: 2px solid #ddd;
+.full-width {
+  grid-column: span 2; /* Full width for Full Name */
+}
+
+/* PROFILE */
+
+.profile-card {
+  width: 850px;
+  max-width: 90%;
+  padding: 30px;  /* Reduced from 40px */
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  margin: 30px auto;  /* Reduced from 40px */
+  transition: all 0.3s ease;
+}
+
+.profile-card input {
+  width: 100%;
+  padding: 12px 14px;  /* Reduced from 14px 16px */
+  margin: 6px 0;  /* Reduced from 8px */
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.profile-card h2 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 25px;  /* Reduced from 30px */
+  font-weight: 600;
+  text-align: center;
+  position: relative;
+}
+
+.profile-card h2:after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 4px;
+  background: #6a5acd;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-radius: 2px;
 }
 
 .profile-img {
@@ -896,16 +949,18 @@ button:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 20px;  /* Reduced from 30px */
 }
 
 .profile-image {
-  width: 120px;
-  height: 120px;
+  width: 160px;  /* Reduced from 180px */
+  height: 160px;  /* Reduced from 180px */
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 10px;
-  border: 3px solid #007bff;
+  border: 4px solid #fff;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  margin-bottom: 12px;  /* Reduced from 15px */
+  transition: all 0.3s ease;
 }
 
 .image-placeholder {
@@ -920,6 +975,16 @@ button:hover {
   font-weight: bold;
 }
 
+.photo-button {
+  background-color: #6a5acd;
+  color: white;
+  max-width: 180px;
+  margin-top: 10px;  /* Reduced from 15px */
+}
+
+.photo-button:hover {
+  background-color: #5949b8;
+}
 .upload-btn {
   margin-top: 10px;
   font-size: 14px;
@@ -1042,3 +1107,32 @@ button:hover {
   box-sizing: border-box;
 }
 
+@media (max-width: 900px) {
+  .profile-card {
+    width: 95%;
+    padding: 25px 15px;  /* Reduced from 30px 20px */
+  }
+  
+  .input-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .full-width {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 600px) {
+  .profile-card h2 {
+    font-size: 24px;
+  }
+  
+  .profile-image, .image-placeholder {
+    width: 140px;  /* Reduced from 150px */
+    height: 140px;  /* Reduced from 150px */
+  }
+  
+  button, .cancel-button, .photo-button {
+    width: 100%;
+  }
+}

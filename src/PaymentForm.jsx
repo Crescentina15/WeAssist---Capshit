@@ -1,37 +1,44 @@
-import React, { useState } from "react";
-import { useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
+import React, { useState } from 'react';
+import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 
 const PaymentForm = () => {
   const stripe = useStripe();
   const elements = useElements();
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [processing, setProcessing] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
+  const handleSubmit = async (event) => {
+    event.preventDefault();
 
-    setIsProcessing(true);
+    if (!stripe || !elements) {
+      // Stripe.js hasn't yet loaded.
+      return;
+    }
+
+    setProcessing(true);
 
     const { error } = await stripe.confirmPayment({
       elements,
-      confirmParams: { return_url: "http://localhost:5173/payment-success" },
+      confirmParams: {
+        return_url: 'http://localhost:5173/payment-success',
+      },
     });
 
     if (error) {
-      console.error("Payment failed:", error);
-    } else {
-      console.log("Payment successful!");
+      // Show error to your customer
+      setErrorMessage(error.message);
+      setProcessing(false);
     }
-
-    setIsProcessing(false);
+    // Payment processing is handled by redirect
   };
 
   return (
     <form onSubmit={handleSubmit}>
       <PaymentElement />
-      <button type="submit" disabled={!stripe || isProcessing}>
-        {isProcessing ? "Processing..." : "Pay Now"}
+      <button disabled={!stripe || processing} className="pay-button">
+        {processing ? "Processing..." : "Pay Now"}
       </button>
+      {errorMessage && <div className="error-message">{errorMessage}</div>}
     </form>
   );
 };
