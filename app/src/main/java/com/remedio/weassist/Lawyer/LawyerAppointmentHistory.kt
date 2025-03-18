@@ -1,5 +1,6 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -12,13 +13,20 @@ import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.Models.ConsultationAdapter
 import com.remedio.weassist.R
 
-
 class LawyerAppointmentHistory : Fragment() {
 
     private lateinit var database: DatabaseReference
     private lateinit var recyclerView: RecyclerView
     private lateinit var consultationList: ArrayList<Consultation>
     private lateinit var adapter: ConsultationAdapter
+    private var profileSection: View? = null
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        if (context is LawyersDashboardActivity) {
+            profileSection = context.findViewById(R.id.profile_section)
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_appointment_history, container, false)
@@ -49,5 +57,15 @@ class LawyerAppointmentHistory : Fragment() {
         })
 
         return view
+    }
+
+    override fun onResume() {
+        super.onResume()
+        profileSection?.visibility = View.GONE // Hide profile section
+    }
+
+    override fun onPause() {
+        super.onPause()
+        profileSection?.visibility = View.VISIBLE // Show profile section when leaving
     }
 }

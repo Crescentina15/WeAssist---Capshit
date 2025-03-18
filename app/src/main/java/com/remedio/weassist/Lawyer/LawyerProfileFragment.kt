@@ -29,7 +29,17 @@ class LawyerProfileFragment : Fragment() {
     private lateinit var privacyButton: LinearLayout
     private lateinit var logoutButton: LinearLayout
     private lateinit var lawyerProfileImage: ImageView
+    private var profileSection: View? = null
     private val PREFS_NAME = "LoginPrefs"
+    private var isNavigatingToAnotherActivity = false
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // Access the profile section from the activity
+        if (context is LawyersDashboardActivity) {
+            profileSection = context.findViewById(R.id.profile_section)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -72,7 +82,16 @@ class LawyerProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        profileSection?.visibility = View.GONE // Hide profile section
+        isNavigatingToAnotherActivity = false
         auth.currentUser?.uid?.let { fetchUserData(it) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!isNavigatingToAnotherActivity) {
+            profileSection?.visibility = View.VISIBLE // Show profile section only if not navigating
+        }
     }
 
     private fun fetchUserData(userId: String) {
@@ -115,12 +134,13 @@ class LawyerProfileFragment : Fragment() {
         showToast("You have been logged out")
 
         // Redirect to Login screen
-        startActivity(Intent(requireActivity(), Login::class.java))
+        openActivity(Login::class.java)
         requireActivity().finish()
     }
 
     private fun openActivity(activityClass: Class<*>) {
         if (isAdded) {
+            isNavigatingToAnotherActivity = true // Ensure profile_section remains hidden
             startActivity(Intent(requireActivity(), activityClass))
         }
     }

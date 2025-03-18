@@ -1,5 +1,6 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,19 +10,31 @@ import com.remedio.weassist.R
 
 class LawyerMessageFragment : Fragment() {
 
+    private var profileSection: View? = null
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // Access the profile section from the activity
+        if (context is LawyersDashboardActivity) {
+            profileSection = context.findViewById(R.id.profile_section)
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        // Inflate the layout for this fragment
         return inflater.inflate(R.layout.fragment_lawyer_message, container, false)
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onResume() {
+        super.onResume()
+        profileSection?.visibility = View.GONE // Hide profile section
+    }
 
-        // Initialize your UI components here
-        // For example: RecyclerView for messages, message input field, etc.
+    override fun onPause() {
+        super.onPause()
+        profileSection?.visibility = View.VISIBLE // Show profile section when leaving
     }
 }
