@@ -47,7 +47,6 @@ class SecretaryDashboardFragment : Fragment() {
 
         val manageAvailabilityButton = view.findViewById<ImageButton>(R.id.manage_availability_button)
         val addBackgroundButton = view.findViewById<ImageButton>(R.id.add_background_button)
-        val addBalanceButton = view.findViewById<ImageButton>(R.id.add_balance_button)
         val notificationButton = view.findViewById<ImageButton>(R.id.notification_icon)
 
         // Setup notification badge
@@ -61,7 +60,6 @@ class SecretaryDashboardFragment : Fragment() {
 
         manageAvailabilityButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("manage_availability") }
         addBackgroundButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_background") }
-        addBalanceButton.setOnClickListener { fetchLawFirmAndOpenLawyersList("add_balance") }
 
         // Set up RecyclerView for accepted appointments
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
@@ -73,7 +71,7 @@ class SecretaryDashboardFragment : Fragment() {
                 Toast.makeText(requireContext(), "Session started for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
             } else {
                 // End session
-                endSession(appointment) // Call the function to end session
+                endSession(appointment)
             }
         }
 
@@ -88,7 +86,6 @@ class SecretaryDashboardFragment : Fragment() {
         val badge = LayoutInflater.from(context).inflate(R.layout.notification_badge, null)
         val tvBadgeCount = badge.findViewById<TextView>(R.id.tvBadgeCount)
 
-        // Add the badge to the notification button
         val params = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -96,32 +93,20 @@ class SecretaryDashboardFragment : Fragment() {
         params.gravity = Gravity.END or Gravity.TOP
         params.setMargins(0, 0, 0, 0)
 
-        // Get the parent of the notification button (should be a FrameLayout or similar)
         val buttonParent = notificationButton.parent as ViewGroup
         val buttonIndex = buttonParent.indexOfChild(notificationButton)
 
-        // Create a new FrameLayout to hold the button and the badge
         val frameLayout = FrameLayout(requireContext())
 
-        // Remove button from its parent
         buttonParent.removeView(notificationButton)
-
-        // Add button to FrameLayout
         frameLayout.addView(notificationButton)
-
-        // Add badge to FrameLayout
         frameLayout.addView(badge, params)
-
-        // Add FrameLayout back to the original parent at the same position
         buttonParent.addView(frameLayout, buttonIndex)
 
-        // Initially hide the badge
         badge.visibility = View.GONE
 
-        // Listen for notification count changes
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // Listen to notifications
         val notificationsRef = FirebaseDatabase.getInstance().getReference("notifications").child(currentUserId)
         notificationsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -134,7 +119,6 @@ class SecretaryDashboardFragment : Fragment() {
                     }
                 }
 
-                // Update badge visibility and count
                 if (unreadCount > 0) {
                     badge.visibility = View.VISIBLE
                     tvBadgeCount.text = if (unreadCount > 99) "99+" else unreadCount.toString()
@@ -188,7 +172,6 @@ class SecretaryDashboardFragment : Fragment() {
                         when (action) {
                             "manage_availability" -> putExtra("FROM_MANAGE_AVAILABILITY", true)
                             "add_background" -> putExtra("FROM_ADD_BACKGROUND", true)
-                            "add_balance" -> putExtra("FROM_ADD_BALANCE", true)
                         }
                     }
                     startActivity(intent)
@@ -224,20 +207,13 @@ class SecretaryDashboardFragment : Fragment() {
                         for (appointmentSnap in appointmentSnapshot.children) {
                             val appointment = appointmentSnap.getValue(Appointment::class.java) ?: continue
 
-                            // Store the original client name if needed elsewhere
-                            val clientName = appointment.fullName
-
-                            // Fetch lawyer details
                             lawyerRef.child(appointment.lawyerId).addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(lawyerSnapshot: DataSnapshot) {
                                     val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
                                     val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
 
-                                    // Only add appointments from the same law firm
                                     if (lawyerLawFirm == secretaryLawFirm) {
-                                        // Replace the fullName with the lawyer's name
                                         appointment.fullName = lawyerName
-
                                         appointmentList.add(appointment)
                                         appointmentAdapter.notifyDataSetChanged()
                                     }
@@ -261,35 +237,6 @@ class SecretaryDashboardFragment : Fragment() {
     }
 
     private fun endSession(appointment: Appointment) {
-        val database = FirebaseDatabase.getInstance()
-
-        val acceptedAppointmentsRef = database.getReference("accepted_appointment")
-        val lawyerAppointmentsRef = database.getReference("lawyers").child(appointment.lawyerId).child("appointments")
-        val secretaryAppointmentsRef = database.getReference("secretaries").child(appointment.secretaryId).child("appointments")
-
-        // Remove appointment from accepted_appointment
-        acceptedAppointmentsRef.child(appointment.appointmentId).removeValue()
-            .addOnSuccessListener {
-                // Remove appointment from lawyer's list
-                lawyerAppointmentsRef.child(appointment.appointmentId).removeValue()
-                    .addOnSuccessListener {
-                        // Remove appointment from secretary's list
-                        secretaryAppointmentsRef.child(appointment.appointmentId).removeValue()
-                            .addOnSuccessListener {
-                                appointmentList.remove(appointment)
-                                appointmentAdapter.notifyDataSetChanged()
-                                Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
-                            }
-                            .addOnFailureListener {
-                                Toast.makeText(requireContext(), "Failed to remove appointment from secretary's list", Toast.LENGTH_SHORT).show()
-                            }
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(requireContext(), "Failed to remove appointment from lawyer's list", Toast.LENGTH_SHORT).show()
-                    }
-            }
-            .addOnFailureListener {
-                Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
-            }
+        Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
     }
 }
