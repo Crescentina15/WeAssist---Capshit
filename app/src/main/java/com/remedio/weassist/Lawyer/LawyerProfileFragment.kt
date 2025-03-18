@@ -29,7 +29,16 @@ class LawyerProfileFragment : Fragment() {
     private lateinit var privacyButton: LinearLayout
     private lateinit var logoutButton: LinearLayout
     private lateinit var lawyerProfileImage: ImageView
+    private var profileSection: View? = null
     private val PREFS_NAME = "LoginPrefs"
+
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        // Access the profile section from the activity
+        if (context is LawyersDashboardActivity) {
+            profileSection = context.findViewById(R.id.profile_section)
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -72,7 +81,13 @@ class LawyerProfileFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+        profileSection?.visibility = View.GONE // Hide profile section
         auth.currentUser?.uid?.let { fetchUserData(it) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        profileSection?.visibility = View.VISIBLE // Show profile section when leaving
     }
 
     private fun fetchUserData(userId: String) {
