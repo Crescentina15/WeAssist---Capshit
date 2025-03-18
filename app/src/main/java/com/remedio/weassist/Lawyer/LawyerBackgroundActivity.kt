@@ -3,8 +3,10 @@ package com.remedio.weassist.Lawyer
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
 import com.remedio.weassist.Secretary.SetAppointmentActivity
@@ -16,6 +18,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
     private lateinit var databaseReference: DatabaseReference
     private var lawyerId: String? = null
     private var secretaryId: String? = null
+    private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+    private val TAG = "LawyerBackgroundActivity"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,7 +34,14 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             return
         }
 
+        // Debug log to verify IDs
+        Log.d(TAG, "Current User ID: $currentUserId, Lawyer ID: $lawyerId")
+
         retrieveLawyerData(lawyerId!!)
+
+        // Initially hide buttons until we determine status
+        binding.btnMessage.visibility = View.GONE
+        binding.btnSetAppointment.visibility = View.GONE
 
         binding.btnSetAppointment.setOnClickListener {
             val intent = Intent(this, SetAppointmentActivity::class.java)
@@ -40,11 +51,9 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         }
 
         binding.btnMessage.setOnClickListener {
-            // For debugging - remove in production
-            Log.d("LawyerBackgroundActivity", "Message button clicked, secretaryId: $secretaryId")
+            Log.d(TAG, "Message button clicked, secretaryId: $secretaryId")
 
             if (secretaryId.isNullOrEmpty()) {
-                // If secretaryId hasn't been retrieved yet, check database directly
                 checkAllPossibleSecretaryLocations()
             } else {
                 startChatActivity()
@@ -52,9 +61,123 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Always check appointment status when this screen comes into view
+        Log.d(TAG, "onResume: Checking appointment status")
+        checkAppointmentStatus()
+    }
+
+    private fun checkAppointmentStatus() {
+        if (currentUserId == null || lawyerId == null) {
+            Log.e(TAG, "Missing user ID or lawyer ID")
+            // Default to showing Set Appointment if we can't check
+            binding.btnSetAppointment.visibility = View.VISIBLE
+            binding.btnMessage.visibility = View.GONE
+            return
+        }
+
+        // Try multiple database paths where appointments might be stored
+        checkAppointmentsInPrimaryLocation()
+    }
+
+    // Replace this function in LawyerBackgroundActivity.kt
+
+    private fun checkAppointmentsInPrimaryLocation() {
+        // Primary location check - "appointments" node
+        val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
+
+        // Debug log to show we're checking
+        Log.d(TAG, "Checking appointments for user: $currentUserId and lawyer: $lawyerId")
+
+        // Query for appointments where both client ID and lawyer ID match
+        appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var hasAppointment = false
+                Log.d(TAG, "Found ${snapshot.childrenCount} appointment records in database")
+
+                if (snapshot.exists()) {
+                    for (appointmentSnapshot in snapshot.children) {
+                        // Use GenericTypeIndicator instead of HashMap.class
+                        val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+                        Log.d(TAG, "Checking appointment: $appointmentData")
+
+                        val clientId = appointmentData?.get("clientId")?.toString()
+                        val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
+
+                        if (clientId == currentUserId && appointmentLawyerId == lawyerId) {
+                            hasAppointment = true
+                            Log.d(TAG, "Found matching appointment! Appointment data: $appointmentData")
+                            break
+                        }
+                    }
+                }
+
+                if (hasAppointment) {
+                    updateButtonsVisibility(true)
+                } else {
+                    // If no appointment found in primary location, check secondary location
+                    checkAppointmentsInSecondaryLocation()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to check appointment status", error.toException())
+                // Fall back to secondary check
+                checkAppointmentsInSecondaryLocation()
+            }
+        })
+    }
+
+    private fun checkAppointmentsInSecondaryLocation() {
+        // Alternative location - "lawyer_appointments" node
+        val altApptRef = FirebaseDatabase.getInstance().getReference("lawyer_appointments")
+            .child(lawyerId!!)
+
+        Log.d(TAG, "Checking alternative appointments location")
+
+        altApptRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var hasAppointment = false
+
+                if (snapshot.exists()) {
+                    for (clientSnapshot in snapshot.children) {
+                        if (clientSnapshot.key == currentUserId) {
+                            hasAppointment = true
+                            Log.d(TAG, "Found appointment in secondary location!")
+                            break
+                        }
+                    }
+                }
+
+                // Final update to UI based on all checks
+                updateButtonsVisibility(hasAppointment)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to check secondary appointment location", error.toException())
+                // Default to showing Set Appointment
+                updateButtonsVisibility(false)
+            }
+        })
+    }
+
+    private fun updateButtonsVisibility(hasAppointment: Boolean) {
+        runOnUiThread {
+            if (hasAppointment) {
+                Log.d(TAG, "Appointment found - showing Message button")
+                binding.btnSetAppointment.visibility = View.GONE
+                binding.btnMessage.visibility = View.VISIBLE
+            } else {
+                Log.d(TAG, "No appointment found - showing Set Appointment button")
+                binding.btnSetAppointment.visibility = View.VISIBLE
+                binding.btnMessage.visibility = View.GONE
+            }
+        }
+    }
+
     private fun startChatActivity() {
-        // For debugging - remove in production
-        Log.d("LawyerBackgroundActivity", "Starting ChatActivity with secretaryId: $secretaryId")
+        Log.d(TAG, "Starting ChatActivity with secretaryId: $secretaryId")
 
         val intent = Intent(this, ChatActivity::class.java).apply {
             putExtra("LAWYER_ID", lawyerId)
@@ -79,7 +202,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         val potentialId = snapshot.child(fieldName).getValue(String::class.java)
                         if (!potentialId.isNullOrEmpty()) {
                             secretaryId = potentialId
-                            Log.d("LawyerBackgroundActivity", "Found secretaryId as '$fieldName': $secretaryId")
+                            Log.d(TAG, "Found secretaryId as '$fieldName': $secretaryId")
                             startChatActivity()
                             return
                         }
@@ -92,7 +215,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                             val value = child.getValue(String::class.java)
                             if (!value.isNullOrEmpty()) {
                                 secretaryId = value
-                                Log.d("LawyerBackgroundActivity", "Found secretaryId in field '${child.key}': $secretaryId")
+                                Log.d(TAG, "Found secretaryId in field '${child.key}': $secretaryId")
                                 startChatActivity()
                                 return
                             }
@@ -134,7 +257,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         val potentialId = snapshot.child(fieldName).getValue(String::class.java)
                         if (!potentialId.isNullOrEmpty()) {
                             secretaryId = potentialId
-                            Log.d("LawyerBackgroundActivity", "Found secretaryId in admin as '$fieldName': $secretaryId")
+                            Log.d(TAG, "Found secretaryId in admin as '$fieldName': $secretaryId")
                             startChatActivity()
                             return
                         }
@@ -147,7 +270,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         val firstSecretaryKey = secretariesNode.children.first().key
                         if (!firstSecretaryKey.isNullOrEmpty()) {
                             secretaryId = firstSecretaryKey
-                            Log.d("LawyerBackgroundActivity", "Found secretaryId in admin's secretaries list: $secretaryId")
+                            Log.d(TAG, "Found secretaryId in admin's secretaries list: $secretaryId")
                             startChatActivity()
                             return
                         }
@@ -177,7 +300,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                     val firstSecretaryKey = snapshot.children.first().key
                     if (!firstSecretaryKey.isNullOrEmpty()) {
                         secretaryId = firstSecretaryKey
-                        Log.d("LawyerBackgroundActivity", "Using default secretary as fallback: $secretaryId")
+                        Log.d(TAG, "Using default secretary as fallback: $secretaryId")
                         startChatActivity()
                     } else {
                         Toast.makeText(applicationContext, "No secretary found in the system", Toast.LENGTH_SHORT).show()
@@ -222,7 +345,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                             val potentialId = snapshot.child(fieldName).getValue(String::class.java)
                             if (!potentialId.isNullOrEmpty()) {
                                 secretaryId = potentialId
-                                Log.d("LawyerBackgroundActivity", "Found secretaryId as '$fieldName': $secretaryId")
+                                Log.d(TAG, "Found secretaryId as '$fieldName': $secretaryId")
                                 break
                             }
                         }
@@ -278,7 +401,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                             val potentialId = snapshot.child(fieldName).getValue(String::class.java)
                             if (!potentialId.isNullOrEmpty()) {
                                 secretaryId = potentialId
-                                Log.d("LawyerBackgroundActivity", "Found secretaryId in admin as '$fieldName': $secretaryId")
+                                Log.d(TAG, "Found secretaryId in admin as '$fieldName': $secretaryId")
                                 break
                             }
                         }
