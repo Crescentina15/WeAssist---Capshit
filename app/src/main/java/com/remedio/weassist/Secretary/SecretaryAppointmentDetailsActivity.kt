@@ -31,8 +31,11 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var btnAccept: Button
     private lateinit var btnDecline: Button
+    private lateinit var btnForwardToLawyer: Button
     private lateinit var cardViewActions: CardView
+    private lateinit var cardViewForward: CardView
     private var currentSecretaryName: String = "Secretary"
+    private var currentAppointment: Appointment? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +53,13 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         btnAccept = findViewById(R.id.btnAccept)
         btnDecline = findViewById(R.id.btnDecline)
         cardViewActions = findViewById(R.id.cardViewActions)
+
+        // Initialize forward button and card
+        btnForwardToLawyer = findViewById(R.id.btnForwardToLawyer)
+        cardViewForward = findViewById(R.id.cardViewForward)
+
+        // Initially hide the forward option
+        cardViewForward.visibility = View.GONE
 
         // Set up back button
         val btnBack = findViewById<ImageButton>(R.id.btnBack)
@@ -74,6 +84,13 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
         btnDecline.setOnClickListener {
             appointmentId?.let { id -> updateAppointmentStatus(id, "Declined") }
+        }
+
+        // Set up forward button
+        btnForwardToLawyer.setOnClickListener {
+            currentAppointment?.let { appointment ->
+                forwardAppointmentToLawyer(appointment)
+            }
         }
     }
 
@@ -107,13 +124,23 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                     val appointment = snapshot.getValue(Appointment::class.java)
                     appointment?.let {
                         it.appointmentId = appointmentId
+                        currentAppointment = it
                         displayAppointmentDetails(it)
 
                         // Show or hide action buttons based on status
-                        if (it.status == "Pending") {
-                            cardViewActions.visibility = View.VISIBLE
-                        } else {
-                            cardViewActions.visibility = View.GONE
+                        when (it.status) {
+                            "Pending" -> {
+                                cardViewActions.visibility = View.VISIBLE
+                                cardViewForward.visibility = View.GONE
+                            }
+                            "Accepted" -> {
+                                cardViewActions.visibility = View.GONE
+                                cardViewForward.visibility = View.VISIBLE
+                            }
+                            else -> {
+                                cardViewActions.visibility = View.GONE
+                                cardViewForward.visibility = View.GONE
+                            }
                         }
                     }
                 } else {
@@ -150,6 +177,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             "Pending" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_orange_dark))
             "Accepted" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark))
             "Declined" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_red_dark))
+            "Forwarded" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
             else -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
         }
 
@@ -207,6 +235,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
                     // Hide action buttons after status update
                     cardViewActions.visibility = View.GONE
+                    cardViewForward.visibility = View.GONE
                 }
             }
             .addOnFailureListener { e ->
@@ -233,6 +262,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                         // Set appointment ID and secretary ID
                         it.appointmentId = appointmentId
                         it.secretaryId = currentSecretaryId
+
+                        // Store the current appointment
+                        currentAppointment = it
 
                         // Add to accepted_appointment node
                         val acceptedAppointmentsRef = database.getReference("accepted_appointment").child(appointmentId)
@@ -270,8 +302,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                                                 tvStatus.text = "Status: Accepted"
                                                 tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark))
 
-                                                // Hide action buttons after status update
+                                                // Hide action buttons and show forward option
                                                 cardViewActions.visibility = View.GONE
+                                                cardViewForward.visibility = View.VISIBLE
                                             }
                                             .addOnFailureListener { e ->
                                                 showLoading(false)
@@ -323,6 +356,73 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 ).show()
             }
         })
+    }
+
+    private fun forwardAppointmentToLawyer(appointment: Appointment) {
+        showLoading(true)
+
+        // Update appointment status to "Forwarded"
+        val database = FirebaseDatabase.getInstance()
+        val appointmentsRef = database.getReference("appointments").child(appointment.appointmentId)
+        appointmentsRef.child("status").setValue("Forwarded")
+            .addOnSuccessListener {
+                // Update status in accepted_appointment node as well
+                database.getReference("accepted_appointment")
+                    .child(appointment.appointmentId)
+                    .child("status").setValue("Forwarded")
+
+                // Send priority notification to lawyer
+                sendPriorityNotificationToLawyer(appointment.lawyerId, appointment)
+
+                // Update UI
+                tvStatus.text = "Status: Forwarded"
+                tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
+
+                // Hide forward option
+                cardViewForward.visibility = View.GONE
+
+                showLoading(false)
+                Toast.makeText(
+                    this@SecretaryAppointmentDetailsActivity,
+                    "Appointment has been forwarded to lawyer",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .addOnFailureListener { e ->
+                showLoading(false)
+                Log.e("SecretaryAppointment", "Error forwarding appointment: ${e.message}")
+                Toast.makeText(
+                    this@SecretaryAppointmentDetailsActivity,
+                    "Failed to forward appointment",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    private fun sendPriorityNotificationToLawyer(lawyerId: String, appointment: Appointment) {
+        val database = FirebaseDatabase.getInstance().reference
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+
+        val notificationData = mapOf(
+            "id" to notificationId,
+            "senderId" to FirebaseAuth.getInstance().currentUser?.uid,
+            "senderName" to currentSecretaryName,
+            "message" to "PRIORITY: Appointment with ${appointment.fullName} on ${appointment.date} at ${appointment.time} has been forwarded to you.",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "type" to "appointment_forwarded",
+            "isRead" to false,
+            "priority" to true,
+            "appointmentId" to appointment.appointmentId
+        )
+
+        database.child("notifications").child(lawyerId).child(notificationId)
+            .setValue(notificationData)
+            .addOnSuccessListener {
+                Log.d("Notification", "Priority notification sent to lawyer successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Notification", "Failed to send priority notification to lawyer: ${e.message}")
+            }
     }
 
     private fun sendNotificationToClient(clientId: String, secretaryId: String, appointment: Appointment) {
