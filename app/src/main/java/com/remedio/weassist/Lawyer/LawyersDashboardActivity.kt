@@ -45,19 +45,22 @@ class LawyersDashboardActivity : AppCompatActivity() {
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
-                R.id.nav_appointments -> {
+                R.id.nav_appointments_lawyer -> {
                     profileSection.visibility = View.VISIBLE // Show header for Appointments
                     LawyerAppointmentsFragment()
                 }
-                R.id.nav_history -> {
-                    profileSection.visibility = View.GONE // Show header for Appointments
+                R.id.nav_message_lawyer -> {
+                    profileSection.visibility = View.VISIBLE // Show header for Messages
+                    LawyerMessageFragment()
+                }
+                R.id.nav_history_lawyer -> {
+                    profileSection.visibility = View.GONE // Hide header for History
                     LawyerAppointmentHistory()
                 }
-                R.id.nav_profile -> {
+                R.id.nav_profile_lawyer -> {
                     profileSection.visibility = View.GONE // Hide header for Profile
                     LawyerProfileFragment()
                 }
-
                 else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)

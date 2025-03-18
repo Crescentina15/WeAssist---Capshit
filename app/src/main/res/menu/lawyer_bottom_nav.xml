@@ -3,20 +3,26 @@
 
 
     <item
-        android:id="@+id/nav_appointments"
+        android:id="@+id/nav_appointments_lawyer"
         android:icon="@drawable/appointment"
         android:title="Appointments"
         app:iconSize="24dp" />
 
     <item
-        android:id="@+id/nav_history"
+        android:id="@+id/nav_history_lawyer"
         app:tint="@color/black"
         android:icon="@drawable/history"
         android:title="History"
         app:iconSize="24dp"/>
+    <item
+        android:id="@+id/nav_message_lawyer"
+        app:tint="@color/black"
+        android:icon="@drawable/message"
+        android:title="Message"
+        app:iconSize="24dp"/>
 
     <item
-        android:id="@+id/nav_profile"
+        android:id="@+id/nav_profile_lawyer"
         app:tint="@color/black"
         android:icon="@drawable/profile"
         android:title="Profile"

@@ -19,9 +19,9 @@ class LawyerFrontPage : AppCompatActivity() {
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
-
-                R.id.nav_appointments -> LawyerAppointmentsFragment()
-                R.id.nav_profile -> LawyerProfileFragment()
+                R.id.nav_appointments_lawyer -> LawyerAppointmentsFragment()
+                R.id.nav_message_lawyer -> LawyerMessageFragment() // Add this line
+                R.id.nav_profile_lawyer -> LawyerProfileFragment()
                 else -> LawyerAppointmentsFragment()
             }
             loadFragment(selectedFragment)

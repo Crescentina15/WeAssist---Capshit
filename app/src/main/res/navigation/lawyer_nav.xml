@@ -21,6 +21,12 @@
         tools:layout="@layout/fragment_appointment_history">
         <!-- Define the actions and navigation here if needed -->
     </fragment>
+    <fragment
+        android:id="@+id/fragment_message_lawyer"
+        android:label="MessageLawyer"
+        tools:layout="@layout/fragment_lawyer_message">
+        <!-- Define the actions and navigation here if needed -->
+    </fragment>
 
 
     <fragment
