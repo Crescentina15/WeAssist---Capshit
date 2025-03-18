@@ -51,9 +51,10 @@ class ChatActivity : AppCompatActivity() {
         conversationId = intent.getStringExtra("CONVERSATION_ID")
         secretaryId = intent.getStringExtra("SECRETARY_ID")
         clientId = intent.getStringExtra("CLIENT_ID")
+        userType = intent.getStringExtra("USER_TYPE")
         val appointmentId = intent.getStringExtra("APPOINTMENT_ID")
 
-        Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId, appointmentId: $appointmentId")
+        Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId, appointmentId: $appointmentId, userType: $userType")
 
         // Set up RecyclerView
         messagesAdapter = MessageAdapter(messagesList)
@@ -66,7 +67,16 @@ class ChatActivity : AppCompatActivity() {
         } else {
             // Determine current user type and set up chat
             if (currentUserId != null) {
-                determineCurrentUserType()
+                // If user type is already set via intent, skip determination
+                if (userType != null) {
+                    if (clientId == null && conversationId != null) {
+                        extractClientIdFromConversation(conversationId!!)
+                    } else {
+                        setupChatPartner()
+                    }
+                } else {
+                    determineCurrentUserType()
+                }
             } else {
                 Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
                 finish()
@@ -98,19 +108,35 @@ class ChatActivity : AppCompatActivity() {
                                 Log.d("ChatActivity", "Found conversationId: $conversationId from appointmentId")
 
                                 // Now determine user type before extracting participant info
-                                determineCurrentUserType()
+                                if (userType == null) {
+                                    determineCurrentUserType()
+                                } else {
+                                    if (clientId == null) {
+                                        extractClientIdFromConversation(conversationId!!)
+                                    } else {
+                                        setupChatPartner()
+                                    }
+                                }
                                 break
                             }
                         }
                     } else {
                         // If no notification with this appointment ID, just continue with normal flow
-                        determineCurrentUserType()
+                        if (userType == null) {
+                            determineCurrentUserType()
+                        } else {
+                            setupChatPartner()
+                        }
                     }
                 }
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching notifications: ${error.message}")
                     // Continue with normal flow
-                    determineCurrentUserType()
+                    if (userType == null) {
+                        determineCurrentUserType()
+                    } else {
+                        setupChatPartner()
+                    }
                 }
             })
     }
@@ -119,6 +145,18 @@ class ChatActivity : AppCompatActivity() {
         if (currentUserId == null) {
             Log.e("ChatActivity", "No current user ID found!")
             finish()
+            return
+        }
+
+        // Check if user type was explicitly set via intent
+        if (userType != null) {
+            Log.d("ChatActivity", "User type from intent: $userType")
+            // If we have a conversation ID but no client ID, try to extract it
+            if (clientId == null && conversationId != null) {
+                extractClientIdFromConversation(conversationId!!)
+            } else {
+                setupChatPartner()
+            }
             return
         }
 
@@ -138,16 +176,39 @@ class ChatActivity : AppCompatActivity() {
                     return@addOnSuccessListener
                 }
 
-                // If not secretary, assume client
-                userType = "client"
-                Log.d("ChatActivity", "Current user is a client")
+                // Check if current user is a lawyer
+                database.child("lawyers").child(currentUserId!!).get()
+                    .addOnSuccessListener { lawyerSnapshot ->
+                        if (lawyerSnapshot.exists()) {
+                            userType = "lawyer"
+                            Log.d("ChatActivity", "Current user is a lawyer")
 
-                // If we have a conversation ID but no secretary ID, try to extract it
-                if (secretaryId == null && conversationId != null) {
-                    extractSecretaryIdFromConversation(conversationId!!)
-                } else {
-                    setupChatPartner()
-                }
+                            // If we have a conversation ID but no client ID, try to extract it
+                            if (clientId == null && conversationId != null) {
+                                extractClientIdFromConversation(conversationId!!)
+                            } else {
+                                setupChatPartner()
+                            }
+                            return@addOnSuccessListener
+                        }
+
+                        // If not secretary or lawyer, assume client
+                        userType = "client"
+                        Log.d("ChatActivity", "Current user is a client")
+
+                        // If we have a conversation ID but no secretary ID, try to extract it
+                        if (secretaryId == null && conversationId != null) {
+                            extractSecretaryIdFromConversation(conversationId!!)
+                        } else {
+                            setupChatPartner()
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("ChatActivity", "Error checking lawyer status: ${e.message}")
+                        // Fall back to client if can't determine
+                        userType = "client"
+                        setupChatPartner()
+                    }
             }
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Error determining user type: ${e.message}")
@@ -196,13 +257,23 @@ class ChatActivity : AppCompatActivity() {
                         for (participantSnapshot in snapshot.children) {
                             val participantId = participantSnapshot.key
                             if (participantId != currentUserId) {
-                                // Verify this is a secretary
+                                // First check if this is a secretary
                                 database.child("secretaries").child(participantId!!).get()
                                     .addOnSuccessListener { secretarySnapshot ->
                                         if (secretarySnapshot.exists()) {
                                             secretaryId = participantId
                                             Log.d("ChatActivity", "Extracted secretaryId: $secretaryId from conversation")
                                             setupChatPartner()
+                                        } else {
+                                            // If not a secretary, check if this is a lawyer
+                                            database.child("lawyers").child(participantId).get()
+                                                .addOnSuccessListener { lawyerSnapshot ->
+                                                    if (lawyerSnapshot.exists()) {
+                                                        secretaryId = participantId  // Reuse secretaryId for lawyers too
+                                                        Log.d("ChatActivity", "Extracted lawyerId (as secretaryId): $secretaryId from conversation")
+                                                        setupChatPartner()
+                                                    }
+                                                }
                                         }
                                     }
                             }
@@ -228,17 +299,35 @@ class ChatActivity : AppCompatActivity() {
 
         when (userType) {
             "client" -> {
-                // Client chatting with secretary
+                // Client chatting with secretary or lawyer
                 if (secretaryId != null) {
-                    getSecretaryName(secretaryId!!)
+                    // First check if this ID is a secretary
+                    database.child("secretaries").child(secretaryId!!).get()
+                        .addOnSuccessListener { secretarySnapshot ->
+                            if (secretarySnapshot.exists()) {
+                                getSecretaryName(secretaryId!!)
+                            } else {
+                                // If not a secretary, check if this is a lawyer
+                                database.child("lawyers").child(secretaryId!!).get()
+                                    .addOnSuccessListener { lawyerSnapshot ->
+                                        if (lawyerSnapshot.exists()) {
+                                            getLawyerName(secretaryId!!)
+                                        } else {
+                                            Log.e("ChatActivity", "ID is neither secretary nor lawyer!")
+                                            Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
+                                            finish()
+                                        }
+                                    }
+                            }
+                        }
                 } else {
-                    Log.e("ChatActivity", "No secretary ID provided!")
-                    Toast.makeText(this, "Secretary information not available", Toast.LENGTH_SHORT).show()
+                    Log.e("ChatActivity", "No secretary/lawyer ID provided!")
+                    Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
-            "secretary" -> {
-                // Secretary chatting with client
+            "secretary", "lawyer" -> {
+                // Secretary or lawyer chatting with client
                 if (clientId != null) {
                     getClientName(clientId!!)
                 } else {
@@ -288,6 +377,28 @@ class ChatActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Error fetching secretary data: ${e.message}")
                 Toast.makeText(this, "Failed to load secretary information", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+    }
+
+    private fun getLawyerName(lawyerId: String) {
+        database.child("lawyers").child(lawyerId).get()
+            .addOnSuccessListener { lawyerSnapshot ->
+                if (lawyerSnapshot.exists()) {
+                    val firstName = lawyerSnapshot.child("firstName").value?.toString() ?: ""
+                    val lastName = lawyerSnapshot.child("lastName").value?.toString() ?: ""
+                    val fullName = "$firstName $lastName".trim()
+                    tvChatPartnerName.text = if (fullName.isNotEmpty()) fullName else "Lawyer"
+                    listenForMessages()
+                } else {
+                    Log.e("ChatActivity", "Lawyer not found!")
+                    Toast.makeText(this, "Lawyer information not found", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Error fetching lawyer data: ${e.message}")
+                Toast.makeText(this, "Failed to load lawyer information", Toast.LENGTH_SHORT).show()
                 finish()
             }
     }
@@ -356,7 +467,7 @@ class ChatActivity : AppCompatActivity() {
     private fun determineReceiverId(): String? {
         return when (userType) {
             "client" -> secretaryId
-            "secretary" -> clientId
+            "secretary", "lawyer" -> clientId
             else -> null
         }
     }
@@ -430,6 +541,22 @@ class ChatActivity : AppCompatActivity() {
                     }
                     .addOnFailureListener {
                         callback("Secretary")
+                    }
+            }
+            "lawyer" -> {
+                database.child("lawyers").child(currentUserId!!).get()
+                    .addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+                            val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+                            val fullName = "$firstName $lastName".trim()
+                            callback(if (fullName.isNotEmpty()) fullName else "Lawyer")
+                        } else {
+                            callback("Lawyer")
+                        }
+                    }
+                    .addOnFailureListener {
+                        callback("Lawyer")
                     }
             }
             else -> callback("Unknown")

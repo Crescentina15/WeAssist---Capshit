@@ -275,7 +275,7 @@ class ClientNotificationActivity : AppCompatActivity() {
                 database.child("lawyers").child(senderId).get().addOnSuccessListener { lawyerSnapshot ->
                     if (lawyerSnapshot.exists()) {
                         val fullName = lawyerSnapshot.child("name").getValue(String::class.java) ?: ""
-                        callback("Appointment Confirmation")
+                        callback("Atty. $fullName".trim().ifEmpty { "Unknown" })
                     } else {
                         // If not a lawyer, check in users
                         database.child("Users").child(senderId).get().addOnSuccessListener { userSnapshot ->
