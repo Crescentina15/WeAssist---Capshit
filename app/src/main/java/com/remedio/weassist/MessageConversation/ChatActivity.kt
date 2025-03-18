@@ -47,26 +47,30 @@ class ChatActivity : AppCompatActivity() {
         database = FirebaseDatabase.getInstance().reference
         currentUserId = FirebaseAuth.getInstance().currentUser?.uid
 
-        // Get conversation ID from intent if available
+        // Get all possible IDs from intent
         conversationId = intent.getStringExtra("CONVERSATION_ID")
-
-        // Get user IDs from intent
         secretaryId = intent.getStringExtra("SECRETARY_ID")
         clientId = intent.getStringExtra("CLIENT_ID")
+        val appointmentId = intent.getStringExtra("APPOINTMENT_ID")
 
-        Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId")
+        Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId, appointmentId: $appointmentId")
 
         // Set up RecyclerView
         messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
 
-        // Determine current user type and set up chat
-        if (currentUserId != null) {
-            determineCurrentUserType()
+        // If we have an appointment ID but no conversation ID, try to find it
+        if (conversationId == null && appointmentId != null && currentUserId != null) {
+            fetchConversationIdFromAppointment(appointmentId)
         } else {
-            Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
-            finish()
+            // Determine current user type and set up chat
+            if (currentUserId != null) {
+                determineCurrentUserType()
+            } else {
+                Toast.makeText(this, "User not authenticated", Toast.LENGTH_SHORT).show()
+                finish()
+            }
         }
 
         btnSendMessage.setOnClickListener {
@@ -76,6 +80,39 @@ class ChatActivity : AppCompatActivity() {
         backButton.setOnClickListener {
             finish()
         }
+    }
+
+    private fun fetchConversationIdFromAppointment(appointmentId: String) {
+        // Find the notification that contains this appointment ID
+        if (currentUserId == null) return
+
+        val notificationsRef = database.child("notifications").child(currentUserId!!)
+        notificationsRef.orderByChild("appointmentId").equalTo(appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (notificationSnapshot in snapshot.children) {
+                            val convId = notificationSnapshot.child("conversationId").getValue(String::class.java)
+                            if (convId != null) {
+                                conversationId = convId
+                                Log.d("ChatActivity", "Found conversationId: $conversationId from appointmentId")
+
+                                // Now determine user type before extracting participant info
+                                determineCurrentUserType()
+                                break
+                            }
+                        }
+                    } else {
+                        // If no notification with this appointment ID, just continue with normal flow
+                        determineCurrentUserType()
+                    }
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ChatActivity", "Error fetching notifications: ${error.message}")
+                    // Continue with normal flow
+                    determineCurrentUserType()
+                }
+            })
     }
 
     private fun determineCurrentUserType() {
@@ -326,30 +363,77 @@ class ChatActivity : AppCompatActivity() {
 
     private fun createNotificationForRecipient(message: Message) {
         val recipientId = message.receiverId
+        val convId = generateConversationId(message.senderId, message.receiverId)
 
-        // Create notification data
-        val notification = hashMapOf(
-            "senderId" to message.senderId,
-            "message" to message.message,
-            "timestamp" to message.timestamp,
-            "type" to "message",
-            "isRead" to false,
-            "conversationId" to generateConversationId(message.senderId, message.receiverId)
-        )
+        // First get the sender name for the notification
+        getSenderName { senderName ->
+            // Create notification with ID
+            val notificationRef = database.child("notifications").child(recipientId).push()
+            val notificationId = notificationRef.key ?: return@getSenderName
 
-        // Add notification to recipient's notifications list
-        database.child("notifications").child(recipientId).push()
-            .setValue(notification)
-            .addOnSuccessListener {
-                Log.d("ChatActivity", "Notification created for recipient: $recipientId")
+            val notification = hashMapOf(
+                "id" to notificationId,  // Match the format in SetAppointmentActivity
+                "senderId" to message.senderId,
+                "senderName" to senderName,
+                "message" to message.message,
+                "timestamp" to message.timestamp,
+                "type" to "message",
+                "isRead" to false,
+                "conversationId" to convId
+            )
 
-                // Increment unread message counter for recipient
-                val conversationId = generateConversationId(message.senderId, message.receiverId)
-                incrementUnreadCounter(conversationId, recipientId)
+            // Add notification to recipient's notifications list
+            notificationRef.setValue(notification)
+                .addOnSuccessListener {
+                    Log.d("ChatActivity", "Notification created for recipient: $recipientId")
+                    incrementUnreadCounter(convId, recipientId)
+                }
+                .addOnFailureListener { e ->
+                    Log.e("ChatActivity", "Failed to create notification: ${e.message}")
+                }
+        }
+    }
+
+    // Add method to get the sender name for notifications
+    private fun getSenderName(callback: (String) -> Unit) {
+        if (currentUserId == null) {
+            callback("Unknown")
+            return
+        }
+
+        when (userType) {
+            "client" -> {
+                database.child("Users").child(currentUserId!!).get()
+                    .addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+                            val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+                            val fullName = "$firstName $lastName".trim()
+                            callback(fullName)
+                        } else {
+                            callback("Client")
+                        }
+                    }
+                    .addOnFailureListener {
+                        callback("Client")
+                    }
             }
-            .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Failed to create notification: ${e.message}")
+            "secretary" -> {
+                database.child("secretaries").child(currentUserId!!).get()
+                    .addOnSuccessListener { snapshot ->
+                        if (snapshot.exists()) {
+                            val name = snapshot.child("name").getValue(String::class.java) ?: "Secretary"
+                            callback(name)
+                        } else {
+                            callback("Secretary")
+                        }
+                    }
+                    .addOnFailureListener {
+                        callback("Secretary")
+                    }
             }
+            else -> callback("Unknown")
+        }
     }
 
     private fun incrementUnreadCounter(conversationId: String, userId: String) {

@@ -329,6 +329,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                     // Send notification to all secretaries associated with this lawyer
                     sendNotificationToSecretaries(lawyerId!!, selectedDate!!, selectedTime!!, appointmentId)
 
+                    // Create a conversation with the problem description as first message
+                    createConversationWithProblem(lawyerId!!, problem, appointmentId)
+
                     Toast.makeText(this, "Appointment set successfully!", Toast.LENGTH_SHORT).show()
                     finish()
                 }
@@ -337,6 +340,124 @@ class SetAppointmentActivity : AppCompatActivity() {
                     Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    private fun createConversationWithProblem(lawyerId: String, problem: String, appointmentId: String) {
+        if (clientId != null) {
+            // Get the secretary ID for this lawyer
+            val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+            lawyerRef.child("secretaryID").addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val secretaryId = snapshot.getValue(String::class.java)
+                        if (secretaryId != null && secretaryId.isNotEmpty()) {
+                            // Generate conversation ID
+                            val conversationId = generateConversationId(clientId!!, secretaryId)
+
+                            // Create the message
+                            val message = mapOf(
+                                "senderId" to clientId,
+                                "receiverId" to secretaryId,
+                                "message" to problem,
+                                "timestamp" to System.currentTimeMillis()
+                            )
+                            // After creating the conversation and incrementing the unread counter
+                            val messageNotificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(secretaryId)
+                            val messageNotificationId = messageNotificationRef.push().key
+
+                            if (messageNotificationId != null) {
+                                val messageNotificationData = mapOf(
+                                    "id" to messageNotificationId,
+                                    "senderId" to clientId,
+                                    "message" to "New message: $problem",
+                                    "timestamp" to System.currentTimeMillis(),
+                                    "type" to "message",
+                                    "isRead" to false,
+                                    "conversationId" to conversationId
+                                )
+
+                                messageNotificationRef.child(messageNotificationId).setValue(messageNotificationData)
+                            }
+
+                            // Save the message to the conversation
+                            val conversationRef = FirebaseDatabase.getInstance()
+                                .getReference("conversations")
+                                .child(conversationId)
+
+                            // Add the message
+                            conversationRef.child("messages").push().setValue(message)
+
+                            // Add participants to the conversation
+                            val participantsMap = mapOf(
+                                clientId!! to true,
+                                secretaryId to true
+                            )
+                            conversationRef.child("participantIds").updateChildren(participantsMap)
+
+                            // Increment unread counter for secretary
+                            incrementUnreadCounter(conversationId, secretaryId)
+
+                            // Update the notification to include the conversation ID
+                            updateNotificationWithConversationId(secretaryId, appointmentId, conversationId)
+
+                            Log.d("SetAppointmentActivity", "Created conversation between client and secretary with problem description")
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SetAppointmentActivity", "Failed to fetch secretary ID: ${error.message}")
+                }
+            })
+
+        }
+    }
+
+    private fun generateConversationId(user1: String, user2: String): String {
+        return if (user1 < user2) {
+            "conversation_${user1}_${user2}"
+        } else {
+            "conversation_${user2}_${user1}"
+        }
+    }
+
+    private fun incrementUnreadCounter(conversationId: String, userId: String) {
+        val unreadRef = FirebaseDatabase.getInstance().getReference("conversations")
+            .child(conversationId)
+            .child("unreadMessages").child(userId)
+
+        unreadRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val currentCount = snapshot.getValue(Int::class.java) ?: 0
+                unreadRef.setValue(currentCount + 1)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SetAppointmentActivity", "Error updating unread count: ${error.message}")
+            }
+        })
+    }
+
+    private fun updateNotificationWithConversationId(secretaryId: String, appointmentId: String, conversationId: String) {
+        val notificationsRef = FirebaseDatabase.getInstance().getReference("notifications")
+            .child(secretaryId)
+
+        // Find the notification we just created for this appointment
+        notificationsRef.orderByChild("appointmentId").equalTo(appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (notificationSnapshot in snapshot.children) {
+                            // Update the notification with the conversation ID
+                            notificationSnapshot.ref.child("conversationId").setValue(conversationId)
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SetAppointmentActivity", "Failed to update notification: ${error.message}")
+                }
+            })
     }
 
     // The notification and utility functions remain the same
