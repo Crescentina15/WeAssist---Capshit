@@ -161,11 +161,12 @@ class SetAppointmentActivity : AppCompatActivity() {
                             val time = appointmentSnapshot.child("time").getValue(String::class.java)
 
                             if (date != null && time != null) {
-                                // Mark this slot as booked (keep it in the list but mark as unavailable)
+                                // Mark this slot as booked
                                 availableTimeSlots[date]?.let { timeSlots ->
                                     for (i in timeSlots.indices) {
                                         if (timeSlots[i].timeSlot == time) {
-                                            timeSlots[i] = TimeSlotInfo("${timeSlots[i].timeSlot} (Already Taken)", false)
+                                            // Keep the same time slot text but mark as unavailable
+                                            timeSlots[i] = TimeSlotInfo(timeSlots[i].timeSlot, false)
                                         }
                                     }
                                 }
@@ -227,6 +228,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                 } else {
                     selectedTime = null
                     btnSetAppointment.isEnabled = false
+                    // Show toast message for taken time slot
                     Toast.makeText(this, "This time slot is already taken", Toast.LENGTH_SHORT).show()
                 }
             } else {
@@ -241,7 +243,7 @@ class SetAppointmentActivity : AppCompatActivity() {
     }
 
     private fun updateTimeDropdown(timeSlots: List<TimeSlotInfo>) {
-        // Create a list of display strings for the dropdown
+        // Create a list of display strings for the dropdown (just the time slot text)
         val displayTimeSlots = timeSlots.map { it.timeSlot }
 
         val timeAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, displayTimeSlots)
@@ -277,7 +279,7 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
-        // Add an additional check to make sure the selected time is available
+        // Additional check to ensure the selected time is available
         val selectedTimeSlotInfo = timeSlotMap[selectedDate]?.find { it.timeSlot == selectedTime }
         if (selectedTimeSlotInfo == null || !selectedTimeSlotInfo.isAvailable) {
             Toast.makeText(this, "This time slot is not available. Please select another time.", Toast.LENGTH_SHORT).show()
@@ -337,7 +339,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         }
     }
 
-    // The rest of your notification and utility functions remain the same
+    // The notification and utility functions remain the same
     private fun sendNotificationToClient(lawyerId: String, date: String, time: String) {
         // Get the lawyer reference
         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
