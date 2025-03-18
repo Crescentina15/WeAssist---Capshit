@@ -77,86 +77,45 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             return
         }
 
-        // Try multiple database paths where appointments might be stored
-        checkAppointmentsInPrimaryLocation()
+        // Check for accepted appointments in the accepted_appointment node
+        checkAcceptedAppointments()
     }
 
-    // Replace this function in LawyerBackgroundActivity.kt
+    private fun checkAcceptedAppointments() {
+        // Check the accepted_appointment node
+        val acceptedAppointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
 
-    private fun checkAppointmentsInPrimaryLocation() {
-        // Primary location check - "appointments" node
-        val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
+        // Debug log
+        Log.d(TAG, "Checking accepted_appointment for user: $currentUserId and lawyer: $lawyerId")
 
-        // Debug log to show we're checking
-        Log.d(TAG, "Checking appointments for user: $currentUserId and lawyer: $lawyerId")
-
-        // Query for appointments where both client ID and lawyer ID match
-        appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        acceptedAppointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                var hasAppointment = false
-                Log.d(TAG, "Found ${snapshot.childrenCount} appointment records in database")
+                var hasAcceptedAppointment = false
+                Log.d(TAG, "Found ${snapshot.childrenCount} accepted appointment records in database")
 
                 if (snapshot.exists()) {
                     for (appointmentSnapshot in snapshot.children) {
-                        // Use GenericTypeIndicator instead of HashMap.class
                         val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-                        Log.d(TAG, "Checking appointment: $appointmentData")
+                        Log.d(TAG, "Checking accepted appointment: $appointmentData")
 
                         val clientId = appointmentData?.get("clientId")?.toString()
                         val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
 
                         if (clientId == currentUserId && appointmentLawyerId == lawyerId) {
-                            hasAppointment = true
-                            Log.d(TAG, "Found matching appointment! Appointment data: $appointmentData")
+                            hasAcceptedAppointment = true
+                            Log.d(TAG, "Found matching accepted appointment! Appointment data: $appointmentData")
                             break
                         }
                     }
                 }
 
-                if (hasAppointment) {
-                    updateButtonsVisibility(true)
-                } else {
-                    // If no appointment found in primary location, check secondary location
-                    checkAppointmentsInSecondaryLocation()
-                }
+                // Update UI based on whether an accepted appointment was found
+                updateButtonsVisibility(hasAcceptedAppointment)
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to check appointment status", error.toException())
-                // Fall back to secondary check
-                checkAppointmentsInSecondaryLocation()
-            }
-        })
-    }
-
-    private fun checkAppointmentsInSecondaryLocation() {
-        // Alternative location - "lawyer_appointments" node
-        val altApptRef = FirebaseDatabase.getInstance().getReference("lawyer_appointments")
-            .child(lawyerId!!)
-
-        Log.d(TAG, "Checking alternative appointments location")
-
-        altApptRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                var hasAppointment = false
-
-                if (snapshot.exists()) {
-                    for (clientSnapshot in snapshot.children) {
-                        if (clientSnapshot.key == currentUserId) {
-                            hasAppointment = true
-                            Log.d(TAG, "Found appointment in secondary location!")
-                            break
-                        }
-                    }
-                }
-
-                // Final update to UI based on all checks
-                updateButtonsVisibility(hasAppointment)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to check secondary appointment location", error.toException())
-                // Default to showing Set Appointment
+                Log.e(TAG, "Failed to check accepted appointment status", error.toException())
+                // Default to showing Set Appointment button
                 updateButtonsVisibility(false)
             }
         })
