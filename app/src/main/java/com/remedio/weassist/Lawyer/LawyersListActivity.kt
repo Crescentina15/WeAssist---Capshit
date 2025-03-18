@@ -109,14 +109,7 @@ class LawyersListActivity : AppCompatActivity() {
                         lawFirm = lawyerFirm,
                         licenseNumber = lawyerData["licenseNumber"]?.toString() ?: "",
                         experience = lawyerData["experience"]?.toString() ?: "",
-                        lawSchool = lawyerData["lawSchool"]?.toString(),
-                        graduationYear = lawyerData["graduationYear"]?.toString(),
-                        certifications = lawyerData["certifications"]?.toString(),
-                        jurisdiction = lawyerData["jurisdiction"]?.toString(),
-                        employer = lawyerData["employer"]?.toString(),
-                        bio = lawyerData["bio"]?.toString(),
-                        rate = lawyerData["rate"]?.toString(),
-                        profileImage = lawyerData["profileImage"]?.toString(),
+                        profileImageUrl = lawyerData["profileImageUrl"]?.toString(), // Add this line
                         location = firmLocation,  // Set the firm's office address as location
                         ratings = lawyerData["ratings"]?.toString() ?: "",
                         contact = contact

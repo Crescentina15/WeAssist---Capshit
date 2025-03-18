@@ -18,12 +18,12 @@ data class Lawyer(
     val bio: String? = null,
     val rate: String? = null,
     val profileImage: String? = null,
-    val location: String = "",  // Ensure default value is provided
-    val ratings: String = "",   // Add this if needed
+    val profileImageUrl: String? = null, // Nullable field
+    val location: String = "",
+    val ratings: String = "",
     val contact: Contact? = null,
     val lawFirmAdminId: String = ""
-
-    ) : Parcelable {
+) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",
         parcel.readString() ?: "",
@@ -39,8 +39,9 @@ data class Lawyer(
         parcel.readString(),
         parcel.readString(),
         parcel.readString(),
-        parcel.readString() ?: "", // Ensure non-nullable string
-        parcel.readString() ?: "", // Ensure non-nullable string for ratings if applicable
+        parcel.readString(), // Read profileImageUrl as nullable
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
         parcel.readParcelable(Contact::class.java.classLoader)
     )
 
@@ -59,8 +60,9 @@ data class Lawyer(
         parcel.writeString(bio)
         parcel.writeString(rate)
         parcel.writeString(profileImage)
-        parcel.writeString(location)  // Make sure it's written as a String
-        parcel.writeString(ratings)   // Write ratings if applicable
+        parcel.writeString(profileImageUrl) // Write profileImageUrl as nullable
+        parcel.writeString(location)
+        parcel.writeString(ratings)
         parcel.writeParcelable(contact, flags)
     }
 
