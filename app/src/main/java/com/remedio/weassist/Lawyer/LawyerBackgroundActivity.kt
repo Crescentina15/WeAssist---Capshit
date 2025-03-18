@@ -4,14 +4,11 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
-import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.SetAppointmentActivity
 import com.remedio.weassist.databinding.ActivityLawyerBackgroundBinding
 
@@ -28,9 +25,6 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityLawyerBackgroundBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        // Initialize profile image view
-        val lawyerProfileImage: ImageView = binding.profileImage // Ensure this matches the XML ID
 
         binding.backArrow.setOnClickListener { finish() }
 
@@ -86,6 +80,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         // Try multiple database paths where appointments might be stored
         checkAppointmentsInPrimaryLocation()
     }
+
+    // Replace this function in LawyerBackgroundActivity.kt
 
     private fun checkAppointmentsInPrimaryLocation() {
         // Primary location check - "appointments" node
@@ -338,9 +334,6 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         binding.lawyerJurisdiction.text = "Jurisdiction: ${it.jurisdiction}"
                         binding.lawyerRate.text = "Professional Rate: ${it.rate}"
 
-                        // Load lawyer profile image
-                        loadLawyerProfileImage(it.profileImageUrl)
-
                         // Try to get secretary ID while we're fetching lawyer data
                         // Check for several possible field names
                         val possibleFieldNames = listOf(
@@ -357,7 +350,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                             }
                         }
 
-                        // Retrieve adminUID from lawyer's details
+                        // Retrieve `adminUID` from lawyer's details
                         val adminUID = snapshot.child("adminUID").getValue(String::class.java)
 
                         if (!adminUID.isNullOrEmpty()) {
@@ -380,24 +373,7 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         })
     }
 
-    // New function to load lawyer profile image
-    private fun loadLawyerProfileImage(profileImageUrl: String?) {
-        if (!profileImageUrl.isNullOrEmpty()) {
-            Glide.with(this)
-                .load(profileImageUrl)
-                .placeholder(R.drawable.profile) // Placeholder image while loading
-                .error(R.drawable.profile) // Error image if loading fails
-                .into(binding.profileImage)
-
-            Log.d(TAG, "Loading lawyer profile image: $profileImageUrl")
-        } else {
-            // Set default profile image if no URL available
-            binding.profileImage.setImageResource(R.drawable.profile)
-            Log.d(TAG, "No profile image URL, using default")
-        }
-    }
-
-    // Fetch law firm details using adminUID
+    // Fetch law firm details using `adminUID`
     private fun retrieveLawFirmFromAdmin(adminUID: String) {
         val firmRef = FirebaseDatabase.getInstance().getReference("law_firm_admin").child(adminUID)
         firmRef.addListenerForSingleValueEvent(object : ValueEventListener {
