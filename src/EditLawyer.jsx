@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { db } from "./script/firebase";
 import { ref, get, update, remove } from "firebase/database";
-import "./index.css";
+import "./index.css"; // Updated CSS filename
 
 const LawyerDetails = () => {
   const navigate = useNavigate();
@@ -20,7 +20,7 @@ const LawyerDetails = () => {
         if (snapshot.exists()) {
           const data = snapshot.val();
           setLawyer(data);
-          setServices(data.services || []); // Ensure services is an array
+          setServices(data.services || []);
         } else {
           console.error("Lawyer not found.");
         }
@@ -81,80 +81,159 @@ const LawyerDetails = () => {
   if (!lawyer) return <p>Loading...</p>;
 
   return (
-    <div className="Lawyerprofile-card">
-      <h2>Lawyer Details</h2>
-      <div className="profile-image-container">
-        <img src={image || lawyer.profileImage || "default.jpg"} alt="" className="profile-image" />
-        <button className="photo-button" onClick={() => document.getElementById("fileUpload").click()}>
-          Add Photo
-        </button>
-        <input type="file" accept="image/*" id="fileUpload" style={{ display: "none" }} onChange={handleProfileImageChange} />
-      </div>
-
-      <div className="profile-info">
-        {isEditing ? (
-          <div className="edit-form">
-            <input type="text" name="name" value={lawyer.name} onChange={handleChange} className="input-field" />
-            <input type="email" name="email" value={lawyer.email} onChange={handleChange} className="input-field" />
-            <input type="text" name="phone" value={lawyer.phone} onChange={handleChange} className="input-field" />
-            <input type="text" name="specialization" value={lawyer.specialization} onChange={handleChange} className="input-field" />
-            <input type="text" name="licenseNumber" value={lawyer.licenseNumber} onChange={handleChange} className="input-field" />
-            <input type="text" name="experience" value={lawyer.experience} onChange={handleChange} className="input-field" />
+    <div className="lawyer-container">
+      <h2 className="lawyer-title">Lawyer Details</h2>
+      
+      <div className="lawyer-content">
+        <div className="lawyer-left">
+          <div className="profile-image-container">
+            <img 
+              src={image || lawyer.profileImage || "https://via.placeholder.com/150?text=Profile"} 
+              alt={lawyer.name} 
+              className="profile-image" 
+            />
           </div>
-        ) : (
-          <>
-            <p><strong>Name:</strong> {lawyer.name}</p>
-            <p><strong>Email:</strong> {lawyer.email}</p>
-            <p><strong>Phone:</strong> {lawyer.phone}</p>
-            <p><strong>Specialization:</strong> {lawyer.specialization}</p>
-            <p><strong>License Number:</strong> {lawyer.licenseNumber}</p>
-            <p><strong>Experience:</strong> {lawyer.experience} years</p>
-          </>
-        )}
-      </div>
-
-      {!isEditing && (
-        <div className="services-frame">
-          <h3 className="services-title">Services Offered</h3>
-          <div className="services-container">
-            {services.length > 0 ? (
-              <ul className="services-list">
-                {services.map((service, index) => (
-                  <li key={index} className="service-item">{service}</li>
-                ))}
-              </ul>
+          <button 
+            className="photo-button" 
+            onClick={() => document.getElementById("fileUpload").click()}
+          >
+            Add Photo
+          </button>
+          <input 
+            type="file" 
+            accept="image/*" 
+            id="fileUpload" 
+            style={{ display: "none" }} 
+            onChange={handleProfileImageChange} 
+          />
+        </div>
+        
+        <div className="lawyer-right">
+          <div className="info-box">
+            {isEditing ? (
+              <div className="edit-form">
+                <div className="form-row">
+                  <label>Name:</label>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={lawyer.name || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div className="form-row">
+                  <label>Email:</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={lawyer.email || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div className="form-row">
+                  <label>Phone:</label>
+                  <input 
+                    type="text" 
+                    name="phone" 
+                    value={lawyer.phone || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div className="form-row">
+                  <label>Specialization:</label>
+                  <input 
+                    type="text" 
+                    name="specialization" 
+                    value={lawyer.specialization || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div className="form-row">
+                  <label>License Number:</label>
+                  <input 
+                    type="text" 
+                    name="licenseNumber" 
+                    value={lawyer.licenseNumber || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+                <div className="form-row">
+                  <label>Experience:</label>
+                  <input 
+                    type="text" 
+                    name="experience" 
+                    value={lawyer.experience || ""} 
+                    onChange={handleChange} 
+                  />
+                </div>
+              </div>
             ) : (
-              <p className="no-services">No services added yet.</p>
+              <>
+                <p><strong>Name:</strong> {lawyer.name}</p>
+                <p><strong>Email:</strong> {lawyer.email}</p>
+                <p><strong>Phone:</strong> {lawyer.phone}</p>
+                <p><strong>Specialization:</strong> {lawyer.specialization}</p>
+                <p><strong>License Number:</strong> {lawyer.licenseNumber}</p>
+                <p><strong>Experience:</strong> {lawyer.experience} years</p>
+              </>
+            )}
+          </div>
+          
+          {!isEditing && (
+            <>
+              <div className="services-section">
+                <h3 className="services-title">Services Offered</h3>
+                <div className="services-list-container">
+                  {services.length > 0 ? (
+                    <ul className="services-list">
+                      {services.map((service, index) => (
+                        <li key={index} className="service-item">{service}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="no-services">No services added yet.</p>
+                  )}
+                </div>
+              </div>
+              
+              <div className="add-service-container">
+                <input
+                  className="service-input"
+                  type="text"
+                  placeholder="Add new service"
+                  value={newService}
+                  onChange={(e) => setNewService(e.target.value)}
+                />
+                <button className="add-service-btn" onClick={handleAddService}>+</button>
+              </div>
+            </>
+          )}
+          
+          <div className="action-buttons">
+            {isEditing ? (
+              <>
+                <button className="action-btn save" onClick={handleSave}>Save</button>
+                <button className="action-btn cancel" onClick={handleCancel}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <button className="action-btn update" onClick={handleEditToggle}>Update</button>
+                <button 
+                  className="action-btn delete" 
+                  onClick={() => {
+                    if (window.confirm("Are you sure you want to delete this lawyer?")) {
+                      remove(ref(db, `lawyers/${id}`)).then(() => navigate("/"));
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+                <button className="action-btn back" onClick={() => navigate("/")}>Back</button>
+              </>
             )}
           </div>
         </div>
-      )}
-
-      {!isEditing && (
-        <div className="add-service-container">
-          <input
-            className="service-input"
-            type="text"
-            placeholder="Add new service"
-            value={newService}
-            onChange={(e) => setNewService(e.target.value)}
-          />
-          <button className="add-btn-small" onClick={handleAddService}>+</button>
-        </div>
-      )}
-
-      {isEditing ? (
-        <>
-          <button className="add-btnEdit" onClick={handleSave}>Save</button>
-          <button className="add-btnEdit" onClick={handleCancel}>Cancel</button>
-        </>
-      ) : (
-        <>
-          <button className="add-btnEdit" onClick={handleEditToggle}>Update</button>
-          <button className="add-btnEdit" onClick={() => remove(ref(db, `lawyers/${id}`)).then(() => navigate("/"))}>Delete</button>
-          <button className="add-btnEdit" onClick={() => navigate("/")}>Cancel</button>
-        </>
-      )}
+      </div>
     </div>
   );
 };
