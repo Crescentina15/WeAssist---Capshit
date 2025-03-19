@@ -6,10 +6,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AlphaAnimation
+import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -30,6 +34,8 @@ class LawyerMessageFragment : Fragment() {
     private val conversationList = mutableListOf<Conversation>()
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
     private var profileSection: View? = null
+    private var rootView: View? = null
+    private var isTransitioning = false
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -47,13 +53,15 @@ class LawyerMessageFragment : Fragment() {
         fetchConversationsDebug()
 
         val view = inflater.inflate(R.layout.fragment_lawyer_message, container, false)
+        rootView = view
+
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // Initialize adapter
         conversationsAdapter = ConversationAdapter(
             conversationList,
-            { conversation -> openChatActivity(conversation) },
+            { conversation -> handleConversationClick(conversation) },
             currentUserId  // Pass current user ID (lawyer)
         )
         conversationsRecyclerView.adapter = conversationsAdapter
@@ -73,11 +81,80 @@ class LawyerMessageFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         profileSection?.visibility = View.GONE // Hide profile section
+
+        // Reset transition flag
+        isTransitioning = false
+
+        // Make sure the recycler view is visible when returning to this fragment
+        conversationsRecyclerView.visibility = View.VISIBLE
+
+        // Refresh the conversations
+        fetchConversations()
     }
 
     override fun onPause() {
         super.onPause()
-        profileSection?.visibility = View.VISIBLE // Show profile section when leaving
+        // Only show profile section if we're not transitioning to chat
+        if (!isTransitioning) {
+            profileSection?.visibility = View.VISIBLE
+        }
+    }
+
+    private fun handleConversationClick(conversation: Conversation) {
+        // Prevent multiple clicks
+        if (isTransitioning) return
+        isTransitioning = true
+
+        // Add loading overlay to prevent seeing any UI changes
+        addLoadingOverlay()
+
+        // Create intent for the ChatActivity
+        val intent = Intent(requireContext(), ChatActivity::class.java)
+        intent.putExtra("CLIENT_ID", conversation.clientId)
+        intent.putExtra("CONVERSATION_ID", conversation.conversationId)
+        intent.putExtra("USER_TYPE", "lawyer")
+
+        // Use flags to control the activity stack and prevent flashing
+        intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+
+        // Start activity without animation
+        startActivity(intent)
+        requireActivity().overridePendingTransition(0, 0)
+    }
+
+    private fun addLoadingOverlay() {
+        try {
+            // Get the activity's root view
+            val rootContent = requireActivity().findViewById<ViewGroup>(android.R.id.content)
+
+            // Create a full-screen overlay view
+            val overlay = FrameLayout(requireContext())
+            overlay.layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            overlay.setBackgroundColor(Color.WHITE)
+            overlay.tag = "transition_overlay"
+
+            // Add overlay to the root content
+            rootContent.addView(overlay)
+
+            // Add a slight delay before removing the overlay (in case we come back)
+            Handler(Looper.getMainLooper()).postDelayed({
+                try {
+                    // Find and remove overlay if we return to this fragment
+                    val existingOverlay = rootContent.findViewWithTag<View>("transition_overlay")
+                    if (existingOverlay != null) {
+                        rootContent.removeView(existingOverlay)
+                    }
+                } catch (e: Exception) {
+                    Log.e("LawyerMessageFragment", "Error removing overlay: ${e.message}")
+                }
+            }, 2000)
+        } catch (e: Exception) {
+            Log.e("LawyerMessageFragment", "Error adding overlay: ${e.message}")
+        }
     }
 
     private fun setupSwipeToDelete() {
@@ -317,13 +394,5 @@ class LawyerMessageFragment : Fragment() {
         }.addOnFailureListener {
             callback("Unknown")
         }
-    }
-
-    private fun openChatActivity(conversation: Conversation) {
-        val intent = Intent(requireContext(), ChatActivity::class.java)
-        intent.putExtra("CLIENT_ID", conversation.clientId)
-        intent.putExtra("CONVERSATION_ID", conversation.conversationId)
-        intent.putExtra("USER_TYPE", "lawyer") // Add lawyer user type
-        startActivity(intent)
     }
 }
