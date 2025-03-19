@@ -80,39 +80,122 @@ const AddLawyer = () => {
   };
   
   return (
-    <div className="profile-card">
-      <h2>Add Lawyer</h2>
-      
-      <div className="profile-image-container">
-        {image ? (
-          <img src={URL.createObjectURL(image)} alt="Profile" className="profile-image" />
-        ) : (
-          <div className="image-placeholder"></div>
-        )}
-        <button className="photo-button" onClick={() => document.getElementById("fileUpload").click()}>
-          Add Photo
+    <div className="lawyer-card">
+      <div className="lawyer-card-header">
+        <button onClick={() => navigate("/")} className="lawyer-back-button">
+        <span className="icon-back"></span>
         </button>
-        <input 
-          type="file" 
-          accept="image/*" 
-          id="fileUpload" 
-          style={{ display: "none" }} 
-          onChange={(e) => setImage(e.target.files[0])} 
-        />
+        <h2>Add Lawyer</h2>
+        <div className="lawyer-header-underline"></div>
       </div>
+      
+      <div className="lawyer-card-content">
+        <div className="lawyer-image-container">
+          {image ? (
+            <img src={URL.createObjectURL(image)} alt="Profile" className="lawyer-profile-image" />
+          ) : (
+            <div className="lawyer-profile-placeholder"></div>
+          )}
+          <button className="lawyer-photo-button" onClick={() => document.getElementById("fileUpload").click()}>
+            Add Photo
+          </button>
+          <input 
+            type="file" 
+            accept="image/*" 
+            id="fileUpload" 
+            style={{ display: "none" }} 
+            onChange={(e) => setImage(e.target.files[0])} 
+          />
+        </div>
 
-      <div className="input-grid">
-        <input type="text" className="full-width" placeholder="Full Name" value={lawyer.name} onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} autoComplete="off" />
-        <input type="email" placeholder="Email" value={lawyer.email} onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })} autoComplete="off" />
-        <input type="password" placeholder="Password" value={lawyer.password} onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} autoComplete="new-password" />
-        <input type="text" placeholder="Phone" value={lawyer.phone} onChange={(e) => setLawyer({ ...lawyer, phone: e.target.value })} autoComplete="off" />
-        <input type="text" placeholder="Specialization" value={lawyer.specialization} onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} autoComplete="off" />
-        <input type="text" placeholder="License Number" value={lawyer.licenseNumber} onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} autoComplete="off" />
-        <input type="text" placeholder="Experience" value={lawyer.experience} onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} autoComplete="off" />
+        <div className="lawyer-form-container">
+          <div className="lawyer-form-row">
+            <label>Name:</label>
+            <input 
+              type="text" 
+              placeholder="Full Name" 
+              value={lawyer.name} 
+              onChange={(e) => setLawyer({ ...lawyer, name: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>Email:</label>
+            <input 
+              type="email" 
+              placeholder="Email" 
+              value={lawyer.email} 
+              onChange={(e) => setLawyer({ ...lawyer, email: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>Phone:</label>
+            <input 
+              type="text" 
+              placeholder="Phone" 
+              value={lawyer.phone} 
+              onChange={(e) => setLawyer({ ...lawyer, phone: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>Password:</label>
+            <input 
+              type="password" 
+              placeholder="Password" 
+              value={lawyer.password} 
+              onChange={(e) => setLawyer({ ...lawyer, password: e.target.value })} 
+              autoComplete="new-password" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>Specialization:</label>
+            <input 
+              type="text" 
+              placeholder="Specialization" 
+              value={lawyer.specialization} 
+              onChange={(e) => setLawyer({ ...lawyer, specialization: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>License Number:</label>
+            <input 
+              type="text" 
+              placeholder="License Number" 
+              value={lawyer.licenseNumber} 
+              onChange={(e) => setLawyer({ ...lawyer, licenseNumber: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+          
+          <div className="lawyer-form-row">
+            <label>Experience:</label>
+            <input 
+              type="text" 
+              placeholder="Experience" 
+              value={lawyer.experience} 
+              onChange={(e) => setLawyer({ ...lawyer, experience: e.target.value })} 
+              autoComplete="off" 
+            />
+          </div>
+        </div>
+
+        <div className="lawyer-button-container">
+          <button onClick={addLawyer} className="lawyer-primary-button">
+            <span className="lawyer-button-icon">✓</span> Add Lawyer
+          </button>
+          <button onClick={() => navigate("/")} className="lawyer-secondary-button">
+            <span className="lawyer-button-icon">✕</span> Cancel
+          </button>
+        </div>
       </div>
-
-      <button onClick={addLawyer} className="cancel-button">Add Lawyer</button>
-      <button onClick={() => navigate("/")} className="cancel-button">Cancel</button>
     </div>
   );
 };

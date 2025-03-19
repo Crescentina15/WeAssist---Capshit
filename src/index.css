@@ -654,93 +654,458 @@ ul li {
 
 
 /* ADD LAWYERS & MANAGE SECRETARIES */
+.lawyer-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin: 20px auto;
+  max-width: 700px;
+  padding: 0;
+  overflow: hidden;
+}
 
-.profile-card {
-  width: 850px; /* Increased width further */
-  max-width: 100%;
-  padding: 100px;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+.lawyer-card-header {
+  position: relative;
+  padding: 20px 0;
   text-align: center;
-  margin: 0px 0px 0px;
+}
+
+.lawyer-header-underline {
+  width: 80px;
+  height: 4px;
+  background-color: #6c63ff;
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+
+.lawyer-back-button {
+  left: 0;
+  display: flex;
+  align-items: center;
+  color: #4b5563;
+  border: none;
+  background: transparent; 
+  font-size: 40px; 
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.lawyer-back-button:hover {
+  background: transparent; 
+  transform: scale(1.1); 
+}
+
+
+.lawyer-card-header h2 {
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.lawyer-card-content {
+  padding: 20px 30px 30px;
+}
+
+.lawyer-image-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  margin-bottom: 30px;
 }
 
-
-.profile-card h2 {
-  text-align: center;
+.lawyer-profile-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background-color: #f0f0f0;
+  margin-bottom: 10px;
 }
 
-.profile-card input {
-  width: 100%; /* Ensure input fields are not too wide */
-  max-width: 1000px; /* Restrict max width */
-  padding: 12px;
-  margin: 0px 0px 0px;
-  border-radius: px;
-  border: 2px solid #ccc;
-  text-align: center;
+.lawyer-profile-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 10px;
 }
 
-.photo-button {
-  background-color: #6a5acd; 
-  color: white;
+.lawyer-photo-button {
+  background-color: #e0e0ff;
+  color: #6c63ff;
   border: none;
-  padding: 10px 20px;
+  border-radius: 20px;
+  padding: 8px 16px;
   font-size: 14px;
-  font-weight: bold;
-  border-radius: 5px;
   cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.lawyer-photo-button:hover {
+  background-color: #d0d0ff;
+}
+
+.lawyer-form-container {
   width: 100%;
 }
 
-.photo-button:hover {
-  background-color: #ada3ec; 
+.lawyer-form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-
-h2 {
-  margin-bottom: 20px;
-  font-size: 22px;
-  color: #333;
-  text-align: start;
+.lawyer-form-row label {
+  flex: 0 0 140px;
+  font-weight: 500;
+  color: #555;
+  text-align: right;
+  padding-right: 20px;
 }
 
+.lawyer-form-row input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
 
-input {
-  width: 100%; 
-  max-width: 400px;
+.lawyer-form-row input:focus {
+  border-color: #6c63ff;
+}
+
+.lawyer-button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.lawyer-primary-button, .lawyer-secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 12px;
-  margin: 10px 0;
-  border: 2px solid #ccc;
-  border-radius: 5px;
-  font-size: 16px;
-  text-align: center; 
-}
-
-
-button {
-  width: 100%;
-  max-width: 400px;
-  padding: 12px;
-  background: #6a5acd;
-  color: white;
   border: none;
-  border-radius: 5px;
-  font-size: 18px;
-  font-weight: bold;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  transition: 0.3s;
-  margin-top: 10px;
+  transition: background-color 0.2s;
 }
 
-button:hover {
-  background: #4c3db0;
+.lawyer-primary-button {
+  background-color: #6c63ff;
+  color: white;
 }
 
+.lawyer-primary-button:hover {
+  background-color: #5a52e0;
+}
+
+.lawyer-secondary-button {
+  background-color: #f44336;
+  color: white;
+}
+
+.lawyer-secondary-button:hover {
+  background-color: #e53935;
+}
+
+.lawyer-button-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+/* MANAGE SECRETARY */
+
+.secretary-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 24px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.secretary-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.secretary-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  position: relative;
+  padding-bottom: 8px;
+}
+
+.secretary-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  height: 4px;
+  width: 96px;
+  background-color: #6366f1;
+}
+
+
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 0;
+}
+
+.spinner {
+  height: 48px;
+  width: 48px;
+  border-radius: 50%;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #6366f1;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+.secretary-details {
+  background-color: #f9fafb;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.detail-label {
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #1f2937;
+}
+
+/* Form Styles */
+.secretary-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  position: relative;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 5px;
+  border: 1px solid #d1d5db;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+/* Button Styles */
+.btn {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  color: white;
+}
+  .back-button {
+    left: 0;
+    display: flex;
+    align-items: center;
+    color: #4b5563;
+    border: none;
+    background: transparent; 
+    font-size: 40px; 
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .back-button:hover {
+    background: transparent; 
+    transform: scale(1.1); 
+  }
+  
+.btn-icon {
+  margin-right: 8px;
+  width: 20px;
+  height: 20px;
+}
+
+.btn-primary {
+  background-color: #6366f1;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #4f46e5;
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+}
+
+.btn-neutral {
+  background-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.btn-neutral:hover {
+  background-color: #d1d5db;
+}
+
+.btn-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* Icons */
+.icon-edit {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z'%3E%3C/path%3E%3C/svg%3E");
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+.icon-delete {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16'%3E%3C/path%3E%3C/svg%3E");
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+.icon-save {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M5 13l4 4L19 7'%3E%3C/path%3E%3C/svg%3E");
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+.icon-add {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M12 6v6m0 0v6m0-6h6m-6 0H6'%3E%3C/path%3E%3C/svg%3E");
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+.icon-back {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='currentColor'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 19l-7-7m0 0l7-7m-7 7h18'%3E%3C/path%3E%3C/svg%3E");
+  display: inline-block;
+  font-size: 40px;
+  width: 20px;
+  height:20px;
+  margin-right: 0px;
+}
+
+/* PROFILE */
+
+.profile-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  margin: 20px auto;
+  max-width: 800px;
+  padding: 0px 100px 20px;
+  overflow: hidden;
+}
+
+.profile-header-container {
+  position: relative;
+  padding: 20px 0;
+  text-align: center;
+}
+
+.profile-header-title {
+  margin: 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.profile-header-underline {
+  width: 80px;
+  height: 4px;
+  background-color: #6c63ff;
+  margin: 10px auto 0;
+  border-radius: 2px;
+}
+
+.profile-back-button {
+  left: 0;
+  display: flex;
+  align-items: center;
+  color: #4b5563;
+  border: none;
+  background: transparent; 
+  font-size: 40px; 
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.profile-back-button:hover {
+  background: transparent; 
+  transform: scale(1.1); 
+}
+
+
+.profile-header-title {
+  margin: 0;
+  text-align: center;
+  width: 100%;
+}
+
+.profile-content {
+  padding: 20px 30px 30px;
+}
 
 .profile-image-container {
   display: flex;
@@ -749,180 +1114,173 @@ button:hover {
   margin-bottom: 20px;
 }
 
-.profile-image {
-  width: 150px;
-  height: 150px;
-  border-radius: 10px;
-  object-fit: cover;
-}
-
-.image-placeholder {
-  width: 150px;
-  height: 150px;
-  border-radius: 10px;
-  background: #ddd;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  color: #666;
-}
-
-.file-input {
-  margin-top: 10px;
-  width: 80%;
-  text-align: center;
-}
-.profile-card {
-  max-width: 800px;
-  margin: 0px 10;
-  text-align: left;
-  padding: 5px;
-}
-.profile-display {
-  color: black;
-  font-size: 16px;
-  text-align: left;
-  margin: 0px 10;
-  padding: 10px;
-  border-radius: 0px;
-}
-.form-container input,
-.profile-card input {
-  margin-bottom: 15px;
-}
-
-.input-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); 
-  gap: 0px 40px; 
-  width: 90%;
-  max-width: 800px; 
-  margin-top: 10px;
-}
-
-.input-grid input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 5px;
-  border: 1px solid #ccc;
-  text-align: center;
-}
-
-.full-width {
-  grid-column: span 2; /* Full width for Full Name */
-}
-
-/* PROFILE */
-
-.profile-card {
-  width: 850px;
-  max-width: 90%;
-  padding: 30px;  /* Reduced from 40px */
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
-  margin: 30px auto;  /* Reduced from 40px */
-  transition: all 0.3s ease;
-}
-
-.profile-card input {
-  width: 100%;
-  padding: 12px 14px;  /* Reduced from 14px 16px */
-  margin: 6px 0;  /* Reduced from 8px */
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  background-color: #f9f9f9;
-  color: #333;
-}
-
-.profile-card h2 {
-  font-size: 28px;
-  color: #333;
-  margin-bottom: 25px;  /* Reduced from 30px */
-  font-weight: 600;
-  text-align: center;
-  position: relative;
-}
-
-.profile-card h2:after {
-  content: '';
-  position: absolute;
-  width: 60px;
-  height: 4px;
-  background: #6a5acd;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 2px;
-}
-
 .profile-img {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  margin-bottom: 10px;
+  object-fit: cover;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.profile-firm-name {
+  margin: 12px 0 4px;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.profile-firm-type {
+  margin: 0;
+  font-size: 16px;
+  color: #666;
 }
 
 .profile-details {
-  text-align: left;
-  padding: 15px;
+  background-color: #f9f9fe;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
-.profile-details p {
-  margin: 5px 0;
-  font-size: 16px;
+.profile-detail-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.profile-detail-icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 15px;
+  color: #6c63ff;
+  flex-shrink: 0;
+}
+
+.profile-detail-label {
+  font-weight: 600;
   color: #555;
+  width: 120px;
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
+.profile-detail-value {
+  color: #333;
+  flex-grow: 1;
 }
 
 .profile-edit {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  margin-bottom: 20px;
 }
 
-.profile-edit input,
-.profile-edit textarea {
+.profile-edit-group {
+  margin-bottom: 15px;
+}
+
+.profile-edit-label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #555;
+}
+
+.profile-edit-input {
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  font-size: 16px;
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.profile-edit-input:focus {
+  border-color: #6c63ff;
 }
 
 .profile-actions {
-  margin-top: 15px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 20px;
 }
 
-.edit-btn,
-.cancel-button,
-.save-btn {
-  padding: 10px 15px;
-  font-size: 16px;
+.profile-edit-btn, .profile-cancel-btn, .profile-save-btn, .profile-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 50px;
   border: none;
-  border-radius: 5px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
-  margin: 5px;
+  transition: background-color 0.2s;
 }
 
-.edit-btn {
-  background-color: #4c3db0;
-  color: #fff;
+.profile-edit-btn {
+  background-color: #6c63ff;
+  color: white;
 }
 
-.save-btn {
-  background-color: #4c3db0;
-  color: #fff;
+.profile-edit-btn:hover {
+  background-color: #5a52e0;
 }
 
-.edit-btn:hover {
-  background-color: #4c3db0;
+.profile-cancel-btn {
+  background-color: #333;
+  color: white;
 }
 
-.save-btn:hover {
-  background-color: #4c3db0;
+.profile-cancel-btn:hover {
+  background-color: #444;
+}
+
+.profile-save-btn {
+  background-color: #6c63ff;
+  color: white;
+}
+
+.profile-save-btn:hover {
+  background-color: #5a52e0;
+}
+
+.profile-delete-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.profile-delete-btn:hover {
+  background-color: #e53935;
+}
+
+.profile-icon {
+  margin-right: 8px;
+  font-size: 18px;
+}
+
+.profile-file-input {
+  display: none;
+}
+
+.profile-file-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  background-color: #e0e0ff;
+  color: #6c63ff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+}
+
+.profile-file-label:hover {
+  background-color: #d0d0ff;
 }
 
 /* EDIT LAWYER */
