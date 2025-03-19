@@ -372,7 +372,11 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         conversationsRef.child(secretaryClientConvId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
+                    var messageCount = 0
                     if (snapshot.exists()) {
+                        // Count the number of messages
+                        messageCount = snapshot.child("messages").childrenCount.toInt()
+
                         // Transfer conversation ownership to lawyer
                         transferConversationToLawyer(
                             secretaryClientConvId,
@@ -386,6 +390,13 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
                     // Update appointment status to "Forwarded"
                     updateAppointmentStatus(appointment)
+
+                    // Send notification with message count
+                    sendPriorityNotificationToLawyer(
+                        appointment.lawyerId,
+                        appointment,
+                        messageCount
+                    )
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -514,6 +525,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         val messages = mutableListOf<Map<String, Any>>()
         conversationSnapshot.child("messages").children.forEach { messageSnap ->
             messageSnap.getValue(Map::class.java)?.let {
+                // Add all existing messages to our list
                 messages.add(it as Map<String, Any>)
             }
         }
@@ -528,6 +540,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 val transferMessage = mapOf(
                     "senderId" to appointment.secretaryId,
                     "senderName" to currentSecretaryName,
+                    "receiverId" to appointment.clientId, // Make sure receiverId is set for proper message display
                     "message" to "This conversation has been transferred to $lawyerName who will now handle your case.",
                     "timestamp" to ServerValue.TIMESTAMP
                 )
@@ -546,7 +559,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                     "clientId" to appointment.clientId,
                     "appointmentId" to appointment.appointmentId,
                     "unreadMessages" to mapOf(
-                        appointment.lawyerId to 1,
+                        appointment.lawyerId to messages.size, // Set unread count to the number of messages
                         appointment.clientId to 0
                     )
                 )
@@ -561,7 +574,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                                 // Add all messages in order
                                 var counter = 0
                                 for (message in messages) {
-                                    messagesRef.push().setValue(message)
+                                    // Ensure each message has senderId and receiverId
+                                    val completeMessage = ensureMessageFields(message, appointment)
+                                    messagesRef.push().setValue(completeMessage)
                                         .addOnSuccessListener {
                                             counter++
                                             if (counter == messages.size) {
@@ -600,6 +615,23 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 showLoading(false)
                 Log.e("SecretaryAppointment", "Error getting lawyer name: ${e.message}")
             }
+    }
+
+    // Add this helper method to ensure all message fields are properly set
+    private fun ensureMessageFields(message: Map<String, Any>, appointment: Appointment): Map<String, Any> {
+        val result = message.toMutableMap()
+
+        // If message doesn't have receiverId, add it based on senderId
+        if (!result.containsKey("receiverId")) {
+            val senderId = message["senderId"] as? String
+            result["receiverId"] = if (senderId == appointment.secretaryId) {
+                appointment.clientId
+            } else {
+                appointment.secretaryId
+            }
+        }
+
+        return result
     }
 
     private fun archiveSecretaryConversation(conversationId: String, appointment: Appointment) {
@@ -771,12 +803,12 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
 
     private fun sendPriorityNotificationToLawyer(lawyerId: String, appointment: Appointment,
-                                                 conversationCount: Int = 0) {
+                                                  conversationCount: Int = 0) {
         val database = FirebaseDatabase.getInstance().reference
         val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
 
         val conversationInfo = if (conversationCount > 0) {
-            " ($conversationCount messages in conversation history included)"
+            " (Previous conversation history included)"
         } else {
             ""
         }
@@ -791,7 +823,8 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             "isRead" to false,
             "priority" to true,
             "appointmentId" to appointment.appointmentId,
-            "hasConversation" to (conversationCount > 0)
+            "hasConversation" to true,
+            "conversationId" to "${lawyerId}_${appointment.clientId}" // Add conversation ID to notification
         )
 
         database.child("notifications").child(lawyerId).child(notificationId)

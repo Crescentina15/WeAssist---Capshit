@@ -240,8 +240,12 @@ class ClientMessageFragment : Fragment() {
 
                     for (conversationSnapshot in snapshot.children) {
                         val conversationId = conversationSnapshot.key ?: continue
+
+                        // Find the other participant ID (could be secretary or lawyer)
                         val otherParticipantId = conversationSnapshot.child("participantIds")
-                            .children.firstOrNull { it.key != currentUserId }?.key ?: continue
+                            .children.firstOrNull { it.key != currentUserId &&
+                                    it.getValue(Boolean::class.java) == true }?.key
+                            ?: continue
 
                         if (!conversationSnapshot.child("participantIds").hasChild(currentUserId!!)) {
                             Log.e("FirebaseDB", "User $currentUserId is NOT a participant in $conversationId")
@@ -254,14 +258,30 @@ class ClientMessageFragment : Fragment() {
                         val unreadCount = conversationSnapshot.child("unreadMessages/$currentUserId")
                             .getValue(Int::class.java) ?: 0
 
+                        // Check if this conversation was transferred from a secretary to a lawyer
+                        val isTransferred = conversationSnapshot.child("transferred")
+                            .getValue(Boolean::class.java) ?: false
+
                         fetchCount++
-                        fetchSecretaryName(otherParticipantId) { secretaryName ->
+                        fetchParticipantName(otherParticipantId) { participantName ->
+                            // Determine if this is a conversation with a lawyer (using the transferred flag)
+                            val isLawyer = isTransferred ||
+                                    conversationSnapshot.hasChild("lawyerId") &&
+                                    conversationSnapshot.child("lawyerId").getValue(String::class.java) == otherParticipantId
+
+                            // Create a descriptive name that shows if it's a lawyer
+                            val displayName = if (isLawyer) {
+                                "Lawyer: $participantName"
+                            } else {
+                                participantName
+                            }
+
                             val conversation = Conversation(
                                 conversationId = conversationId,
                                 clientId = currentUserId ?: "",
-                                secretaryId = otherParticipantId,
+                                secretaryId = otherParticipantId, // This could be a secretary or lawyer ID
                                 clientName = "", // Empty for client-side view
-                                secretaryName = secretaryName,
+                                secretaryName = displayName, // This could be secretary or lawyer name
                                 lastMessage = lastMessage,
                                 unreadCount = unreadCount
                             )
@@ -269,7 +289,7 @@ class ClientMessageFragment : Fragment() {
                             tempConversationList.add(conversation)
                             fetchCount--
 
-                            // Only update the adapter once all secretary names are fetched
+                            // Only update the adapter once all names are fetched
                             if (fetchCount == 0) {
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
@@ -285,14 +305,42 @@ class ClientMessageFragment : Fragment() {
             })
     }
 
-    private fun fetchSecretaryName(secretaryId: String, callback: (String) -> Unit) {
-        val secretariesRef = database.child("secretaries").child(secretaryId).child("name")
-        secretariesRef.get().addOnSuccessListener { snapshot ->
-            val secretaryName = snapshot.value?.toString() ?: "Unknown"
-            callback(secretaryName)
+    private fun fetchLawyerName(lawyerId: String, callback: (String) -> Unit) {
+        val lawyersRef = database.child("lawyers").child(lawyerId).child("name")
+        lawyersRef.get().addOnSuccessListener { snapshot ->
+            val lawyerName = snapshot.value?.toString() ?: "Unknown Lawyer"
+            callback(lawyerName)
         }.addOnFailureListener {
-            callback("Unknown")
+            callback("Unknown Lawyer")
         }
+    }
+
+    // Also, let's create a combined method to fetch either secretary or lawyer name
+    private fun fetchParticipantName(participantId: String, callback: (String) -> Unit) {
+        // First check if this is a secretary
+        database.child("secretaries").child(participantId).child("name")
+            .get().addOnSuccessListener { secretarySnapshot ->
+                if (secretarySnapshot.exists()) {
+                    val name = secretarySnapshot.value?.toString() ?: "Unknown Secretary"
+                    callback(name)
+                } else {
+                    // If not a secretary, check if this is a lawyer
+                    database.child("lawyers").child(participantId).child("name")
+                        .get().addOnSuccessListener { lawyerSnapshot ->
+                            if (lawyerSnapshot.exists()) {
+                                val name = lawyerSnapshot.value?.toString() ?: "Unknown Lawyer"
+                                callback(name)
+                            } else {
+                                callback("Unknown Contact")
+                            }
+                        }.addOnFailureListener {
+                            callback("Unknown Contact")
+                        }
+                }
+            }.addOnFailureListener {
+                // If query fails, try lawyer directly
+                fetchLawyerName(participantId, callback)
+            }
     }
 
     private fun openChatActivity(secretaryId: String) {

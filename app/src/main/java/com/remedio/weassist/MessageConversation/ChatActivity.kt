@@ -385,10 +385,8 @@ class ChatActivity : AppCompatActivity() {
         database.child("lawyers").child(lawyerId).get()
             .addOnSuccessListener { lawyerSnapshot ->
                 if (lawyerSnapshot.exists()) {
-                    val firstName = lawyerSnapshot.child("firstName").value?.toString() ?: ""
-                    val lastName = lawyerSnapshot.child("lastName").value?.toString() ?: ""
-                    val fullName = "$firstName $lastName".trim()
-                    tvChatPartnerName.text = if (fullName.isNotEmpty()) fullName else "Lawyer"
+                    val name = lawyerSnapshot.child("name").value?.toString() ?: ""
+                    tvChatPartnerName.text = if (name.isNotEmpty()) name else "Lawyer"
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Lawyer not found!")
@@ -621,11 +619,41 @@ class ChatActivity : AppCompatActivity() {
 
                 Log.d("ChatActivity", "Found ${snapshot.childrenCount} messages")
                 for (messageSnapshot in snapshot.children) {
-                    val message = messageSnapshot.getValue(Message::class.java)
-                    if (message != null) {
-                        messagesList.add(message)
+                    try {
+                        // Try to parse as Message class
+                        val message = messageSnapshot.getValue(Message::class.java)
+                        if (message != null) {
+                            // Special handling for lawyer view - show all messages regardless of sender/receiver
+                            if (userType == "lawyer" ||
+                                message.senderId == currentUserId ||
+                                message.receiverId == currentUserId) {
+                                messagesList.add(message)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // For legacy messages that might not have all fields
+                        val msgMap = messageSnapshot.getValue(Map::class.java) as? Map<String, Any>
+                        if (msgMap != null) {
+                            val senderId = msgMap["senderId"] as? String ?: ""
+                            val messageText = msgMap["message"] as? String ?: ""
+                            val timestamp = msgMap["timestamp"] as? Long ?: 0L
+
+                            // For legacy messages, determine receiverId based on the conversation
+                            val receiverId = if (senderId == currentUserId) {
+                                determineReceiverId() ?: ""
+                            } else {
+                                currentUserId ?: ""
+                            }
+
+                            // Add as a properly formatted message
+                            messagesList.add(Message(senderId, receiverId, messageText, timestamp))
+                        }
                     }
                 }
+
+                // Sort messages by timestamp to ensure correct order
+                messagesList.sortBy { it.timestamp }
+
                 messagesAdapter.notifyDataSetChanged()
                 if (messagesList.isNotEmpty()) {
                     rvChatMessages.scrollToPosition(messagesList.size - 1)
