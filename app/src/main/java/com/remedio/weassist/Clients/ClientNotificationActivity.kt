@@ -1,5 +1,5 @@
 package com.remedio.weassist.Clients
-
+import com.google.android.gms.tasks.Tasks
 import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
@@ -303,24 +303,56 @@ class ClientNotificationActivity : AppCompatActivity() {
             "message" -> {
                 if (notification.conversationId != null) {
                     val intent = Intent(this, ChatActivity::class.java)
+                    intent.putExtra("CONVERSATION_ID", notification.conversationId)
 
-                    // Determine if the sender is a secretary
-                    database.child("secretaries").child(notification.senderId).get()
-                        .addOnSuccessListener { snapshot ->
-                            if (snapshot.exists()) {
-                                // If sender is a secretary
-                                intent.putExtra("SECRETARY_ID", notification.senderId)
+                    // Use Tasks to ensure we check all user types before starting activity
+                    val checkSecretary = database.child("secretaries").child(notification.senderId).get()
+                    val checkLawyer = database.child("lawyers").child(notification.senderId).get()
+                    val checkClient = database.child("Users").child(notification.senderId).get()
+
+                    Tasks.whenAllComplete(checkSecretary, checkLawyer, checkClient)
+                        .addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                val secretarySnapshot = checkSecretary.result
+                                val lawyerSnapshot = checkLawyer.result
+                                val clientSnapshot = checkClient.result
+
+                                // First check if sender is a secretary
+                                if (secretarySnapshot.exists()) {
+                                    intent.putExtra("SECRETARY_ID", notification.senderId)
+                                    Log.d("ChatActivity", "Opening chat with secretary ID: ${notification.senderId}")
+                                }
+                                // Then check if sender is a lawyer
+                                else if (lawyerSnapshot.exists()) {
+                                    intent.putExtra("LAWYER_ID", notification.senderId)
+                                    Log.d("ChatActivity", "Opening chat with lawyer ID: ${notification.senderId}")
+                                }
+                                // Finally check if sender is a client
+                                else if (clientSnapshot.exists()) {
+                                    intent.putExtra("CLIENT_ID", notification.senderId)
+                                    Log.d("ChatActivity", "Opening chat with client ID: ${notification.senderId}")
+                                }
+                                // If sender identity can't be determined
+                                else {
+                                    Log.e("ChatActivity", "Could not identify sender type for ID: ${notification.senderId}")
+                                    Toast.makeText(this@ClientNotificationActivity,
+                                        "Could not identify message sender",
+                                        Toast.LENGTH_SHORT).show()
+                                    return@addOnCompleteListener
+                                }
+
+                                // Start the chat activity only after we've identified the sender
+                                startActivity(intent)
                             } else {
-                                // Check if sender is a client
-                                database.child("Users").child(notification.senderId).get()
-                                    .addOnSuccessListener { userSnapshot ->
-                                        if (userSnapshot.exists()) {
-                                            intent.putExtra("CLIENT_ID", notification.senderId)
-                                        }
-                                    }
+                                // Handle task failure
+                                Log.e("ChatActivity", "Failed to fetch sender info: ${task.exception?.message}")
+                                Toast.makeText(this@ClientNotificationActivity,
+                                    "Failed to load conversation details",
+                                    Toast.LENGTH_SHORT).show()
                             }
-                            startActivity(intent)
                         }
+                } else {
+                    Toast.makeText(this, "Conversation not found", Toast.LENGTH_SHORT).show()
                 }
             }
             "appointment_accepted" -> {
