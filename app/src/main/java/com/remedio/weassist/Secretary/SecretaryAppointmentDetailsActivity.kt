@@ -13,6 +13,7 @@ import androidx.cardview.widget.CardView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
@@ -184,8 +185,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Fetch lawyer name
         fetchLawyerName(appointment.lawyerId)
 
-        // For demonstration, use a placeholder for secretary name
-        // In a real app, you would fetch this from the database
+        // Set secretary name
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
         if (currentUserId.isNotEmpty()) {
             tvSecretaryName.text = "Secretary: $currentSecretaryName"
@@ -361,470 +361,50 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private fun forwardAppointmentToLawyer(appointment: Appointment) {
         showLoading(true)
 
-        // Get database references
-        val database = FirebaseDatabase.getInstance()
-        val conversationsRef = database.getReference("conversations")
-
-        // Original conversation ID between secretary and client
-        val secretaryClientConvId = "${appointment.secretaryId}_${appointment.clientId}"
-
-        // Retrieve conversation between secretary and client
-        conversationsRef.child(secretaryClientConvId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var messageCount = 0
-                    if (snapshot.exists()) {
-                        // Count the number of messages
-                        messageCount = snapshot.child("messages").childrenCount.toInt()
-
-                        // Transfer conversation ownership to lawyer
-                        transferConversationToLawyer(
-                            secretaryClientConvId,
-                            appointment,
-                            snapshot
-                        )
-                    } else {
-                        // If no conversation exists, create a new one
-                        createNewLawyerClientConversation(appointment)
-                    }
-
-                    // Update appointment status to "Forwarded"
-                    updateAppointmentStatus(appointment)
-
-                    // Send notification with message count
-                    sendPriorityNotificationToLawyer(
-                        appointment.lawyerId,
-                        appointment,
-                        messageCount
-                    )
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    showLoading(false)
-                    Log.e("SecretaryAppointment", "Error retrieving conversation: ${error.message}")
-                    Toast.makeText(
-                        this@SecretaryAppointmentDetailsActivity,
-                        "Failed to retrieve conversation",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-            })
-    }
-
-    private fun updateAppointmentStatus(appointment: Appointment) {
         val database = FirebaseDatabase.getInstance()
 
-        // Update status in the main appointments node
-        database.getReference("appointments")
-            .child(appointment.appointmentId)
-            .child("status")
-            .setValue("Forwarded")
+        // Update status in the main appointments node and accepted_appointment node
+        val updateStatus = { ref: DatabaseReference ->
+            ref.child(appointment.appointmentId)
+                .child("status")
+                .setValue("Forwarded")
+        }
 
-        // Update status in accepted_appointment node
-        database.getReference("accepted_appointment")
-            .child(appointment.appointmentId)
-            .child("status")
-            .setValue("Forwarded")
+        updateStatus(database.getReference("appointments"))
+        updateStatus(database.getReference("accepted_appointment"))
 
         // Send priority notification to lawyer
-        sendPriorityNotificationToLawyer(
-            appointment.lawyerId,
-            appointment,
-            1
-        )
+        sendPriorityNotificationToLawyer(appointment.lawyerId, appointment)
+
+        showLoading(false)
+        Toast.makeText(
+            this,
+            "Appointment forwarded successfully",
+            Toast.LENGTH_SHORT
+        ).show()
+
+        // Update UI
+        tvStatus.text = "Status: Forwarded"
+        tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
+        cardViewForward.visibility = View.GONE
     }
 
-    private fun createNewLawyerClientConversation(appointment: Appointment) {
-        val database = FirebaseDatabase.getInstance()
-        val conversationsRef = database.getReference("conversations")
-        val lawyerClientConvId = "${appointment.lawyerId}_${appointment.clientId}"
-
-        // Get lawyer name
-        database.getReference("lawyers").child(appointment.lawyerId).child("name")
-            .get()
-            .addOnSuccessListener { lawyerSnap ->
-                val lawyerName = lawyerSnap.getValue(String::class.java) ?: "Lawyer"
-
-                // Setup participant IDs
-                val participantIds = mapOf(
-                    appointment.lawyerId to true,
-                    appointment.clientId to true
-                )
-
-                // Create initial message
-                val initialMessage = mapOf(
-                    "senderId" to appointment.secretaryId,
-                    "senderName" to currentSecretaryName,
-                    "message" to "This appointment has been forwarded to $lawyerName who will now handle your case. Original problem: ${appointment.problem}",
-                    "timestamp" to ServerValue.TIMESTAMP
-                )
-
-                // Create conversation data
-                val conversationData = mapOf(
-                    "participantIds" to participantIds,
-                    "lawyerId" to appointment.lawyerId,
-                    "clientId" to appointment.clientId,
-                    "appointmentId" to appointment.appointmentId,
-                    "unreadMessages" to mapOf(
-                        appointment.lawyerId to 1,
-                        appointment.clientId to 0
-                    )
-                )
-
-                // Save conversation
-                conversationsRef.child(lawyerClientConvId).setValue(conversationData)
-                    .addOnSuccessListener {
-                        // Add initial message
-                        conversationsRef.child(lawyerClientConvId)
-                            .child("messages")
-                            .push()
-                            .setValue(initialMessage)
-
-                        Log.d("SecretaryAppointment", "New lawyer-client conversation created")
-
-                        // Update UI
-                        tvStatus.text = "Status: Forwarded"
-                        tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
-                        cardViewForward.visibility = View.GONE
-
-                        showLoading(false)
-                        Toast.makeText(
-                            this@SecretaryAppointmentDetailsActivity,
-                            "Appointment forwarded to lawyer successfully",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                    .addOnFailureListener { e ->
-                        showLoading(false)
-                        Log.e("SecretaryAppointment", "Error creating lawyer conversation: ${e.message}")
-                        Toast.makeText(
-                            this@SecretaryAppointmentDetailsActivity,
-                            "Failed to forward to lawyer",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-            }
-            .addOnFailureListener { e ->
-                showLoading(false)
-                Log.e("SecretaryAppointment", "Error getting lawyer name: ${e.message}")
-            }
-    }
-
-    private fun transferConversationToLawyer(
-        secretaryClientConvId: String,
-        appointment: Appointment,
-        conversationSnapshot: DataSnapshot
-    ) {
-        val database = FirebaseDatabase.getInstance()
-        val conversationsRef = database.getReference("conversations")
-
-        // Create a new conversation ID for lawyer and client
-        val lawyerClientConvId = "${appointment.lawyerId}_${appointment.clientId}"
-
-        // Get all messages from the original conversation
-        val messages = mutableListOf<Map<String, Any>>()
-        conversationSnapshot.child("messages").children.forEach { messageSnap ->
-            messageSnap.getValue(Map::class.java)?.let {
-                // Add all existing messages to our list
-                messages.add(it as Map<String, Any>)
-            }
-        }
-
-        // Get lawyer name
-        database.getReference("lawyers").child(appointment.lawyerId).child("name")
-            .get()
-            .addOnSuccessListener { lawyerSnap ->
-                val lawyerName = lawyerSnap.getValue(String::class.java) ?: "Lawyer"
-
-                // Add transfer notification message
-                val transferMessage = mapOf(
-                    "senderId" to appointment.secretaryId,
-                    "senderName" to currentSecretaryName,
-                    "receiverId" to appointment.clientId, // Make sure receiverId is set for proper message display
-                    "message" to "This conversation has been transferred to $lawyerName who will now handle your case.",
-                    "timestamp" to ServerValue.TIMESTAMP
-                )
-                messages.add(transferMessage)
-
-                // Setup new participant IDs for the lawyer-client conversation
-                val participantIds = mapOf(
-                    appointment.lawyerId to true,
-                    appointment.clientId to true
-                )
-
-                // Create/Update the lawyer-client conversation
-                val conversationData = mapOf(
-                    "participantIds" to participantIds,
-                    "lawyerId" to appointment.lawyerId,
-                    "clientId" to appointment.clientId,
-                    "appointmentId" to appointment.appointmentId,
-                    "unreadMessages" to mapOf(
-                        appointment.lawyerId to messages.size, // Set unread count to the number of messages
-                        appointment.clientId to 0
-                    )
-                )
-
-                // Save the conversation data
-                conversationsRef.child(lawyerClientConvId).updateChildren(conversationData)
-                    .addOnSuccessListener {
-                        // Add all messages including the transfer notification
-                        val messagesRef = conversationsRef.child(lawyerClientConvId).child("messages")
-                        messagesRef.removeValue() // Clear any existing messages
-                            .addOnSuccessListener {
-                                // Add all messages in order
-                                var counter = 0
-                                for (message in messages) {
-                                    // Ensure each message has senderId and receiverId
-                                    val completeMessage = ensureMessageFields(message, appointment)
-                                    messagesRef.push().setValue(completeMessage)
-                                        .addOnSuccessListener {
-                                            counter++
-                                            if (counter == messages.size) {
-                                                // All messages transferred, now archive the secretary conversation
-                                                archiveSecretaryConversation(secretaryClientConvId, appointment)
-                                            }
-                                        }
-                                }
-
-                                Log.d("SecretaryAppointment", "Conversation transferred to lawyer successfully")
-
-                                // Update UI
-                                tvStatus.text = "Status: Forwarded"
-                                tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
-                                cardViewForward.visibility = View.GONE
-
-                                showLoading(false)
-                                Toast.makeText(
-                                    this@SecretaryAppointmentDetailsActivity,
-                                    "Conversation transferred to lawyer successfully",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                    }
-                    .addOnFailureListener { e ->
-                        showLoading(false)
-                        Log.e("SecretaryAppointment", "Error transferring conversation: ${e.message}")
-                        Toast.makeText(
-                            this@SecretaryAppointmentDetailsActivity,
-                            "Failed to transfer conversation",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-            }
-            .addOnFailureListener { e ->
-                showLoading(false)
-                Log.e("SecretaryAppointment", "Error getting lawyer name: ${e.message}")
-            }
-    }
-
-    // Add this helper method to ensure all message fields are properly set
-    private fun ensureMessageFields(message: Map<String, Any>, appointment: Appointment): Map<String, Any> {
-        val result = message.toMutableMap()
-
-        // If message doesn't have receiverId, add it based on senderId
-        if (!result.containsKey("receiverId")) {
-            val senderId = message["senderId"] as? String
-            result["receiverId"] = if (senderId == appointment.secretaryId) {
-                appointment.clientId
-            } else {
-                appointment.secretaryId
-            }
-        }
-
-        return result
-    }
-
-    private fun archiveSecretaryConversation(conversationId: String, appointment: Appointment) {
-        val database = FirebaseDatabase.getInstance()
-        val conversationsRef = database.getReference("conversations")
-
-        // Mark the secretary conversation as archived by removing participation
-        val updates = mapOf(
-            "participantIds/${appointment.secretaryId}" to false,
-            "archived" to true
-        )
-
-        conversationsRef.child(conversationId).updateChildren(updates)
-            .addOnSuccessListener {
-                Log.d("SecretaryAppointment", "Secretary conversation archived")
-            }
-            .addOnFailureListener { e ->
-                Log.e("SecretaryAppointment", "Error archiving secretary conversation: ${e.message}")
-            }
-    }
-
-    private fun createLawyerClientConversation(appointment: Appointment, conversationHistory: List<Map<String, Any>>) {
-        val database = FirebaseDatabase.getInstance()
-        val conversationsRef = database.getReference("conversations")
-
-        // Create a conversation ID for lawyer and client
-        val conversationId = "${appointment.lawyerId}_${appointment.clientId}"
-
-        // Check if conversation already exists
-        conversationsRef.child(conversationId).addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!snapshot.exists()) {
-                    // Create new conversation
-                    val participantIds = mapOf(
-                        appointment.lawyerId to true,
-                        appointment.clientId to true
-                    )
-
-                    // Get lawyer and client names
-                    fetchParticipantNames(appointment.lawyerId, appointment.clientId) { lawyerName, clientName ->
-                        // Create initial message about forwarded appointment
-                        val initialMessage = mapOf(
-                            "senderId" to appointment.secretaryId,
-                            "senderName" to currentSecretaryName,
-                            "message" to "This conversation has been forwarded from secretary $currentSecretaryName regarding appointment on ${appointment.date} at ${appointment.time}. Original problem: ${appointment.problem}",
-                            "timestamp" to ServerValue.TIMESTAMP
-                        )
-
-                        // Create conversation data
-                        val conversationData = mapOf(
-                            "participantIds" to participantIds,
-                            "createdAt" to ServerValue.TIMESTAMP,
-                            "lawyerId" to appointment.lawyerId,
-                            "clientId" to appointment.clientId,
-                            "lawyerName" to lawyerName,
-                            "clientName" to clientName,
-                            "appointmentId" to appointment.appointmentId,
-                            "unreadMessages" to mapOf(
-                                appointment.lawyerId to 1,
-                                appointment.clientId to 0
-                            )
-                        )
-
-                        // Save conversation
-                        conversationsRef.child(conversationId).setValue(conversationData)
-                            .addOnSuccessListener {
-                                // Add initial message
-                                conversationsRef.child(conversationId)
-                                    .child("messages")
-                                    .push()
-                                    .setValue(initialMessage)
-
-                                // Add previous conversation history if available
-                                if (conversationHistory.isNotEmpty()) {
-                                    val messagesRef = conversationsRef.child(conversationId).child("messages")
-                                    for (message in conversationHistory) {
-                                        messagesRef.push().setValue(message)
-                                    }
-                                }
-
-                                Log.d("SecretaryAppointment", "Lawyer-client conversation created successfully")
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("SecretaryAppointment", "Failed to create lawyer-client conversation: ${e.message}")
-                            }
-                    }
-                } else {
-                    // Conversation already exists, just add a new message about forwarding
-                    val forwardMessage = mapOf(
-                        "senderId" to appointment.secretaryId,
-                        "senderName" to currentSecretaryName,
-                        "message" to "This appointment has been forwarded to the lawyer. Original problem: ${appointment.problem}",
-                        "timestamp" to ServerValue.TIMESTAMP
-                    )
-
-                    conversationsRef.child(conversationId)
-                        .child("messages")
-                        .push()
-                        .setValue(forwardMessage)
-
-                    // Increment unread count for lawyer
-                    conversationsRef.child(conversationId)
-                        .child("unreadMessages")
-                        .child(appointment.lawyerId)
-                        .addListenerForSingleValueEvent(object : ValueEventListener {
-                            override fun onDataChange(snapshot: DataSnapshot) {
-                                val currentCount = snapshot.getValue(Int::class.java) ?: 0
-                                conversationsRef.child(conversationId)
-                                    .child("unreadMessages")
-                                    .child(appointment.lawyerId)
-                                    .setValue(currentCount + 1)
-                            }
-
-                            override fun onCancelled(error: DatabaseError) {
-                                Log.e("SecretaryAppointment", "Error updating unread count: ${error.message}")
-                            }
-                        })
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("SecretaryAppointment", "Error checking existing conversation: ${error.message}")
-            }
-        })
-    }
-
-    private fun fetchParticipantNames(lawyerId: String, clientId: String, callback: (String, String) -> Unit) {
-        val database = FirebaseDatabase.getInstance()
-        var lawyerName = "Lawyer"
-        var clientName = "Client"
-        var completedFetches = 0
-
-        // Fetch lawyer name
-        database.getReference("lawyers").child(lawyerId).child("name")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    lawyerName = snapshot.getValue(String::class.java) ?: "Lawyer"
-                    completedFetches++
-                    if (completedFetches == 2) callback(lawyerName, clientName)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("SecretaryAppointment", "Error fetching lawyer name: ${error.message}")
-                    completedFetches++
-                    if (completedFetches == 2) callback(lawyerName, clientName)
-                }
-            })
-
-        // Fetch client name
-        database.getReference("Users").child(clientId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
-                    val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
-                    clientName = "$firstName $lastName".trim()
-                    if (clientName.isEmpty()) clientName = "Client"
-
-                    completedFetches++
-                    if (completedFetches == 2) callback(lawyerName, clientName)
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("SecretaryAppointment", "Error fetching client name: ${error.message}")
-                    completedFetches++
-                    if (completedFetches == 2) callback(lawyerName, clientName)
-                }
-            })
-    }
-
-
-    private fun sendPriorityNotificationToLawyer(lawyerId: String, appointment: Appointment,
-                                                  conversationCount: Int = 0) {
+    private fun sendPriorityNotificationToLawyer(lawyerId: String, appointment: Appointment) {
         val database = FirebaseDatabase.getInstance().reference
         val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
-
-        val conversationInfo = if (conversationCount > 0) {
-            " (Previous conversation history included)"
-        } else {
-            ""
-        }
 
         val notificationData = mapOf(
             "id" to notificationId,
             "senderId" to FirebaseAuth.getInstance().currentUser?.uid,
             "senderName" to currentSecretaryName,
-            "message" to "PRIORITY: Appointment with ${appointment.fullName} on ${appointment.date} at ${appointment.time} has been forwarded to you.$conversationInfo",
+            "message" to "PRIORITY: Appointment with ${appointment.fullName} on ${appointment.date} at ${appointment.time} has been forwarded to you.",
             "timestamp" to ServerValue.TIMESTAMP,
             "type" to "appointment_forwarded",
             "isRead" to false,
             "priority" to true,
             "appointmentId" to appointment.appointmentId,
             "hasConversation" to true,
-            "conversationId" to "${lawyerId}_${appointment.clientId}" // Add conversation ID to notification
+            "conversationId" to "${lawyerId}_${appointment.clientId}"
         )
 
         database.child("notifications").child(lawyerId).child(notificationId)
@@ -837,6 +417,11 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             }
     }
 
+    private fun showLoading(isLoading: Boolean) {
+        progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+    }
+
+    // Retained methods for sending notifications to client and lawyer
     private fun sendNotificationToClient(clientId: String, secretaryId: String, appointment: Appointment) {
         val database = FirebaseDatabase.getInstance().reference
         val notificationId = database.child("notifications").child(clientId).push().key ?: return
@@ -885,9 +470,5 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 Log.e("Notification", "Failed to send notification to lawyer: ${e.message}")
             }
-    }
-
-    private fun showLoading(isLoading: Boolean) {
-        progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
     }
 }
