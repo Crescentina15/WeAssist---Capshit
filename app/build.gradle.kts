@@ -61,6 +61,7 @@ dependencies {
     // Navigation Component dependencies
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.3")
     implementation("androidx.navigation:navigation-ui-ktx:2.7.3")
+    implementation ("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     // Material Design CardView
     implementation("com.google.android.material:material:1.9.0")
