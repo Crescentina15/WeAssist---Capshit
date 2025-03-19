@@ -9,11 +9,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Lawyer.LawyersListActivity
@@ -30,6 +32,7 @@ class SecretaryDashboardFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var appointmentAdapter: SecretaryAppointmentAdapter
     private var appointmentList = mutableListOf<Appointment>()
+    private lateinit var profileImageView: ImageView // Add this line
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -42,6 +45,7 @@ class SecretaryDashboardFragment : Fragment() {
 
         secretaryNameTextView = view.findViewById(R.id.secretary_fname)
         secretaryFirmTextView = view.findViewById(R.id.secretary_firm)
+        profileImageView = view.findViewById(R.id.profile_image) // Initialize the ImageView
 
         loadSecretaryDetails()
 
@@ -155,6 +159,32 @@ class SecretaryDashboardFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 secretaryFirmTextView.text = "Error loading law firm"
+            }
+        })
+
+        // Load profile picture
+        databaseReference.child(userId).child("profilePicture").addListenerForSingleValueEvent(object :
+            ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Check if the fragment is still attached and in a valid state
+                if (!isAdded || isDetached || view == null) return
+
+                val profilePicUrl = snapshot.value?.toString()
+                if (!profilePicUrl.isNullOrEmpty()) {
+                    profileImageView?.let { imageView ->
+                        Glide.with(requireContext())
+                            .load(profilePicUrl)
+                            .placeholder(R.drawable.account_circle_24)
+                            .error(R.drawable.account_circle_24)
+                            .into(imageView)
+                    }
+                } else {
+                    profileImageView?.setImageResource(R.drawable.account_circle_24) // Set default image if URL is null
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryDashboardFragment", "Error loading profile picture: ${error.message}")
             }
         })
     }

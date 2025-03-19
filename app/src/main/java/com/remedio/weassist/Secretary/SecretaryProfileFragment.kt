@@ -49,7 +49,8 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
     private fun fetchSecretaryData(userId: String) {
         database.child(userId).addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded || view == null) return // Prevent crashes if fragment is not attached
+                // Check if the fragment is still attached and in a valid state
+                if (!isAdded || isDetached || view == null) return
 
                 nameTextView?.text = snapshot.child("name").getValue(String::class.java) ?: "N/A"
 
@@ -57,6 +58,7 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
 
                 if (!profilePicUrl.isNullOrEmpty()) {
                     profileImage?.let { imageView ->
+                        // Use requireContext() to ensure the context is valid
                         Glide.with(requireContext())
                             .load(profilePicUrl)
                             .placeholder(R.drawable.account_circle_24)
@@ -84,14 +86,13 @@ class SecretaryProfileFragment : Fragment(R.layout.fragment_secretary_profile) {
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
     }
+
     private fun clearUserSession() {
         val sharedPreferences = requireContext().getSharedPreferences("LoginPrefs", Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.clear() // Remove all saved login details
         editor.apply()
     }
-
-
 
     private fun showToast(message: String) {
         if (isAdded) {
