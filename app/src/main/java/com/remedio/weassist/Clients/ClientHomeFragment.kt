@@ -11,9 +11,11 @@ import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Miscellaneous.ChatbotActivity
@@ -26,6 +28,7 @@ class ClientHomeFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private lateinit var welcomeMessageTextView: TextView
     private lateinit var specializationsLayout: GridLayout
+    private lateinit var profileImageView: ImageView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -42,14 +45,15 @@ class ClientHomeFragment : Fragment() {
         specializationsLayout = view.findViewById(R.id.specializations_layout)
         val searchButton: Button = view.findViewById(R.id.search_button)
         val notificationButton: ImageButton = view.findViewById(R.id.notification_icon) // Notifications button
+        profileImageView = view.findViewById(R.id.profile_image) // Initialize profileImageView
+
+        // Fetch user's first name and profile image URL from Firebase
+        auth.currentUser?.let { fetchUserData(it.uid) } ?: run {
+            Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
+        }
 
         // Setup notification badge
         setupNotificationBadge(notificationButton)
-
-        // Fetch user's first name from Firebase
-        auth.currentUser?.let { fetchUserFirstName(it.uid) } ?: run {
-            Toast.makeText(context, "User not logged in", Toast.LENGTH_SHORT).show()
-        }
 
         // Click listener for chatbot
         searchButton.setOnClickListener {
@@ -67,6 +71,49 @@ class ClientHomeFragment : Fragment() {
         fetchSpecializations()
 
         return view
+    }
+
+    private fun fetchUserData(userId: String) {
+        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId)
+
+        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Check if the Fragment is still attached and in a valid state
+                if (!isAdded || isDetached || activity == null) {
+                    return
+                }
+
+                if (snapshot.exists()) {
+                    // Fetch and display the user's first name
+                    val firstName = snapshot.child("firstName").getValue(String::class.java)
+                    if (!firstName.isNullOrEmpty()) {
+                        welcomeMessageTextView.text = "Welcome!\n$firstName"
+                    } else {
+                        Log.e("Firebase", "First name is null or empty")
+                        welcomeMessageTextView.text = "Welcome!"
+                    }
+
+                    // Fetch and display the profile image URL
+                    val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                    if (!profileImageUrl.isNullOrEmpty()) {
+                        // Ensure the Fragment is still in a valid state before loading the image
+                        if (isAdded && !isDetached && activity != null) {
+                            Glide.with(requireContext()).load(profileImageUrl).into(profileImageView)
+                        }
+                    } else {
+                        Log.e("Firebase", "Profile image URL is null or empty")
+                    }
+                } else {
+                    Log.e("Firebase", "User data not found")
+                    welcomeMessageTextView.text = "Welcome!"
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Database error: ${error.message}")
+                welcomeMessageTextView.text = "Welcome!"
+            }
+        })
     }
 
     private fun setupNotificationBadge(notificationButton: ImageButton) {
@@ -130,32 +177,6 @@ class ClientHomeFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("ClientHomeFragment", "Error loading notification count: ${error.message}")
-            }
-        })
-    }
-
-    private fun fetchUserFirstName(userId: String) {
-        val userRef = FirebaseDatabase.getInstance().getReference("Users").child(userId)
-
-        userRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    val firstName = snapshot.child("firstName").getValue(String::class.java)
-                    if (!firstName.isNullOrEmpty()) {
-                        welcomeMessageTextView.text = "Welcome!\n$firstName"
-                    } else {
-                        Log.e("Firebase", "First name is null or empty")
-                        welcomeMessageTextView.text = "Welcome!"
-                    }
-                } else {
-                    Log.e("Firebase", "User data not found")
-                    welcomeMessageTextView.text = "Welcome!"
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("Firebase", "Database error: ${error.message}")
-                welcomeMessageTextView.text = "Welcome!"
             }
         })
     }

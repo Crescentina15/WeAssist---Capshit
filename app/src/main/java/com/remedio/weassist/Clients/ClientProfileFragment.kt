@@ -78,7 +78,10 @@ class ClientProfileFragment : Fragment() {
     private fun fetchUserData(userId: String) {
         database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded) return
+                // Check if the Fragment is still attached and in a valid state
+                if (!isAdded || isDetached || activity == null) {
+                    return
+                }
 
                 if (snapshot.exists()) {
                     val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
@@ -87,8 +90,11 @@ class ClientProfileFragment : Fragment() {
 
                     usernameTextView.text = "$firstName $lastName".trim()
 
-                    if (profileImageUrl.isNotEmpty()) {
-                        Glide.with(requireContext()).load(profileImageUrl).into(profileImageView)
+                    // Ensure the Fragment is still in a valid state before loading the image
+                    if (isAdded && !isDetached && activity != null) {
+                        if (profileImageUrl.isNotEmpty()) {
+                            Glide.with(requireContext()).load(profileImageUrl).into(profileImageView)
+                        }
                     }
                 } else {
                     showToast("User data not found!")
@@ -96,7 +102,7 @@ class ClientProfileFragment : Fragment() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                if (isAdded) {
+                if (isAdded && !isDetached && activity != null) {
                     showToast("Database error: ${error.message}")
                 }
             }
@@ -104,7 +110,7 @@ class ClientProfileFragment : Fragment() {
     }
 
     private fun logoutUser() {
-        if (!isAdded) return
+        if (!isAdded || isDetached || activity == null) return
 
         val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         sharedPreferences.edit().clear().apply()
@@ -117,13 +123,13 @@ class ClientProfileFragment : Fragment() {
     }
 
     private fun openActivity(activityClass: Class<*>) {
-        if (isAdded) {
+        if (isAdded && !isDetached && activity != null) {
             startActivity(Intent(requireActivity(), activityClass))
         }
     }
 
     private fun showToast(message: String) {
-        if (isAdded) {
+        if (isAdded && !isDetached && activity != null) {
             Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
         }
     }
