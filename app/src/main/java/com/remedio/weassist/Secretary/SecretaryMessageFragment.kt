@@ -113,12 +113,11 @@ class SecretaryMessageFragment : Fragment() {
     }
 
     private fun createNewLawyerClientConversation(lawyerId: String, clientId: String, originalConversationId: String) {
-        // Get the conversation reference
-        val conversationsRef = database.child("conversations")
+        // Generate the new conversation ID correctly using the existing pattern
+        val newConversationId = generateConversationId(clientId, lawyerId)
 
-        // Create a new conversation entry
-        val newConversationRef = conversationsRef.push()
-        val newConversationId = newConversationRef.key!!
+        // Get the conversation reference
+        val newConversationRef = database.child("conversations").child(newConversationId)
 
         // Get the lawyer's name
         database.child("lawyers").child(lawyerId).get()
@@ -137,14 +136,6 @@ class SecretaryMessageFragment : Fragment() {
                     lawyerId to 0   // Lawyer has 0 unread messages (since they're sending the first one)
                 )
 
-                // Create the welcome message
-                val welcomeMessage = mapOf(
-                    "message" to "Hello, I'm Attorney $lawyerName. I've been assigned to provide you with legal assistance.",
-                    "senderId" to lawyerId,
-                    "receiverId" to clientId,
-                    "timestamp" to ServerValue.TIMESTAMP
-                )
-
                 // Create conversation data
                 val conversationData = hashMapOf(
                     "participantIds" to participantIds,
@@ -158,6 +149,13 @@ class SecretaryMessageFragment : Fragment() {
                 newConversationRef.setValue(conversationData)
                     .addOnSuccessListener {
                         // Add the welcome message
+                        val welcomeMessage = mapOf(
+                            "message" to "Hello, I'm Attorney $lawyerName. I've been assigned to provide you with legal assistance.",
+                            "senderId" to lawyerId,
+                            "receiverId" to clientId,
+                            "timestamp" to ServerValue.TIMESTAMP
+                        )
+
                         newConversationRef.child("messages").push().setValue(welcomeMessage)
                             .addOnSuccessListener {
                                 // Add notification to the original conversation
@@ -168,6 +166,9 @@ class SecretaryMessageFragment : Fragment() {
                                     "New conversation created with Attorney $lawyerName",
                                     Toast.LENGTH_SHORT
                                 ).show()
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SecretaryMessageFragment", "Failed to add welcome message: ${e.message}")
                             }
                     }
                     .addOnFailureListener { e ->
@@ -180,44 +181,71 @@ class SecretaryMessageFragment : Fragment() {
                     }
             }
             .addOnFailureListener { e ->
-                // Fallback if we can't get the lawyer's name
-                val conversationData = hashMapOf(
-                    "participantIds" to hashMapOf(
-                        lawyerId to true,
-                        clientId to true
-                    ),
-                    "unreadMessages" to hashMapOf(
-                        clientId to 1,
-                        lawyerId to 0
-                    ),
-                    "appointedLawyerId" to lawyerId,
-                    "originalConversationId" to originalConversationId,
-                    "handledByLawyer" to true
+                Log.e("SecretaryMessageFragment", "Failed to get lawyer name: ${e.message}")
+                // Call the fallback method if we can't get the lawyer's name
+                createNewConversationWithGenericLawyer(lawyerId, clientId, originalConversationId)
+            }
+    }
+
+    // Add this new helper function
+    private fun generateConversationId(user1: String, user2: String): String {
+        return if (user1 < user2) {
+            "conversation_${user1}_${user2}"
+        } else {
+            "conversation_${user2}_${user1}"
+        }
+    }
+
+    // Add this new fallback method
+    private fun createNewConversationWithGenericLawyer(lawyerId: String, clientId: String, originalConversationId: String) {
+        val newConversationId = generateConversationId(clientId, lawyerId)
+
+        // Set up conversation data
+        val conversationData = hashMapOf(
+            "participantIds" to hashMapOf(
+                lawyerId to true,
+                clientId to true
+            ),
+            "unreadMessages" to hashMapOf(
+                clientId to 1,
+                lawyerId to 0
+            ),
+            "appointedLawyerId" to lawyerId,
+            "originalConversationId" to originalConversationId,
+            "handledByLawyer" to true
+        )
+
+        // First create the conversation
+        database.child("conversations").child(newConversationId)
+            .setValue(conversationData)
+            .addOnSuccessListener {
+                // Then add the welcome message
+                val welcomeMessage = mapOf(
+                    "message" to "Hello, I'm your assigned attorney. I've been assigned to provide you with legal assistance.",
+                    "senderId" to lawyerId,
+                    "receiverId" to clientId,
+                    "timestamp" to ServerValue.TIMESTAMP
                 )
 
-                // Save the conversation data
-                newConversationRef.setValue(conversationData)
+                database.child("conversations").child(newConversationId)
+                    .child("messages").push().setValue(welcomeMessage)
                     .addOnSuccessListener {
-                        // Add a generic welcome message
-                        val welcomeMessage = mapOf(
-                            "message" to "Hello, I'm your assigned attorney. I'll be providing you with legal assistance.",
-                            "senderId" to lawyerId,
-                            "receiverId" to clientId,
-                            "timestamp" to ServerValue.TIMESTAMP
-                        )
+                        addNotificationToOriginalConversation(originalConversationId, lawyerId, "a lawyer")
 
-                        newConversationRef.child("messages").push().setValue(welcomeMessage)
-                            .addOnSuccessListener {
-                                // Add notification to the original conversation
-                                addNotificationToOriginalConversation(originalConversationId, lawyerId, "a lawyer")
-
-                                Toast.makeText(
-                                    requireContext(),
-                                    "New conversation created with a lawyer",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
+                        Toast.makeText(
+                            requireContext(),
+                            "New conversation created with a lawyer",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to create new conversation: ${e.message}")
+                Toast.makeText(
+                    requireContext(),
+                    "Failed to create new conversation",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 

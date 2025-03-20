@@ -639,12 +639,9 @@ class ChatActivity : AppCompatActivity() {
                             // Try to parse as Message class
                             val message = messageSnapshot.getValue(Message::class.java)
                             if (message != null) {
-                                // Special handling for lawyer view - show all messages regardless of sender/receiver
-                                if (userType == "lawyer" ||
-                                    message.senderId == currentUserId ||
-                                    message.receiverId == currentUserId) {
-                                    messagesList.add(message)
-                                }
+                                // Show ALL messages in this conversation
+                                // No filtering by sender/receiver - this is key!
+                                messagesList.add(message)
                             }
                         }
                     } catch (e: Exception) {
