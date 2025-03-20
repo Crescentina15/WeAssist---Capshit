@@ -22,6 +22,7 @@ import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
 import com.remedio.weassist.MessageConversation.Conversation
 import com.remedio.weassist.MessageConversation.ConversationAdapter
+import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.R
 
 class SecretaryMessageFragment : Fragment() {
@@ -83,42 +84,118 @@ class SecretaryMessageFragment : Fragment() {
     }
 
     private fun forwardConversationToLawyer(conversation: Conversation) {
-        // First, get the appointed lawyer ID if one exists
-        database.child("conversations").child(conversation.conversationId)
-            .child("appointedLawyerId").get()
-            .addOnSuccessListener { snapshot ->
-                val lawyerId = if (snapshot.exists() && snapshot.getValue(String::class.java) != null) {
-                    // Use the appointed lawyer if one exists
-                    snapshot.getValue(String::class.java)!!
-                } else {
-                    // Find any lawyer if no appointed lawyer exists
-                    findAvailableLawyer()
+        // First, check the accepted_appointment node
+        database.child("accepted_appointment")
+            .orderByChild("clientId").equalTo(conversation.clientId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Find the most recent accepted or forwarded appointment in accepted_appointment
+                    var validAppointment = snapshot.children
+                        .mapNotNull {
+                            val appointment = it.getValue(Appointment::class.java)
+                            appointment?.apply {
+                                appointmentId = it.key ?: ""
+                            }
+                        }
+                        .filter { it.status in listOf("Accepted", "Forwarded") }
+                        .maxByOrNull {
+                            // Parse the date to determine recency
+                            try {
+                                // Assuming date is in format "MM/dd/yyyy"
+                                val dateParts = it.date.split("/")
+                                "${dateParts[2]}${dateParts[0].padStart(2, '0')}${dateParts[1].padStart(2, '0')}".toInt()
+                            } catch (e: Exception) {
+                                0 // Default to earliest if date parsing fails
+                            }
+                        }
+
+                    // If no valid appointment in accepted_appointment, check the main appointments node
+                    if (validAppointment == null) {
+                        checkMainAppointmentsNode(conversation)
+                    } else {
+                        // If a valid appointment exists in accepted_appointment, proceed with forwarding
+                        proceedWithConversationForwarding(conversation, validAppointment)
+                    }
                 }
 
-                if (lawyerId != null) {
-                    // Mark the conversation as forwarded
-                    database.child("conversations").child(conversation.conversationId)
-                        .child("forwarded").setValue(true)
-                        .addOnSuccessListener {
-                            // Create a new conversation between the lawyer and client
-                            createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e("SecretaryMessageFragment", "Failed to mark conversation as forwarded: ${e.message}")
-                            // Still create the conversation even if marking as forwarded fails
-                            createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
-                        }
-                } else {
-                    noLawyersFoundMessage()
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryMessageFragment", "Error checking accepted appointments: ${error.message}")
+                    // Fallback to main appointments node
+                    checkMainAppointmentsNode(conversation)
                 }
+            })
+    }
+
+    private fun checkMainAppointmentsNode(conversation: Conversation) {
+        database.child("appointments")
+            .orderByChild("clientId").equalTo(conversation.clientId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Find the most recent accepted or forwarded appointment
+                    val validAppointment = snapshot.children
+                        .mapNotNull {
+                            val appointment = it.getValue(Appointment::class.java)
+                            appointment?.apply {
+                                appointmentId = it.key ?: ""
+                            }
+                        }
+                        .filter { it.status in listOf("Accepted", "Forwarded") }
+                        .maxByOrNull {
+                            // Parse the date to determine recency
+                            try {
+                                // Assuming date is in format "MM/dd/yyyy"
+                                val dateParts = it.date.split("/")
+                                "${dateParts[2]}${dateParts[0].padStart(2, '0')}${dateParts[1].padStart(2, '0')}".toInt()
+                            } catch (e: Exception) {
+                                0 // Default to earliest if date parsing fails
+                            }
+                        }
+
+                    if (validAppointment == null) {
+                        // No valid appointment found
+                        Toast.makeText(
+                            requireContext(),
+                            "Cannot forward: No accepted or forwarded appointment found for this client",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        return
+                    }
+
+                    // If a valid appointment exists, proceed with forwarding
+                    proceedWithConversationForwarding(conversation, validAppointment)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryMessageFragment", "Error checking appointments: ${error.message}")
+                    Toast.makeText(
+                        requireContext(),
+                        "Error checking appointment status",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            })
+    }
+
+    private fun proceedWithConversationForwarding(conversation: Conversation, appointment: Appointment) {
+        // First, get the appointed lawyer ID from the appointment
+        val lawyerId = appointment.lawyerId
+
+        if (lawyerId.isNullOrEmpty()) {
+            noLawyersFoundMessage()
+            return
+        }
+
+        // Mark the conversation as forwarded
+        database.child("conversations").child(conversation.conversationId)
+            .child("forwarded").setValue(true)
+            .addOnSuccessListener {
+                // Create a new conversation between the lawyer and client
+                createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
             }
             .addOnFailureListener { e ->
-                Log.e("SecretaryMessageFragment", "Failed to check for appointed lawyer: ${e.message}")
-                Toast.makeText(
-                    requireContext(),
-                    "Error checking appointment details: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Log.e("SecretaryMessageFragment", "Failed to mark conversation as forwarded: ${e.message}")
+                // Still create the conversation even if marking as forwarded fails
+                createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
             }
     }
 
