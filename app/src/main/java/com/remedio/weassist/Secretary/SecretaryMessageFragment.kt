@@ -96,8 +96,18 @@ class SecretaryMessageFragment : Fragment() {
                 }
 
                 if (lawyerId != null) {
-                    // Create a new conversation between the lawyer and client
-                    createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+                    // Mark the conversation as forwarded
+                    database.child("conversations").child(conversation.conversationId)
+                        .child("forwarded").setValue(true)
+                        .addOnSuccessListener {
+                            // Create a new conversation between the lawyer and client
+                            createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SecretaryMessageFragment", "Failed to mark conversation as forwarded: ${e.message}")
+                            // Still create the conversation even if marking as forwarded fails
+                            createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+                        }
                 } else {
                     noLawyersFoundMessage()
                 }
@@ -142,7 +152,8 @@ class SecretaryMessageFragment : Fragment() {
                     "unreadMessages" to unreadMessages,
                     "appointedLawyerId" to lawyerId,
                     "originalConversationId" to originalConversationId,  // Reference to the original conversation
-                    "handledByLawyer" to true
+                    "handledByLawyer" to true,
+                    "forwardedFromSecretary" to true  // Add flag indicating this was forwarded from secretary
                 )
 
                 // Save the conversation data
@@ -212,7 +223,8 @@ class SecretaryMessageFragment : Fragment() {
             ),
             "appointedLawyerId" to lawyerId,
             "originalConversationId" to originalConversationId,
-            "handledByLawyer" to true
+            "handledByLawyer" to true,
+            "forwardedFromSecretary" to true  // Add flag indicating this was forwarded from secretary
         )
 
         // First create the conversation

@@ -107,6 +107,9 @@ class ChatActivity : AppCompatActivity() {
                                 conversationId = convId
                                 Log.d("ChatActivity", "Found conversationId: $conversationId from appointmentId")
 
+                                // Check if the conversation is forwarded
+                                checkForwardedStatus(conversationId!!)
+
                                 // Now determine user type before extracting participant info
                                 if (userType == null) {
                                     determineCurrentUserType()
@@ -601,6 +604,9 @@ class ChatActivity : AppCompatActivity() {
         val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         Log.d("ChatActivity", "Listening for messages with conversationId: $actualConversationId")
 
+        // Check if this conversation has been forwarded
+        checkForwardedStatus(actualConversationId)
+
         // Reset unread messages counter for this user
         database.child("conversations").child(actualConversationId)
             .child("unreadMessages")
@@ -684,5 +690,44 @@ class ChatActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext, "Failed to load messages", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    // Add this new method to check if conversation has been forwarded
+    private fun checkForwardedStatus(conversationId: String) {
+        database.child("conversations").child(conversationId)
+            .child("forwarded").addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val isForwarded = snapshot.getValue(Boolean::class.java) ?: false
+
+                    if (isForwarded) {
+                        // Disable messaging in forwarded conversations
+                        disableMessaging()
+
+                        // Show a message indicating the conversation has been forwarded
+                        Toast.makeText(
+                            applicationContext,
+                            "This conversation has been forwarded to a lawyer. Please use the new conversation.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ChatActivity", "Error checking forwarded status: ${error.message}")
+                }
+            })
+    }
+
+    // Add this method to disable the messaging UI
+    private fun disableMessaging() {
+        // Disable the input field and send button
+        etMessageInput.isEnabled = false
+        btnSendMessage.isEnabled = false
+
+        // Change hint text to indicate messaging is disabled
+        etMessageInput.hint = "This conversation has been forwarded to a lawyer"
+
+        // Optional: Add a visual indicator that the conversation is read-only
+        etMessageInput.setBackgroundResource(R.drawable.bg_input_disabled) // Create this drawable
     }
 }
