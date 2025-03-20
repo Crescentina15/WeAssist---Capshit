@@ -620,14 +620,31 @@ class ChatActivity : AppCompatActivity() {
                 Log.d("ChatActivity", "Found ${snapshot.childrenCount} messages")
                 for (messageSnapshot in snapshot.children) {
                     try {
-                        // Try to parse as Message class
-                        val message = messageSnapshot.getValue(Message::class.java)
-                        if (message != null) {
-                            // Special handling for lawyer view - show all messages regardless of sender/receiver
-                            if (userType == "lawyer" ||
-                                message.senderId == currentUserId ||
-                                message.receiverId == currentUserId) {
-                                messagesList.add(message)
+                        // Check if this is a system message first
+                        val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
+                        if (senderId == "system") {
+                            // This is a system message
+                            val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
+                            val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                            // Create a Message object for the system message
+                            val systemMessage = Message(
+                                senderId = "system",
+                                receiverId = "", // System messages don't have a specific receiver
+                                message = messageText,
+                                timestamp = timestamp
+                            )
+                            messagesList.add(systemMessage)
+                        } else {
+                            // Try to parse as Message class
+                            val message = messageSnapshot.getValue(Message::class.java)
+                            if (message != null) {
+                                // Special handling for lawyer view - show all messages regardless of sender/receiver
+                                if (userType == "lawyer" ||
+                                    message.senderId == currentUserId ||
+                                    message.receiverId == currentUserId) {
+                                    messagesList.add(message)
+                                }
                             }
                         }
                     } catch (e: Exception) {
@@ -638,15 +655,20 @@ class ChatActivity : AppCompatActivity() {
                             val messageText = msgMap["message"] as? String ?: ""
                             val timestamp = msgMap["timestamp"] as? Long ?: 0L
 
-                            // For legacy messages, determine receiverId based on the conversation
-                            val receiverId = if (senderId == currentUserId) {
-                                determineReceiverId() ?: ""
+                            // Check if this is a system message
+                            if (senderId == "system") {
+                                messagesList.add(Message(senderId, "", messageText, timestamp))
                             } else {
-                                currentUserId ?: ""
-                            }
+                                // For legacy messages, determine receiverId based on the conversation
+                                val receiverId = if (senderId == currentUserId) {
+                                    determineReceiverId() ?: ""
+                                } else {
+                                    currentUserId ?: ""
+                                }
 
-                            // Add as a properly formatted message
-                            messagesList.add(Message(senderId, receiverId, messageText, timestamp))
+                                // Add as a properly formatted message
+                                messagesList.add(Message(senderId, receiverId, messageText, timestamp))
+                            }
                         }
                     }
                 }

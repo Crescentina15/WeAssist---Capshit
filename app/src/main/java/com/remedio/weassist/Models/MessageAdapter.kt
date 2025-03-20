@@ -12,51 +12,94 @@ import java.util.Date
 import java.util.Locale
 
 class MessageAdapter(private val messagesList: List<Message>) :
-    RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
+    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     private val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
 
+    // Define view type constants
+    companion object {
+        private const val VIEW_TYPE_SENT = 1
+        private const val VIEW_TYPE_RECEIVED = 2
+        private const val VIEW_TYPE_SYSTEM = 3
+    }
+
     override fun getItemViewType(position: Int): Int {
-        return if (messagesList[position].senderId == currentUserId) {
-            R.layout.item_message_sent // If the message is sent by the current user
-        } else {
-            R.layout.item_message_received // If the message is received
+        val message = messagesList[position]
+        return when {
+            message.senderId == "system" -> VIEW_TYPE_SYSTEM
+            message.senderId == currentUserId -> VIEW_TYPE_SENT
+            else -> VIEW_TYPE_RECEIVED
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(viewType, parent, false)
-        return MessageViewHolder(view, viewType)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_SENT -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_message_sent, parent, false)
+                SentMessageViewHolder(view)
+            }
+            VIEW_TYPE_RECEIVED -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_message_received, parent, false)
+                ReceivedMessageViewHolder(view)
+            }
+            VIEW_TYPE_SYSTEM -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_message_system, parent, false)
+                SystemMessageViewHolder(view)
+            }
+            else -> throw IllegalArgumentException("Invalid view type")
+        }
     }
 
-    override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messagesList[position]
-        holder.bind(message)
+
+        when (holder) {
+            is SentMessageViewHolder -> holder.bind(message)
+            is ReceivedMessageViewHolder -> holder.bind(message)
+            is SystemMessageViewHolder -> holder.bind(message)
+        }
     }
 
     override fun getItemCount(): Int = messagesList.size
 
-    class MessageViewHolder(itemView: View, private val viewType: Int) : RecyclerView.ViewHolder(itemView) {
+    // View holder for messages sent by the current user
+    class SentMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvMessage: TextView = itemView.findViewById(R.id.message_text)
+        //private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+
+        fun bind(message: Message) {
+            tvMessage.text = message.message
+            //tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+        }
+    }
+
+    // View holder for messages received from other users
+    class ReceivedMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.message_text)
         //private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
         private val tvSenderName: TextView? = itemView.findViewById(R.id.sender_name)
 
-        private val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+        fun bind(message: Message) {
+            tvMessage.text = message.message
+            //tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+
+            // Set sender name if available
+            val senderName = message.senderName ?: "Unknown"
+            tvSenderName?.text = senderName
+            tvSenderName?.visibility = View.VISIBLE
+        }
+    }
+
+    // View holder for system messages
+    class SystemMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvMessage: TextView = itemView.findViewById(R.id.system_message_text)
 
         fun bind(message: Message) {
             tvMessage.text = message.message
-
-            // Set timestamp if the view has it
-            //tvTimestamp?.text = dateFormat.format(Date(message.timestamp))
-
-            // Set sender name for received messages if the view supports it
-            if (viewType == R.layout.item_message_received && tvSenderName != null) {
-                // If we have a sender name in the message, use it
-                val senderName = message.senderName ?: "Unknown"
-                tvSenderName.text = senderName
-                tvSenderName.visibility = View.VISIBLE
-            }
         }
     }
 }

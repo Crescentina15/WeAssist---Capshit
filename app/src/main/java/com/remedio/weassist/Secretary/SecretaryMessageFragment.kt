@@ -83,136 +83,23 @@ class SecretaryMessageFragment : Fragment() {
     }
 
     private fun forwardConversationToLawyer(conversation: Conversation) {
-        // First check if this conversation already has an appointedLawyerId
+        // First, get the appointed lawyer ID if one exists
         database.child("conversations").child(conversation.conversationId)
             .child("appointedLawyerId").get()
             .addOnSuccessListener { snapshot ->
-                if (snapshot.exists() && snapshot.getValue(String::class.java) != null) {
-                    // This conversation already has an appointed lawyer, just update their visibility
-                    val lawyerId = snapshot.getValue(String::class.java)!!
-                    Log.d("SecretaryMessageFragment", "Found appointed lawyer ID: $lawyerId for conversation")
-
-                    // Simply update the lawyer's participant status to true (making it visible to them)
-                    database.child("conversations").child(conversation.conversationId)
-                        .child("participantIds").child(lawyerId).setValue(true)
-                        .addOnSuccessListener {
-                            Log.d("SecretaryMessageFragment", "Successfully made conversation visible to appointed lawyer")
-
-                            // Add a system message indicating the conversation was forwarded
-                            val systemMessageRef = database.child("conversations").child(conversation.conversationId)
-                                .child("messages").push()
-
-                            val systemMessage = mapOf(
-                                "message" to "This conversation was forwarded to the lawyer by a secretary",
-                                "senderId" to "system",
-                                "timestamp" to ServerValue.TIMESTAMP
-                            )
-
-                            systemMessageRef.setValue(systemMessage)
-                                .addOnSuccessListener {
-                                    // Set unread counter for lawyer
-                                    database.child("conversations").child(conversation.conversationId)
-                                        .child("unreadMessages").child(lawyerId).setValue(1)
-                                        .addOnSuccessListener {
-                                            Toast.makeText(
-                                                requireContext(),
-                                                "Conversation forwarded to appointed lawyer",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e("SecretaryMessageFragment", "Failed to add system message: ${e.message}")
-                                    Toast.makeText(
-                                        requireContext(),
-                                        "Error adding notification message: ${e.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e("SecretaryMessageFragment", "Failed to update lawyer visibility: ${e.message}")
-                            Toast.makeText(
-                                requireContext(),
-                                "Failed to forward to lawyer: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                val lawyerId = if (snapshot.exists() && snapshot.getValue(String::class.java) != null) {
+                    // Use the appointed lawyer if one exists
+                    snapshot.getValue(String::class.java)!!
                 } else {
-                    // No appointed lawyer found, use the original approach of finding any lawyer
-                    Log.d("SecretaryMessageFragment", "No appointed lawyer found for this conversation, searching for any lawyer")
+                    // Find any lawyer if no appointed lawyer exists
+                    findAvailableLawyer()
+                }
 
-                    // Instead of querying by role, we'll get all users and filter client-side
-                    database.child("Users").get()
-                        .addOnSuccessListener { usersSnapshot ->
-                            if (usersSnapshot.exists()) {
-                                // Find lawyers by checking role field client-side
-                                val lawyers = usersSnapshot.children.filter { userSnapshot ->
-                                    val role = userSnapshot.child("role").getValue(String::class.java)
-                                    role == "lawyer"
-                                }
-
-                                if (lawyers.isNotEmpty()) {
-                                    // Use the first lawyer we find
-                                    val lawyerId = lawyers.first().key
-
-                                    if (lawyerId != null) {
-                                        Log.d("SecretaryMessageFragment", "Found lawyer ID: $lawyerId from users list")
-
-                                        // Check if lawyer already exists in participantIds but is set to false
-                                        database.child("conversations").child(conversation.conversationId)
-                                            .child("participantIds").child(lawyerId).get()
-                                            .addOnSuccessListener { participantSnapshot ->
-                                                if (participantSnapshot.exists()) {
-                                                    // Lawyer already in participants, just update visibility
-                                                    database.child("conversations").child(conversation.conversationId)
-                                                        .child("participantIds").child(lawyerId).setValue(true)
-                                                        .addOnSuccessListener {
-                                                            // Add system message and set unread counter
-                                                            addForwardingSystemMessage(conversation.conversationId, lawyerId)
-                                                        }
-                                                } else {
-                                                    // Add lawyer to participants and set appointedLawyerId
-                                                    val updates = hashMapOf<String, Any>(
-                                                        "participantIds/$lawyerId" to true,
-                                                        "appointedLawyerId" to lawyerId,
-                                                        "unreadMessages/$lawyerId" to 1
-                                                    )
-
-                                                    database.child("conversations").child(conversation.conversationId)
-                                                        .updateChildren(updates)
-                                                        .addOnSuccessListener {
-                                                            // Add system message
-                                                            addForwardingSystemMessage(conversation.conversationId, lawyerId)
-                                                        }
-                                                        .addOnFailureListener { e ->
-                                                            Log.e("SecretaryMessageFragment", "Failed to add lawyer to conversation: ${e.message}")
-                                                            Toast.makeText(
-                                                                requireContext(),
-                                                                "Failed to forward conversation: ${e.message}",
-                                                                Toast.LENGTH_SHORT
-                                                            ).show()
-                                                        }
-                                                }
-                                            }
-                                    } else {
-                                        noLawyersFoundMessage()
-                                    }
-                                } else {
-                                    noLawyersFoundMessage()
-                                }
-                            } else {
-                                noLawyersFoundMessage()
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            Log.e("SecretaryMessageFragment", "Failed to query for users: ${e.message}")
-                            Toast.makeText(
-                                requireContext(),
-                                "Error finding lawyers: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
+                if (lawyerId != null) {
+                    // Create a new conversation between the lawyer and client
+                    createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+                } else {
+                    noLawyersFoundMessage()
                 }
             }
             .addOnFailureListener { e ->
@@ -225,31 +112,241 @@ class SecretaryMessageFragment : Fragment() {
             }
     }
 
-    private fun addForwardingSystemMessage(conversationId: String, lawyerId: String) {
-        val systemMessageRef = database.child("conversations").child(conversationId)
-            .child("messages").push()
+    private fun createNewLawyerClientConversation(lawyerId: String, clientId: String, originalConversationId: String) {
+        // Get the conversation reference
+        val conversationsRef = database.child("conversations")
 
-        val systemMessage = mapOf(
-            "message" to "This conversation was forwarded to the lawyer by a secretary",
+        // Create a new conversation entry
+        val newConversationRef = conversationsRef.push()
+        val newConversationId = newConversationRef.key!!
+
+        // Get the lawyer's name
+        database.child("lawyers").child(lawyerId).get()
+            .addOnSuccessListener { lawyerSnapshot ->
+                val lawyerFirstName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "The lawyer"
+                val lawyerName = if (lawyerFirstName.isEmpty()) "The lawyer" else lawyerFirstName
+
+                // Set up conversation data
+                val participantIds = hashMapOf(
+                    lawyerId to true,
+                    clientId to true
+                )
+
+                val unreadMessages = hashMapOf(
+                    clientId to 1,  // Client has 1 unread message
+                    lawyerId to 0   // Lawyer has 0 unread messages (since they're sending the first one)
+                )
+
+                // Create the welcome message
+                val welcomeMessage = mapOf(
+                    "message" to "Hello, I'm Attorney $lawyerName. I've been assigned to provide you with legal assistance.",
+                    "senderId" to lawyerId,
+                    "receiverId" to clientId,
+                    "timestamp" to ServerValue.TIMESTAMP
+                )
+
+                // Create conversation data
+                val conversationData = hashMapOf(
+                    "participantIds" to participantIds,
+                    "unreadMessages" to unreadMessages,
+                    "appointedLawyerId" to lawyerId,
+                    "originalConversationId" to originalConversationId,  // Reference to the original conversation
+                    "handledByLawyer" to true
+                )
+
+                // Save the conversation data
+                newConversationRef.setValue(conversationData)
+                    .addOnSuccessListener {
+                        // Add the welcome message
+                        newConversationRef.child("messages").push().setValue(welcomeMessage)
+                            .addOnSuccessListener {
+                                // Add notification to the original conversation
+                                addNotificationToOriginalConversation(originalConversationId, lawyerId, lawyerName)
+
+                                Toast.makeText(
+                                    requireContext(),
+                                    "New conversation created with Attorney $lawyerName",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryMessageFragment", "Failed to create new conversation: ${e.message}")
+                        Toast.makeText(
+                            requireContext(),
+                            "Failed to create new conversation: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                // Fallback if we can't get the lawyer's name
+                val conversationData = hashMapOf(
+                    "participantIds" to hashMapOf(
+                        lawyerId to true,
+                        clientId to true
+                    ),
+                    "unreadMessages" to hashMapOf(
+                        clientId to 1,
+                        lawyerId to 0
+                    ),
+                    "appointedLawyerId" to lawyerId,
+                    "originalConversationId" to originalConversationId,
+                    "handledByLawyer" to true
+                )
+
+                // Save the conversation data
+                newConversationRef.setValue(conversationData)
+                    .addOnSuccessListener {
+                        // Add a generic welcome message
+                        val welcomeMessage = mapOf(
+                            "message" to "Hello, I'm your assigned attorney. I'll be providing you with legal assistance.",
+                            "senderId" to lawyerId,
+                            "receiverId" to clientId,
+                            "timestamp" to ServerValue.TIMESTAMP
+                        )
+
+                        newConversationRef.child("messages").push().setValue(welcomeMessage)
+                            .addOnSuccessListener {
+                                // Add notification to the original conversation
+                                addNotificationToOriginalConversation(originalConversationId, lawyerId, "a lawyer")
+
+                                Toast.makeText(
+                                    requireContext(),
+                                    "New conversation created with a lawyer",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
+            }
+    }
+
+    private fun addNotificationToOriginalConversation(originalConversationId: String, lawyerId: String, lawyerName: String) {
+        // Get the reference to the original conversation
+        val originalConversationRef = database.child("conversations").child(originalConversationId)
+
+        // Add a system message indicating that a lawyer has been assigned
+        val notificationMessage = mapOf(
+            "message" to "This case has been forwarded to Attorney $lawyerName. The client can now communicate with the attorney in a separate conversation.",
             "senderId" to "system",
             "timestamp" to ServerValue.TIMESTAMP
         )
 
-        systemMessageRef.setValue(systemMessage)
+        originalConversationRef.child("messages").push().setValue(notificationMessage)
             .addOnSuccessListener {
-                Toast.makeText(
-                    requireContext(),
-                    "Conversation forwarded to lawyer successfully",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Log.d("SecretaryMessageFragment", "Notification added to original conversation")
             }
             .addOnFailureListener { e ->
-                Log.e("SecretaryMessageFragment", "Failed to add system message: ${e.message}")
-                Toast.makeText(
-                    requireContext(),
-                    "Forwarded, but failed to add notification message",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Log.e("SecretaryMessageFragment", "Failed to add notification: ${e.message}")
+            }
+    }
+
+    private fun findAvailableLawyer(): String? {
+        // This function would need to be implemented to query for a lawyer
+        // For now, we'll use a placeholder implementation
+        var lawyerId: String? = null
+
+        // Query the database for lawyers
+        database.child("Users").get()
+            .addOnSuccessListener { usersSnapshot ->
+                if (usersSnapshot.exists()) {
+                    // Find lawyers by checking role field
+                    val lawyers = usersSnapshot.children.filter { userSnapshot ->
+                        val role = userSnapshot.child("role").getValue(String::class.java)
+                        role == "lawyer"
+                    }
+
+                    if (lawyers.isNotEmpty()) {
+                        // Use the first lawyer we find
+                        lawyerId = lawyers.first().key
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to query for users: ${e.message}")
+            }
+
+        return lawyerId
+    }
+
+    private fun addTransitionMessages(conversationId: String, lawyerId: String, secretaryId: String) {
+        // Get the conversation reference
+        val conversationRef = database.child("conversations").child(conversationId)
+
+        // Fetch the lawyer's name
+        database.child("lawyers").child(lawyerId).get()
+            .addOnSuccessListener { lawyerSnapshot ->
+                val lawyerFirstName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "The lawyer"
+
+                val lawyerName = if (lawyerFirstName.isEmpty()) lawyerFirstName else "$lawyerFirstName"
+
+                // Add a system message for adding the lawyer (not forwarding)
+                val addingLawyerMessage = mapOf(
+                    "message" to "Attorney $lawyerName has been added to this conversation to provide legal expertise.",
+                    "senderId" to "system",
+                    "timestamp" to ServerValue.TIMESTAMP
+                )
+
+                conversationRef.child("messages").push().setValue(addingLawyerMessage)
+                    .addOnSuccessListener {
+                        // Do NOT set secretaryActive to false
+                        // Do NOT set handledByLawyer to true
+
+                        // Add a welcome message from the lawyer
+                        val welcomeMessage = mapOf(
+                            "message" to "Hello, I'm Attorney $lawyerName. I've been brought in to provide legal assistance while you continue working with the secretary.",
+                            "senderId" to lawyerId,
+                            "timestamp" to (System.currentTimeMillis() + 1000)  // Adding 1 second to ensure proper ordering
+                        )
+
+                        conversationRef.child("messages").push().setValue(welcomeMessage)
+                            .addOnSuccessListener {
+                                // Set unread counter for lawyer
+                                conversationRef.child("unreadMessages").child(lawyerId).setValue(1)
+                                    .addOnSuccessListener {
+                                        Toast.makeText(
+                                            requireContext(),
+                                            "Attorney $lawyerName has been added to the conversation",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        // Secretary remains an active participant
+                                        // No need to remove or change the secretary's status
+                                    }
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryMessageFragment", "Failed to add system messages: ${e.message}")
+                        Toast.makeText(
+                            requireContext(),
+                            "Added lawyer, but failed to add notification messages",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                // Fallback if we can't get the lawyer's name
+                val addingLawyerMessage = mapOf(
+                    "message" to "A lawyer has been added to this conversation to provide legal expertise.",
+                    "senderId" to "system",
+                    "timestamp" to ServerValue.TIMESTAMP
+                )
+
+                conversationRef.child("messages").push().setValue(addingLawyerMessage)
+                    .addOnSuccessListener {
+                        // Do NOT set secretaryActive to false
+                        // Do NOT set handledByLawyer to true
+
+                        // Set unread counter for lawyer
+                        conversationRef.child("unreadMessages").child(lawyerId).setValue(1)
+                            .addOnSuccessListener {
+                                Toast.makeText(
+                                    requireContext(),
+                                    "A lawyer has been added to the conversation",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                    }
             }
     }
 
