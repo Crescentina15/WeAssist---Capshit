@@ -10,7 +10,8 @@ import com.remedio.weassist.R
 class ConversationAdapter(
     private val conversationList: List<Conversation>,
     private val onItemClick: (Conversation) -> Unit,
-    private val currentUserId: String? = null  // Add current user ID to determine the role
+    private val currentUserId: String? = null,  // Add current user ID to determine the role
+    private val onLongClickListener: ((View, Int) -> Boolean)? = null // Optional long click listener
 ) : RecyclerView.Adapter<ConversationAdapter.ConversationViewHolder>() {
 
     class ConversationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -46,6 +47,13 @@ class ConversationAdapter(
 
         holder.itemView.setOnClickListener {
             onItemClick(conversation)
+        }
+
+        // Only add long press listener if it's provided AND this is a secretary view
+        if (onLongClickListener != null && isSecretaryView) {
+            holder.itemView.setOnLongClickListener { view ->
+                onLongClickListener.invoke(view, position)
+            }
         }
     }
 

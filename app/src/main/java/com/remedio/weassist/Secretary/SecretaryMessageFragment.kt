@@ -9,6 +9,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -44,7 +46,8 @@ class SecretaryMessageFragment : Fragment() {
         conversationsAdapter = ConversationAdapter(
             conversationList,
             { conversation -> openChatActivity(conversation.clientId) },
-            currentUserId  // Pass current user ID (secretary)
+            currentUserId,  // Pass current user ID (secretary)
+            { view, position -> showConversationOptions(view, position) }  // Long press handler
         )
         conversationsRecyclerView.adapter = conversationsAdapter
 
@@ -58,6 +61,205 @@ class SecretaryMessageFragment : Fragment() {
         fetchConversations()
 
         return view
+    }
+
+    private fun showConversationOptions(view: View, position: Int): Boolean {
+        val conversation = conversationList[position]
+        val popupMenu = PopupMenu(requireContext(), view)
+        popupMenu.menuInflater.inflate(R.menu.conversation_options_menu, popupMenu.menu)
+
+        popupMenu.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_forward_to_lawyer -> {
+                    forwardConversationToLawyer(conversation)
+                    true
+                }
+                else -> false
+            }
+        }
+
+        popupMenu.show()
+        return true
+    }
+
+    private fun forwardConversationToLawyer(conversation: Conversation) {
+        // First check if this conversation already has an appointedLawyerId
+        database.child("conversations").child(conversation.conversationId)
+            .child("appointedLawyerId").get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists() && snapshot.getValue(String::class.java) != null) {
+                    // This conversation already has an appointed lawyer, just update their visibility
+                    val lawyerId = snapshot.getValue(String::class.java)!!
+                    Log.d("SecretaryMessageFragment", "Found appointed lawyer ID: $lawyerId for conversation")
+
+                    // Simply update the lawyer's participant status to true (making it visible to them)
+                    database.child("conversations").child(conversation.conversationId)
+                        .child("participantIds").child(lawyerId).setValue(true)
+                        .addOnSuccessListener {
+                            Log.d("SecretaryMessageFragment", "Successfully made conversation visible to appointed lawyer")
+
+                            // Add a system message indicating the conversation was forwarded
+                            val systemMessageRef = database.child("conversations").child(conversation.conversationId)
+                                .child("messages").push()
+
+                            val systemMessage = mapOf(
+                                "message" to "This conversation was forwarded to the lawyer by a secretary",
+                                "senderId" to "system",
+                                "timestamp" to ServerValue.TIMESTAMP
+                            )
+
+                            systemMessageRef.setValue(systemMessage)
+                                .addOnSuccessListener {
+                                    // Set unread counter for lawyer
+                                    database.child("conversations").child(conversation.conversationId)
+                                        .child("unreadMessages").child(lawyerId).setValue(1)
+                                        .addOnSuccessListener {
+                                            Toast.makeText(
+                                                requireContext(),
+                                                "Conversation forwarded to appointed lawyer",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("SecretaryMessageFragment", "Failed to add system message: ${e.message}")
+                                    Toast.makeText(
+                                        requireContext(),
+                                        "Error adding notification message: ${e.message}",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SecretaryMessageFragment", "Failed to update lawyer visibility: ${e.message}")
+                            Toast.makeText(
+                                requireContext(),
+                                "Failed to forward to lawyer: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                } else {
+                    // No appointed lawyer found, use the original approach of finding any lawyer
+                    Log.d("SecretaryMessageFragment", "No appointed lawyer found for this conversation, searching for any lawyer")
+
+                    // Instead of querying by role, we'll get all users and filter client-side
+                    database.child("Users").get()
+                        .addOnSuccessListener { usersSnapshot ->
+                            if (usersSnapshot.exists()) {
+                                // Find lawyers by checking role field client-side
+                                val lawyers = usersSnapshot.children.filter { userSnapshot ->
+                                    val role = userSnapshot.child("role").getValue(String::class.java)
+                                    role == "lawyer"
+                                }
+
+                                if (lawyers.isNotEmpty()) {
+                                    // Use the first lawyer we find
+                                    val lawyerId = lawyers.first().key
+
+                                    if (lawyerId != null) {
+                                        Log.d("SecretaryMessageFragment", "Found lawyer ID: $lawyerId from users list")
+
+                                        // Check if lawyer already exists in participantIds but is set to false
+                                        database.child("conversations").child(conversation.conversationId)
+                                            .child("participantIds").child(lawyerId).get()
+                                            .addOnSuccessListener { participantSnapshot ->
+                                                if (participantSnapshot.exists()) {
+                                                    // Lawyer already in participants, just update visibility
+                                                    database.child("conversations").child(conversation.conversationId)
+                                                        .child("participantIds").child(lawyerId).setValue(true)
+                                                        .addOnSuccessListener {
+                                                            // Add system message and set unread counter
+                                                            addForwardingSystemMessage(conversation.conversationId, lawyerId)
+                                                        }
+                                                } else {
+                                                    // Add lawyer to participants and set appointedLawyerId
+                                                    val updates = hashMapOf<String, Any>(
+                                                        "participantIds/$lawyerId" to true,
+                                                        "appointedLawyerId" to lawyerId,
+                                                        "unreadMessages/$lawyerId" to 1
+                                                    )
+
+                                                    database.child("conversations").child(conversation.conversationId)
+                                                        .updateChildren(updates)
+                                                        .addOnSuccessListener {
+                                                            // Add system message
+                                                            addForwardingSystemMessage(conversation.conversationId, lawyerId)
+                                                        }
+                                                        .addOnFailureListener { e ->
+                                                            Log.e("SecretaryMessageFragment", "Failed to add lawyer to conversation: ${e.message}")
+                                                            Toast.makeText(
+                                                                requireContext(),
+                                                                "Failed to forward conversation: ${e.message}",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                }
+                                            }
+                                    } else {
+                                        noLawyersFoundMessage()
+                                    }
+                                } else {
+                                    noLawyersFoundMessage()
+                                }
+                            } else {
+                                noLawyersFoundMessage()
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SecretaryMessageFragment", "Failed to query for users: ${e.message}")
+                            Toast.makeText(
+                                requireContext(),
+                                "Error finding lawyers: ${e.message}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to check for appointed lawyer: ${e.message}")
+                Toast.makeText(
+                    requireContext(),
+                    "Error checking appointment details: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    private fun addForwardingSystemMessage(conversationId: String, lawyerId: String) {
+        val systemMessageRef = database.child("conversations").child(conversationId)
+            .child("messages").push()
+
+        val systemMessage = mapOf(
+            "message" to "This conversation was forwarded to the lawyer by a secretary",
+            "senderId" to "system",
+            "timestamp" to ServerValue.TIMESTAMP
+        )
+
+        systemMessageRef.setValue(systemMessage)
+            .addOnSuccessListener {
+                Toast.makeText(
+                    requireContext(),
+                    "Conversation forwarded to lawyer successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to add system message: ${e.message}")
+                Toast.makeText(
+                    requireContext(),
+                    "Forwarded, but failed to add notification message",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+    }
+
+    private fun noLawyersFoundMessage() {
+        Log.e("SecretaryMessageFragment", "No lawyers found in the system")
+        Toast.makeText(
+            requireContext(),
+            "No lawyers found in the system",
+            Toast.LENGTH_SHORT
+        ).show()
     }
 
     private fun setupSwipeToDelete() {

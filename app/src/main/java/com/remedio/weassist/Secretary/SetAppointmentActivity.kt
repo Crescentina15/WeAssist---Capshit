@@ -361,6 +361,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                                 "message" to problem,
                                 "timestamp" to System.currentTimeMillis()
                             )
+
                             // After creating the conversation and incrementing the unread counter
                             val messageNotificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(secretaryId)
                             val messageNotificationId = messageNotificationRef.push().key
@@ -387,12 +388,18 @@ class SetAppointmentActivity : AppCompatActivity() {
                             // Add the message
                             conversationRef.child("messages").push().setValue(message)
 
-                            // Add participants to the conversation
+                            // Add participants to the conversation - include lawyer ID but set to false initially
+                            // This will store the lawyer in the conversation but they won't see it until forwarded
                             val participantsMap = mapOf(
                                 clientId!! to true,
-                                secretaryId to true
+                                secretaryId to true,
+                                lawyerId to false  // Lawyer is included but with 'false' flag (not visible yet)
                             )
                             conversationRef.child("participantIds").updateChildren(participantsMap)
+
+                            // Store the appointed lawyer ID in the conversation metadata
+                            conversationRef.child("appointedLawyerId").setValue(lawyerId)
+                            conversationRef.child("appointmentId").setValue(appointmentId)
 
                             // Increment unread counter for secretary
                             incrementUnreadCounter(conversationId, secretaryId)
@@ -400,7 +407,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                             // Update the notification to include the conversation ID
                             updateNotificationWithConversationId(secretaryId, appointmentId, conversationId)
 
-                            Log.d("SetAppointmentActivity", "Created conversation between client and secretary with problem description")
+                            Log.d("SetAppointmentActivity", "Created conversation between client and secretary with problem description and linked lawyer")
                         }
                     }
                 }
@@ -409,7 +416,6 @@ class SetAppointmentActivity : AppCompatActivity() {
                     Log.e("SetAppointmentActivity", "Failed to fetch secretary ID: ${error.message}")
                 }
             })
-
         }
     }
 
