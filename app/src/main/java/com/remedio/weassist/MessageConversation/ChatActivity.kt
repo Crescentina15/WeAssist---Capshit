@@ -706,7 +706,7 @@ class ChatActivity : AppCompatActivity() {
                         // Show a message indicating the conversation has been forwarded
                         Toast.makeText(
                             applicationContext,
-                            "This conversation has been forwarded to a lawyer. Please use the new conversation.",
+                            "This conversation has been forwarded to the lawyer.",
                             Toast.LENGTH_LONG
                         ).show()
                     }
@@ -725,7 +725,7 @@ class ChatActivity : AppCompatActivity() {
         btnSendMessage.isEnabled = false
 
         // Change hint text to indicate messaging is disabled
-        etMessageInput.hint = "This conversation has been forwarded to a lawyer"
+        etMessageInput.hint = "This conversation has been forwarded to the lawyer."
 
         // Optional: Add a visual indicator that the conversation is read-only
         etMessageInput.setBackgroundResource(R.drawable.bg_input_disabled) // Create this drawable

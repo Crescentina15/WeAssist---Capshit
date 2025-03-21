@@ -59,13 +59,6 @@
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/status_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Online"
-                    android:textColor="@android:color/darker_gray"
-                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>

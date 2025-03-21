@@ -155,7 +155,7 @@ class SecretaryMessageFragment : Fragment() {
                         // No valid appointment found
                         Toast.makeText(
                             requireContext(),
-                            "Cannot forward: No accepted or forwarded appointment found for this client",
+                            "Cannot forward conversation to lawyer appointment have not been accepted",
                             Toast.LENGTH_SHORT
                         ).show()
                         return
@@ -238,7 +238,7 @@ class SecretaryMessageFragment : Fragment() {
                     .addOnSuccessListener {
                         // Add the welcome message
                         val welcomeMessage = mapOf(
-                            "message" to "Hello, I'm Attorney $lawyerName. I've been assigned to provide you with legal assistance.",
+                            "message" to "Hello, I'm Atty. $lawyerName. I've been assigned to provide you with legal assistance.",
                             "senderId" to lawyerId,
                             "receiverId" to clientId,
                             "timestamp" to ServerValue.TIMESTAMP
@@ -251,7 +251,7 @@ class SecretaryMessageFragment : Fragment() {
 
                                 Toast.makeText(
                                     requireContext(),
-                                    "New conversation created with Attorney $lawyerName",
+                                    "",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -323,7 +323,7 @@ class SecretaryMessageFragment : Fragment() {
 
                         Toast.makeText(
                             requireContext(),
-                            "New conversation created with a lawyer",
+                            "",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -344,7 +344,7 @@ class SecretaryMessageFragment : Fragment() {
 
         // Add a system message indicating that a lawyer has been assigned
         val notificationMessage = mapOf(
-            "message" to "This case has been forwarded to Attorney $lawyerName. The client can now communicate with the attorney in a separate conversation.",
+            "message" to "This case has been forwarded to Atty. $lawyerName. The client can now communicate with the attorney in a separate conversation.",
             "senderId" to "system",
             "timestamp" to ServerValue.TIMESTAMP
         )
@@ -399,7 +399,7 @@ class SecretaryMessageFragment : Fragment() {
 
                 // Add a system message for adding the lawyer (not forwarding)
                 val addingLawyerMessage = mapOf(
-                    "message" to "Attorney $lawyerName has been added to this conversation to provide legal expertise.",
+                    "message" to "Atty. $lawyerName has been added to this conversation to provide legal expertise.",
                     "senderId" to "system",
                     "timestamp" to ServerValue.TIMESTAMP
                 )
@@ -411,7 +411,7 @@ class SecretaryMessageFragment : Fragment() {
 
                         // Add a welcome message from the lawyer
                         val welcomeMessage = mapOf(
-                            "message" to "Hello, I'm Attorney $lawyerName. I've been brought in to provide legal assistance while you continue working with the secretary.",
+                            "message" to "Hello, I'm Atty. $lawyerName. I've been brought in to provide legal assistance while you continue working with the secretary.",
                             "senderId" to lawyerId,
                             "timestamp" to (System.currentTimeMillis() + 1000)  // Adding 1 second to ensure proper ordering
                         )
