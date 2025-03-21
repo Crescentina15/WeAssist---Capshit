@@ -8,12 +8,12 @@ data class Appointment(
     var appointmentId: String = "",
     var fullName: String = "",
     var lawyerName: String = "",
-    val date: String = "",
+    var date: String = "",
     val time: String = "",
     val problem: String = "",
-    val lawyerId: String = "",
+    var lawyerId: String = "",
     val lawyerProfileImage: String? = null,
-    val status: String? = "pending", // Default to pending
+    var status: String? = "pending", // Default to pending
     var clientId: String = "",
     var secretaryId: String = "",
     //val clientUid: String = ""

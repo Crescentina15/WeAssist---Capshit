@@ -83,47 +83,56 @@ class SecretaryMessageFragment : Fragment() {
         return true
     }
 
+    // Update to forwardConversationToLawyer method in SecretaryMessageFragment
     private fun forwardConversationToLawyer(conversation: Conversation) {
         // First, check the accepted_appointment node
-        database.child("accepted_appointment")
-            .orderByChild("clientId").equalTo(conversation.clientId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    // Find the most recent accepted or forwarded appointment in accepted_appointment
-                    var validAppointment = snapshot.children
-                        .mapNotNull {
-                            val appointment = it.getValue(Appointment::class.java)
-                            appointment?.apply {
-                                appointmentId = it.key ?: ""
-                            }
-                        }
-                        .filter { it.status in listOf("Accepted", "Forwarded") }
-                        .maxByOrNull {
-                            // Parse the date to determine recency
-                            try {
-                                // Assuming date is in format "MM/dd/yyyy"
-                                val dateParts = it.date.split("/")
-                                "${dateParts[2]}${dateParts[0].padStart(2, '0')}${dateParts[1].padStart(2, '0')}".toInt()
-                            } catch (e: Exception) {
-                                0 // Default to earliest if date parsing fails
-                            }
-                        }
+        val acceptedApptRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
 
-                    // If no valid appointment in accepted_appointment, check the main appointments node
-                    if (validAppointment == null) {
-                        checkMainAppointmentsNode(conversation)
-                    } else {
-                        // If a valid appointment exists in accepted_appointment, proceed with forwarding
-                        proceedWithConversationForwarding(conversation, validAppointment)
+        acceptedApptRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                var validAppointment: Appointment? = null
+
+                if (snapshot.exists()) {
+                    // Iterate through all entries in the accepted_appointment node
+                    for (appointmentSnapshot in snapshot.children) {
+                        val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+
+                        val clientId = appointmentData?.get("clientId")?.toString()
+                        val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
+                        val status = appointmentData?.get("status")?.toString()
+                        val date = appointmentData?.get("date")?.toString() ?: ""
+
+                        // Check if this appointment matches our current client
+                        if (clientId == conversation.clientId &&
+                            (status == "Accepted" || status == "accepted" || status == "Forwarded")) {
+                            // Create an appointment object to pass to proceedWithConversationForwarding
+                            val appointment = Appointment()
+                            appointment.clientId = clientId ?: ""
+                            appointment.lawyerId = appointmentLawyerId ?: ""
+                            appointment.status = status ?: ""
+                            appointment.date = date
+                            appointment.appointmentId = appointmentSnapshot.key ?: ""
+
+                            validAppointment = appointment
+                            break
+                        }
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("SecretaryMessageFragment", "Error checking accepted appointments: ${error.message}")
-                    // Fallback to main appointments node
+                if (validAppointment != null) {
+                    proceedWithConversationForwarding(conversation, validAppointment!!)
+                } else {
+                    // If nothing found in accepted_appointment, check regular appointments
                     checkMainAppointmentsNode(conversation)
                 }
-            })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryMessageFragment", "Failed to check accepted_appointment", error.toException())
+                // Fall back to regular appointments check
+                checkMainAppointmentsNode(conversation)
+            }
+        })
     }
 
     private fun checkMainAppointmentsNode(conversation: Conversation) {
@@ -181,7 +190,12 @@ class SecretaryMessageFragment : Fragment() {
         val lawyerId = appointment.lawyerId
 
         if (lawyerId.isNullOrEmpty()) {
-            noLawyersFoundMessage()
+            // Instead of Toast, use a Snackbar which is less intrusive
+            Snackbar.make(
+                requireView(),
+                "No lawyer found for forwarding",
+                Snackbar.LENGTH_SHORT
+            ).show()
             return
         }
 
@@ -199,6 +213,7 @@ class SecretaryMessageFragment : Fragment() {
             }
     }
 
+    // Update the createNewLawyerClientConversation method
     private fun createNewLawyerClientConversation(lawyerId: String, clientId: String, originalConversationId: String) {
         // Generate the new conversation ID correctly using the existing pattern
         val newConversationId = generateConversationId(clientId, lawyerId)
@@ -206,6 +221,27 @@ class SecretaryMessageFragment : Fragment() {
         // Get the conversation reference
         val newConversationRef = database.child("conversations").child(newConversationId)
 
+        // First check if this conversation already exists
+        newConversationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    // Conversation already exists, just add the forwarding data
+                    updateExistingConversation(snapshot, lawyerId, clientId, originalConversationId)
+                } else {
+                    // Create new conversation
+                    createBrandNewConversation(lawyerId, clientId, originalConversationId, newConversationId)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryMessageFragment", "Failed to check if conversation exists: ${error.message}")
+                // Proceed with creating new conversation
+                createBrandNewConversation(lawyerId, clientId, originalConversationId, newConversationId)
+            }
+        })
+    }
+
+    private fun createBrandNewConversation(lawyerId: String, clientId: String, originalConversationId: String, newConversationId: String) {
         // Get the lawyer's name
         database.child("lawyers").child(lawyerId).get()
             .addOnSuccessListener { lawyerSnapshot ->
@@ -234,6 +270,7 @@ class SecretaryMessageFragment : Fragment() {
                 )
 
                 // Save the conversation data
+                val newConversationRef = database.child("conversations").child(newConversationId)
                 newConversationRef.setValue(conversationData)
                     .addOnSuccessListener {
                         // Add the welcome message
@@ -249,10 +286,11 @@ class SecretaryMessageFragment : Fragment() {
                                 // Add notification to the original conversation
                                 addNotificationToOriginalConversation(originalConversationId, lawyerId, lawyerName)
 
-                                Toast.makeText(
-                                    requireContext(),
-                                    "",
-                                    Toast.LENGTH_SHORT
+                                // Use Snackbar instead of Toast
+                                Snackbar.make(
+                                    requireView(),
+                                    "Conversation forwarded to lawyer",
+                                    Snackbar.LENGTH_SHORT
                                 ).show()
                             }
                             .addOnFailureListener { e ->
@@ -261,10 +299,11 @@ class SecretaryMessageFragment : Fragment() {
                     }
                     .addOnFailureListener { e ->
                         Log.e("SecretaryMessageFragment", "Failed to create new conversation: ${e.message}")
-                        Toast.makeText(
-                            requireContext(),
-                            "Failed to create new conversation: ${e.message}",
-                            Toast.LENGTH_SHORT
+                        // Use Snackbar for error message
+                        Snackbar.make(
+                            requireView(),
+                            "Failed to create new conversation",
+                            Snackbar.LENGTH_SHORT
                         ).show()
                     }
             }
@@ -272,6 +311,92 @@ class SecretaryMessageFragment : Fragment() {
                 Log.e("SecretaryMessageFragment", "Failed to get lawyer name: ${e.message}")
                 // Call the fallback method if we can't get the lawyer's name
                 createNewConversationWithGenericLawyer(lawyerId, clientId, originalConversationId)
+            }
+    }
+
+    // Add this method to update an existing conversation when forwarding
+    private fun updateExistingConversation(snapshot: DataSnapshot, lawyerId: String, clientId: String, originalConversationId: String) {
+        val conversationId = snapshot.key ?: return
+        val conversationRef = database.child("conversations").child(conversationId)
+
+        // Check if this conversation was forwarded before
+        val wasForwardedBefore = snapshot.child("forwardedFromSecretary").getValue(Boolean::class.java) ?: false
+
+        // Update conversation with forwarding info
+        val updates = mapOf(
+            "originalConversationId" to originalConversationId,
+            "handledByLawyer" to true,
+            "forwardedFromSecretary" to true
+        )
+
+        conversationRef.updateChildren(updates)
+            .addOnSuccessListener {
+                // Only add welcome message if this conversation wasn't previously forwarded
+                if (!wasForwardedBefore) {
+                    // Get the lawyer's name
+                    database.child("lawyers").child(lawyerId).get()
+                        .addOnSuccessListener { lawyerSnapshot ->
+                            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Your lawyer"
+
+                            // Add the welcome message
+                            val welcomeMessage = mapOf(
+                                "message" to "Hello, I'm Atty. $lawyerName. I've been assigned to provide you with legal assistance.",
+                                "senderId" to lawyerId,
+                                "receiverId" to clientId,
+                                "timestamp" to ServerValue.TIMESTAMP
+                            )
+
+                            conversationRef.child("messages").push().setValue(welcomeMessage)
+                                .addOnSuccessListener {
+                                    // Update unread count for client
+                                    conversationRef.child("unreadMessages").child(clientId).addListenerForSingleValueEvent(object : ValueEventListener {
+                                        override fun onDataChange(snapshot: DataSnapshot) {
+                                            val currentCount = snapshot.getValue(Int::class.java) ?: 0
+                                            conversationRef.child("unreadMessages").child(clientId).setValue(currentCount + 1)
+                                        }
+
+                                        override fun onCancelled(error: DatabaseError) {
+                                            Log.e("SecretaryMessageFragment", "Failed to update unread count: ${error.message}")
+                                        }
+                                    })
+
+                                    // Add notification to original conversation
+                                    addNotificationToOriginalConversation(originalConversationId, lawyerId, lawyerName)
+                                }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SecretaryMessageFragment", "Failed to get lawyer name: ${e.message}")
+                            // Add generic welcome message as fallback
+                            val welcomeMessage = mapOf(
+                                "message" to "Hello, I'm your assigned attorney. I've been assigned to provide you with legal assistance.",
+                                "senderId" to lawyerId,
+                                "receiverId" to clientId,
+                                "timestamp" to ServerValue.TIMESTAMP
+                            )
+
+                            conversationRef.child("messages").push().setValue(welcomeMessage)
+                            addNotificationToOriginalConversation(originalConversationId, lawyerId, "a lawyer")
+                        }
+                } else {
+                    // Conversation was previously forwarded, just add notification to original conversation
+                    database.child("lawyers").child(lawyerId).get()
+                        .addOnSuccessListener { lawyerSnapshot ->
+                            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "a lawyer"
+                            addNotificationToOriginalConversation(originalConversationId, lawyerId, lawyerName)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("SecretaryMessageFragment", "Failed to get lawyer name: ${e.message}")
+                            addNotificationToOriginalConversation(originalConversationId, lawyerId, "a lawyer")
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to update conversation: ${e.message}")
+                Toast.makeText(
+                    requireContext(),
+                    "Failed to update conversation data",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
     }
 

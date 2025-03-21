@@ -2,6 +2,7 @@ package com.remedio.weassist.MessageConversation
 
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -294,6 +295,7 @@ class ChatActivity : AppCompatActivity() {
             })
     }
 
+    // Update to the setupChatPartner method in ChatActivity
     private fun setupChatPartner() {
         if (userType == null) {
             // User type not determined yet, wait for determineCurrentUserType to complete
@@ -324,23 +326,112 @@ class ChatActivity : AppCompatActivity() {
                             }
                         }
                 } else {
-                    Log.e("ChatActivity", "No secretary/lawyer ID provided!")
-                    Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
-                    finish()
+                    // If we have a conversation ID, try to determine who the client is chatting with
+                    if (conversationId != null) {
+                        determineConversationPartner()
+                    } else {
+                        Log.e("ChatActivity", "No secretary/lawyer ID or conversation ID provided!")
+                        Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
                 }
             }
             "secretary", "lawyer" -> {
                 // Secretary or lawyer chatting with client
                 if (clientId != null) {
                     getClientName(clientId!!)
+                } else if (conversationId != null) {
+                    // Try to extract client ID from conversation
+                    extractClientIdFromConversation(conversationId!!)
                 } else {
-                    Log.e("ChatActivity", "No client ID provided!")
+                    Log.e("ChatActivity", "No client ID or conversation ID provided!")
                     Toast.makeText(this, "Client information not available", Toast.LENGTH_SHORT).show()
                     finish()
                 }
             }
         }
     }
+
+    // Add this new method to determine the conversation partner from a conversation ID
+    private fun determineConversationPartner() {
+        val conversationRef = database.child("conversations").child(conversationId!!)
+
+        conversationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    // Check if this is a conversation with a lawyer
+                    val handledByLawyer = snapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                    val appointedLawyerId = snapshot.child("appointedLawyerId").getValue(String::class.java)
+
+                    if (handledByLawyer && !appointedLawyerId.isNullOrEmpty()) {
+                        // This is a conversation with a lawyer
+                        secretaryId = appointedLawyerId
+                        getLawyerName(appointedLawyerId)
+                    } else {
+                        // Check participants to find who the client is talking to
+                        val participants = snapshot.child("participantIds").children
+                        for (participant in participants) {
+                            val participantId = participant.key
+                            if (participantId != currentUserId) {
+                                // Determine if this participant is a secretary or lawyer
+                                checkParticipantType(participantId!!)
+                                return@onDataChange
+                            }
+                        }
+                    }
+                } else {
+                    Log.e("ChatActivity", "Conversation not found: $conversationId")
+                    Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatActivity", "Error loading conversation: ${error.message}")
+                Toast.makeText(applicationContext, "Failed to load conversation", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        })
+    }
+
+    // Add this new helper method to check the type of a participant
+    private fun checkParticipantType(participantId: String) {
+        // First check if this is a secretary
+        database.child("secretaries").child(participantId).get()
+            .addOnSuccessListener { secretarySnapshot ->
+                if (secretarySnapshot.exists()) {
+                    // This is a secretary
+                    secretaryId = participantId
+                    getSecretaryName(participantId)
+                } else {
+                    // Check if this is a lawyer
+                    database.child("lawyers").child(participantId).get()
+                        .addOnSuccessListener { lawyerSnapshot ->
+                            if (lawyerSnapshot.exists()) {
+                                // This is a lawyer
+                                secretaryId = participantId  // Reuse secretaryId field for the lawyer
+                                getLawyerName(participantId)
+                            } else {
+                                // Not a secretary or lawyer, must be another client or unknown
+                                Log.e("ChatActivity", "Participant is neither secretary nor lawyer: $participantId")
+                                Toast.makeText(applicationContext, "Chat partner information not available", Toast.LENGTH_SHORT).show()
+                                finish()
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ChatActivity", "Failed to check if participant is a lawyer: ${e.message}")
+                            Toast.makeText(applicationContext, "Failed to load chat partner information", Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to check if participant is a secretary: ${e.message}")
+                Toast.makeText(applicationContext, "Failed to load chat partner information", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+    }
+
 
     private fun getClientName(clientId: String) {
         database.child("Users").child(clientId).get()
@@ -404,9 +495,11 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
+
+    // Add some debugging to your sendMessage method to verify messages are being sent
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
-        Log.d("ChatActivity", "Button Clicked! Message: $messageText")
+        Log.d("ChatActivity", "Attempting to send message: $messageText")
 
         if (messageText.isNotEmpty() && currentUserId != null) {
             val receiverId = determineReceiverId()
@@ -417,6 +510,7 @@ class ChatActivity : AppCompatActivity() {
             }
 
             val conversationId = generateConversationId(currentUserId!!, receiverId)
+            Log.d("ChatActivity", "Sending to conversation: $conversationId")
 
             val message = Message(
                 senderId = currentUserId!!,
@@ -426,39 +520,23 @@ class ChatActivity : AppCompatActivity() {
             )
 
             val chatRef = database.child("conversations").child(conversationId).child("messages").push()
+            Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
 
             // First, add the message to the conversation
-            chatRef.setValue(message).addOnCompleteListener {
-                if (it.isSuccessful) {
-                    Log.d("ChatActivity", "Message Sent Successfully!")
-
-                    // Create notification for the recipient
-                    createNotificationForRecipient(message)
-
-                    // Now, add the participant IDs to the conversation
-                    val participantsMap = mapOf(
-                        currentUserId!! to true,
-                        receiverId to true
-                    )
-
-                    // Add participants to the conversation if they are not already there
-                    database.child("conversations").child(conversationId).child("participantIds")
-                        .updateChildren(participantsMap).addOnCompleteListener { updateTask ->
-                            if (updateTask.isSuccessful) {
-                                Log.d("ChatActivity", "Participants added successfully!")
-                            } else {
-                                Log.e("ChatActivity", "Failed to add participants: ${updateTask.exception?.message}")
-                            }
-                        }
-
+            chatRef.setValue(message)
+                .addOnSuccessListener {
+                    Log.d("ChatActivity", "Message sent successfully")
                     etMessageInput.text.clear()  // Clear the input field
-                } else {
-                    Log.e("ChatActivity", "Failed to send message: ${it.exception?.message}")
+
+                    // Force refresh the messages list
+                    listenForMessages()
+                }
+                .addOnFailureListener { e ->
+                    Log.e("ChatActivity", "Failed to send message: ${e.message}")
                     Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
                 }
-            }
         } else {
-            Log.e("ChatActivity", "Message cannot be sent! Check messageText or currentUserId.")
+            Log.e("ChatActivity", "Message cannot be sent! messageText=${messageText}, currentUserId=$currentUserId")
             if (messageText.isEmpty()) {
                 Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
             }
@@ -604,9 +682,6 @@ class ChatActivity : AppCompatActivity() {
         val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         Log.d("ChatActivity", "Listening for messages with conversationId: $actualConversationId")
 
-        // Check if this conversation has been forwarded
-        checkForwardedStatus(actualConversationId)
-
         // Reset unread messages counter for this user
         database.child("conversations").child(actualConversationId)
             .child("unreadMessages")
@@ -615,25 +690,55 @@ class ChatActivity : AppCompatActivity() {
 
         // Listen for messages
         val messagesRef = database.child("conversations").child(actualConversationId).child("messages")
+
+        // First, check if messages exist in the database
+        messagesRef.get().addOnSuccessListener { snapshot ->
+            Log.d("ChatActivity", "Database check: ${if (snapshot.exists()) "Messages exist" else "No messages found"}")
+            if (snapshot.exists()) {
+                Log.d("ChatActivity", "Number of messages in database: ${snapshot.childrenCount}")
+
+                // Print sample of first message to debug
+                val firstMsg = snapshot.children.firstOrNull()
+                if (firstMsg != null) {
+                    val msgText = firstMsg.child("message").getValue(String::class.java)
+                    val senderId = firstMsg.child("senderId").getValue(String::class.java)
+                    Log.d("ChatActivity", "Sample message - Text: $msgText, Sender: $senderId")
+                    Log.d("ChatActivity", "First message raw data: ${firstMsg.value}")
+                }
+            }
+        }
+
         messagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 messagesList.clear()
+
+                Log.d("ChatActivity", "ValueEventListener fired, message count: ${snapshot.childrenCount}")
+
                 if (!snapshot.exists()) {
                     Log.d("ChatActivity", "No messages found in conversation: $actualConversationId")
+
+                    // Ensure adapter refreshes even when empty
+                    messagesAdapter.notifyDataSetChanged()
                     return
                 }
 
-                Log.d("ChatActivity", "Found ${snapshot.childrenCount} messages")
+                // Print all message data for debugging
+                for (child in snapshot.children) {
+                    Log.d("ChatActivity", "Message data: ${child.value}")
+                }
+
                 for (messageSnapshot in snapshot.children) {
                     try {
+                        // Log the current message being processed
+                        Log.d("ChatActivity", "Processing message: ${messageSnapshot.value}")
+
                         // Check if this is a system message first
                         val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
+                        val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
+                        val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+
                         if (senderId == "system") {
                             // This is a system message
-                            val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
-                            val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
-
-                            // Create a Message object for the system message
                             val systemMessage = Message(
                                 senderId = "system",
                                 receiverId = "", // System messages don't have a specific receiver
@@ -641,47 +746,48 @@ class ChatActivity : AppCompatActivity() {
                                 timestamp = timestamp
                             )
                             messagesList.add(systemMessage)
+                            Log.d("ChatActivity", "Added system message: $messageText")
+                        } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
+                            // This is a regular message
+                            val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java) ?: ""
+
+                            // Create message with sender name (if current user, leave null)
+                            val message = Message(
+                                senderId = senderId,
+                                receiverId = receiverId,
+                                message = messageText,
+                                timestamp = timestamp,
+                                senderName = null // Will be handled by adapter based on senderId
+                            )
+
+                            messagesList.add(message)
+                            Log.d("ChatActivity", "Added regular message: $messageText from $senderId")
                         } else {
-                            // Try to parse as Message class
-                            val message = messageSnapshot.getValue(Message::class.java)
-                            if (message != null) {
-                                // Show ALL messages in this conversation
-                                // No filtering by sender/receiver - this is key!
-                                messagesList.add(message)
-                            }
+                            Log.e("ChatActivity", "Invalid message data: senderId=$senderId, message=$messageText")
                         }
                     } catch (e: Exception) {
-                        // For legacy messages that might not have all fields
-                        val msgMap = messageSnapshot.getValue(Map::class.java) as? Map<String, Any>
-                        if (msgMap != null) {
-                            val senderId = msgMap["senderId"] as? String ?: ""
-                            val messageText = msgMap["message"] as? String ?: ""
-                            val timestamp = msgMap["timestamp"] as? Long ?: 0L
-
-                            // Check if this is a system message
-                            if (senderId == "system") {
-                                messagesList.add(Message(senderId, "", messageText, timestamp))
-                            } else {
-                                // For legacy messages, determine receiverId based on the conversation
-                                val receiverId = if (senderId == currentUserId) {
-                                    determineReceiverId() ?: ""
-                                } else {
-                                    currentUserId ?: ""
-                                }
-
-                                // Add as a properly formatted message
-                                messagesList.add(Message(senderId, receiverId, messageText, timestamp))
-                            }
-                        }
+                        Log.e("ChatActivity", "Error parsing message: ${e.message}")
+                        e.printStackTrace()
                     }
                 }
 
-                // Sort messages by timestamp to ensure correct order
+                // Sort messages by timestamp
                 messagesList.sortBy { it.timestamp }
 
+                // Log the final list of messages
+                Log.d("ChatActivity", "Final message list size: ${messagesList.size}")
+                for (msg in messagesList) {
+                    Log.d("ChatActivity", "Final list - Message: ${msg.message}, Sender: ${msg.senderId}")
+                }
+
+                // Update the UI
                 messagesAdapter.notifyDataSetChanged()
+
                 if (messagesList.isNotEmpty()) {
-                    rvChatMessages.scrollToPosition(messagesList.size - 1)
+                    // Scroll to the bottom to see latest messages
+                    rvChatMessages.post {
+                        rvChatMessages.scrollToPosition(messagesList.size - 1)
+                    }
                 }
             }
 
@@ -692,8 +798,9 @@ class ChatActivity : AppCompatActivity() {
         })
     }
 
-    // Add this new method to check if conversation has been forwarded
+    // Updated checkForwardedStatus method combining your current implementation with the enhancements
     private fun checkForwardedStatus(conversationId: String) {
+        // First check the forwarded flag at its specific location
         database.child("conversations").child(conversationId)
             .child("forwarded").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -701,31 +808,66 @@ class ChatActivity : AppCompatActivity() {
 
                     if (isForwarded) {
                         // Disable messaging in forwarded conversations
-                        disableMessaging()
+                        disableMessaging() // Use the existing method without parameters
 
-                        // Show a message indicating the conversation has been forwarded
+                        // Show a toast since we can't easily add UI elements without modifying layout
                         Toast.makeText(
                             applicationContext,
                             "This conversation has been forwarded to the lawyer.",
                             Toast.LENGTH_LONG
                         ).show()
+                    } else {
+                        // If not forwarded, check additional flags without using Toast
+                        database.child("conversations").child(conversationId)
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(rootSnapshot: DataSnapshot) {
+                                    // Check for the handledByLawyer flag
+                                    val handledByLawyer = rootSnapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                                    val originalConversationId = rootSnapshot.child("originalConversationId").getValue(String::class.java)
+
+                                    if (handledByLawyer && !originalConversationId.isNullOrEmpty()) {
+                                        // Just log the status instead of UI changes that require layout modifications
+                                        Log.d("ChatActivity", "This conversation was forwarded from secretary")
+                                    }
+
+                                    // Continue with the chat setup
+                                    continueWithChatSetup()
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {
+                                    Log.e("ChatActivity", "Error checking conversation details: ${error.message}")
+                                    continueWithChatSetup()
+                                }
+                            })
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error checking forwarded status: ${error.message}")
+                    continueWithChatSetup()
                 }
             })
     }
 
-    // Add this method to disable the messaging UI
-    private fun disableMessaging() {
+    // Helper method to continue with chat setup after checking forwarded status
+    private fun continueWithChatSetup() {
+        if (clientId == null && conversationId != null) {
+            extractClientIdFromConversation(conversationId!!)
+        } else if (secretaryId == null && conversationId != null) {
+            extractSecretaryIdFromConversation(conversationId!!)
+        } else {
+            setupChatPartner()
+        }
+    }
+
+    // Update the existing disableMessaging method to accept a message parameter with default value
+    private fun disableMessaging(message: String = "This conversation has been forwarded to the lawyer.") {
         // Disable the input field and send button
         etMessageInput.isEnabled = false
         btnSendMessage.isEnabled = false
 
         // Change hint text to indicate messaging is disabled
-        etMessageInput.hint = "This conversation has been forwarded to the lawyer."
+        etMessageInput.hint = message
 
         // Optional: Add a visual indicator that the conversation is read-only
         etMessageInput.setBackgroundResource(R.drawable.bg_input_disabled) // Create this drawable

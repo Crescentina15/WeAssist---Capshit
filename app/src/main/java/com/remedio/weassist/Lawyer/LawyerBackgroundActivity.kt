@@ -56,15 +56,216 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
+        // Update to the message button click listener in LawyerBackgroundActivity
         binding.btnMessage.setOnClickListener {
-            Log.d(TAG, "Message button clicked, secretaryId: $secretaryId")
+            Log.d(TAG, "Message button clicked")
 
-            if (secretaryId.isNullOrEmpty()) {
-                checkAllPossibleSecretaryLocations()
-            } else {
-                startChatActivity()
-            }
+            // Check if there's an accepted appointment with this lawyer
+            val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
+
+            appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        // Look for an accepted appointment with this lawyer
+                        var foundAppointment = false
+                        var appointmentLawyerId: String? = null
+
+                        for (appointmentSnapshot in snapshot.children) {
+                            val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+
+                            val clientId = appointmentData?.get("clientId")?.toString()
+                            appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
+                            val status = appointmentData?.get("status")?.toString()
+
+                            // Check if this is an accepted appointment for the current client and lawyer
+                            if (clientId == currentUserId && appointmentLawyerId == lawyerId &&
+                                (status == "accepted" || status == "Accepted")) {
+                                foundAppointment = true
+                                break
+                            }
+                        }
+
+                        if (foundAppointment && appointmentLawyerId != null) {
+                            // If appointment is accepted, message the lawyer directly
+                            startChatWithLawyer(appointmentLawyerId)
+                        } else {
+                            // If no accepted appointment found, check regular appointments
+                            checkRegularAppointmentsForChat()
+                        }
+                    } else {
+                        // If no accepted_appointment node, check regular appointments
+                        checkRegularAppointmentsForChat()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Failed to check accepted appointments", error.toException())
+                    // Fall back to secretary messaging
+                    if (secretaryId.isNullOrEmpty()) {
+                        checkAllPossibleSecretaryLocations()
+                    } else {
+                        startChatActivity()
+                    }
+                }
+            })
         }
+    }
+
+    // Add this new method to check regular appointments for the chat
+    private fun checkRegularAppointmentsForChat() {
+        val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
+
+        appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    // Look for an accepted appointment with this lawyer
+                    var foundAppointment = false
+                    var appointmentLawyerId: String? = null
+
+                    for (appointmentSnapshot in snapshot.children) {
+                        val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
+
+                        val clientId = appointmentData?.get("clientId")?.toString()
+                        appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
+                        val status = appointmentData?.get("status")?.toString()
+
+                        // Check if this is an accepted appointment for the current client and lawyer
+                        if (clientId == currentUserId && appointmentLawyerId == lawyerId &&
+                            (status == "accepted" || status == "Accepted")) {
+                            foundAppointment = true
+                            break
+                        }
+                    }
+
+                    if (foundAppointment && appointmentLawyerId != null) {
+                        // If appointment is accepted, message the lawyer directly
+                        startChatWithLawyer(appointmentLawyerId)
+                    } else {
+                        // If no accepted appointment found in regular appointments either, use secretary
+                        if (secretaryId.isNullOrEmpty()) {
+                            checkAllPossibleSecretaryLocations()
+                        } else {
+                            startChatActivity()
+                        }
+                    }
+                } else {
+                    // If no appointments found, fall back to messaging the secretary
+                    if (secretaryId.isNullOrEmpty()) {
+                        checkAllPossibleSecretaryLocations()
+                    } else {
+                        startChatActivity()
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to check regular appointments", error.toException())
+                // Fall back to secretary messaging
+                if (secretaryId.isNullOrEmpty()) {
+                    checkAllPossibleSecretaryLocations()
+                } else {
+                    startChatActivity()
+                }
+            }
+        })
+    }
+
+    // Add this new method to start a chat with the lawyer
+    private fun startChatWithLawyer(lawyerId: String) {
+        Log.d(TAG, "Starting chat with lawyer: $lawyerId")
+
+        // Generate the conversation ID between client and lawyer
+        val conversationId = if (currentUserId!! < lawyerId) {
+            "conversation_${currentUserId}_$lawyerId"
+        } else {
+            "conversation_${lawyerId}_$currentUserId"
+        }
+
+        // Check if a conversation already exists
+        val conversationRef = FirebaseDatabase.getInstance().getReference("conversations").child(conversationId)
+
+        conversationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    // Conversation exists, start the chat activity with this conversation
+                    val intent = Intent(this@LawyerBackgroundActivity, ChatActivity::class.java).apply {
+                        putExtra("CONVERSATION_ID", conversationId)
+                        putExtra("SECRETARY_ID", lawyerId) // Using SECRETARY_ID field for lawyer ID
+                        putExtra("USER_TYPE", "client")
+                    }
+                    startActivity(intent)
+                } else {
+                    // Conversation doesn't exist yet, create it with a welcome message
+                    createNewConversationWithLawyer(lawyerId, conversationId)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to check if conversation exists", error.toException())
+                // Fall back to creating a new conversation
+                createNewConversationWithLawyer(lawyerId, conversationId)
+            }
+        })
+    }
+
+    // Add this new method to create a new conversation with the lawyer
+    private fun createNewConversationWithLawyer(lawyerId: String, conversationId: String) {
+        // Get lawyer information for the conversation setup - no welcome message
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
+
+        lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Set up the conversation data WITHOUT the welcome message
+                val participantIds = mapOf(
+                    currentUserId!! to true,
+                    lawyerId to true
+                )
+
+                val unreadMessages = mapOf(
+                    currentUserId!! to 0, // No unread messages initially
+                    lawyerId to 0         // No unread messages initially
+                )
+
+                val conversationData = mapOf(
+                    "participantIds" to participantIds,
+                    "unreadMessages" to unreadMessages,
+                    "appointedLawyerId" to lawyerId,
+                    "handledByLawyer" to true
+                )
+
+                // Create the conversation without a welcome message
+                val conversationRef = FirebaseDatabase.getInstance().getReference("conversations").child(conversationId)
+                conversationRef.setValue(conversationData)
+                    .addOnSuccessListener {
+                        // Just open the chat without adding a welcome message
+                        val intent = Intent(this@LawyerBackgroundActivity, ChatActivity::class.java).apply {
+                            putExtra("CONVERSATION_ID", conversationId)
+                            putExtra("SECRETARY_ID", lawyerId) // Using SECRETARY_ID field for lawyer ID
+                            putExtra("USER_TYPE", "client")
+                        }
+                        startActivity(intent)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e(TAG, "Failed to create conversation", e)
+                        // Fall back to secretary messaging
+                        if (secretaryId.isNullOrEmpty()) {
+                            checkAllPossibleSecretaryLocations()
+                        } else {
+                            startChatActivity()
+                        }
+                    }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to get lawyer information", error.toException())
+                // Fall back to secretary messaging
+                if (secretaryId.isNullOrEmpty()) {
+                    checkAllPossibleSecretaryLocations()
+                } else {
+                    startChatActivity()
+                }
+            }
+        })
     }
 
     override fun onResume() {

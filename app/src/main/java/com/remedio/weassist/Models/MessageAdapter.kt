@@ -80,17 +80,25 @@ class MessageAdapter(private val messagesList: List<Message>) :
     // View holder for messages received from other users
     class ReceivedMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.message_text)
-        //private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
         private val tvSenderName: TextView? = itemView.findViewById(R.id.sender_name)
 
         fun bind(message: Message) {
             tvMessage.text = message.message
-            //tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(message.timestamp))
 
-            // Set sender name if available
-            val senderName = message.senderName ?: "Unknown"
-            tvSenderName?.text = senderName
-            tvSenderName?.visibility = View.VISIBLE
+            // Either hide the sender name or use a default
+            if (tvSenderName != null) {
+                if (message.senderName != null) {
+                    tvSenderName.text = message.senderName
+                    tvSenderName.visibility = View.VISIBLE
+                } else {
+                    // Either hide it
+                    tvSenderName.visibility = View.GONE
+
+                    // Or show a default
+                    // tvSenderName.text = "User"
+                    // tvSenderName.visibility = View.VISIBLE
+                }
+            }
         }
     }
 
