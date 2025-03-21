@@ -205,13 +205,225 @@ class SecretaryMessageFragment : Fragment() {
             .addOnSuccessListener {
                 // Create a new conversation between the lawyer and client
                 createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+
+                // Send notification to the client
+                createClientForwardingNotification(conversation.clientId, conversation.conversationId)
+
+                // Send notification to the lawyer
+                createLawyerForwardingNotification(lawyerId, conversation.clientId, conversation.conversationId)
             }
             .addOnFailureListener { e ->
                 Log.e("SecretaryMessageFragment", "Failed to mark conversation as forwarded: ${e.message}")
                 // Still create the conversation even if marking as forwarded fails
                 createNewLawyerClientConversation(lawyerId, conversation.clientId, conversation.conversationId)
+
+                // Still send notifications even if marking as forwarded fails
+                createClientForwardingNotification(conversation.clientId, conversation.conversationId)
+                createLawyerForwardingNotification(lawyerId, conversation.clientId, conversation.conversationId)
             }
     }
+
+    /**
+     * Creates a notification for the client about their case being forwarded to a lawyer
+     * @param clientId The ID of the client to notify
+     * @param conversationId The ID of the original conversation
+     */
+    private fun createClientForwardingNotification(clientId: String, conversationId: String) {
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        // Get the secretary's name first
+        database.child("secretaries").child(currentSecretaryId).get()
+            .addOnSuccessListener { snapshot ->
+                val secretaryName = snapshot.child("name").getValue(String::class.java) ?: "Secretary"
+
+                // Create notification data - matching the structure in ClientNotificationActivity
+                val notificationData = hashMapOf<String, Any>(
+                    "senderId" to currentSecretaryId, // Secretary as sender
+                    "senderName" to "Secretary $secretaryName", // Include secretary name
+                    "message" to "Your case has been forwarded to a lawyer who will assist you further.",
+                    "timestamp" to System.currentTimeMillis(),
+                    "type" to "CONVERSATION_FORWARDED",
+                    "isRead" to false,
+                    "conversationId" to conversationId
+                )
+
+                // Generate a unique notification ID
+                val notificationId = database.child("notifications").child(clientId).push().key ?: return@addOnSuccessListener
+
+                // Save notification to database
+                database.child("notifications").child(clientId).child(notificationId).setValue(notificationData)
+                    .addOnSuccessListener {
+                        Log.d("SecretaryMessageFragment", "Notification created for client: $clientId")
+
+                        // Update unread notification count in the client's user record
+                        updateClientUnreadNotificationCount(clientId)
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryMessageFragment", "Failed to create notification for client: ${e.message}")
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to fetch secretary name: ${e.message}")
+
+                // Fallback if we can't get the secretary name
+                val notificationData = hashMapOf<String, Any>(
+                    "senderId" to currentSecretaryId,
+                    "senderName" to "Secretary", // Generic fallback
+                    "message" to "Your case has been forwarded to a lawyer who will assist you further.",
+                    "timestamp" to System.currentTimeMillis(),
+                    "type" to "CONVERSATION_FORWARDED",
+                    "isRead" to false,
+                    "conversationId" to conversationId
+                )
+
+                val notificationId = database.child("notifications").child(clientId).push().key ?: return@addOnFailureListener
+
+                database.child("notifications").child(clientId).child(notificationId).setValue(notificationData)
+                    .addOnSuccessListener {
+                        Log.d("SecretaryMessageFragment", "Notification created for client: $clientId")
+                        updateClientUnreadNotificationCount(clientId)
+                    }
+                    .addOnFailureListener { e2 ->
+                        Log.e("SecretaryMessageFragment", "Failed to create notification for client: ${e2.message}")
+                    }
+            }
+    }
+
+    /**
+     * Creates a notification for the lawyer about a new case being forwarded to them
+     * @param lawyerId The ID of the lawyer to notify
+     * @param clientId The ID of the client whose case is being forwarded
+     * @param conversationId The ID of the original conversation
+     */
+    private fun createLawyerForwardingNotification(lawyerId: String, clientId: String, conversationId: String) {
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+        // First get the secretary's name
+        database.child("secretaries").child(currentSecretaryId).get()
+            .addOnSuccessListener { secretarySnapshot ->
+                val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: "Secretary"
+
+                // Then get the client's name to include in the notification
+                database.child("Users").child(clientId).get()
+                    .addOnSuccessListener { clientSnapshot ->
+                        val firstName = clientSnapshot.child("firstName").getValue(String::class.java) ?: "A client"
+                        val lastName = clientSnapshot.child("lastName").getValue(String::class.java) ?: ""
+                        val clientName = if (lastName.isEmpty()) firstName else "$firstName $lastName"
+
+                        // Then create the notification
+                        val newConversationId = generateConversationId(clientId, lawyerId)
+
+                        // Create notification data - matching the structure in LawyerNotification
+                        val notificationData = hashMapOf<String, Any>(
+                            "senderId" to currentSecretaryId, // Secretary as sender
+                            "senderName" to "Secretary $secretaryName", // Include actual secretary name
+                            "message" to "A new case from $clientName has been forwarded to you.",
+                            "timestamp" to System.currentTimeMillis(),
+                            "type" to "NEW_CASE_ASSIGNED",
+                            "isRead" to false,
+                            "conversationId" to newConversationId
+                        )
+
+                        // Generate a unique notification ID
+                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnSuccessListener
+
+                        // Save notification to database
+                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                            .addOnSuccessListener {
+                                Log.d("SecretaryMessageFragment", "Notification created for lawyer: $lawyerId")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("SecretaryMessageFragment", "Failed to create notification for lawyer: ${e.message}")
+                            }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryMessageFragment", "Failed to fetch client name: ${e.message}")
+
+                        // Create a notification with just the secretary name if we can't get the client's name
+                        val newConversationId = generateConversationId(clientId, lawyerId)
+
+                        val notificationData = hashMapOf<String, Any>(
+                            "senderId" to currentSecretaryId,
+                            "senderName" to "Secretary $secretaryName",
+                            "message" to "A new case has been forwarded to you.",
+                            "timestamp" to System.currentTimeMillis(),
+                            "type" to "NEW_CASE_ASSIGNED",
+                            "isRead" to false,
+                            "conversationId" to newConversationId
+                        )
+
+                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnFailureListener
+                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("SecretaryMessageFragment", "Failed to fetch secretary name: ${e.message}")
+
+                // Fallback if we can't get the secretary's name - proceed with client name lookup
+                database.child("Users").child(clientId).get()
+                    .addOnSuccessListener { clientSnapshot ->
+                        val firstName = clientSnapshot.child("firstName").getValue(String::class.java) ?: "A client"
+                        val lastName = clientSnapshot.child("lastName").getValue(String::class.java) ?: ""
+                        val clientName = if (lastName.isEmpty()) firstName else "$firstName $lastName"
+
+                        val newConversationId = generateConversationId(clientId, lawyerId)
+
+                        val notificationData = hashMapOf<String, Any>(
+                            "senderId" to currentSecretaryId,
+                            "senderName" to "Secretary", // Generic fallback
+                            "message" to "A new case from $clientName has been forwarded to you.",
+                            "timestamp" to System.currentTimeMillis(),
+                            "type" to "NEW_CASE_ASSIGNED",
+                            "isRead" to false,
+                            "conversationId" to newConversationId
+                        )
+
+                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnSuccessListener
+                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                    }
+                    .addOnFailureListener { clientError ->
+                        // Final fallback if both secretary and client name lookups fail
+                        val newConversationId = generateConversationId(clientId, lawyerId)
+
+                        val notificationData = hashMapOf<String, Any>(
+                            "senderId" to currentSecretaryId,
+                            "senderName" to "Secretary",
+                            "message" to "A new case has been forwarded to you.",
+                            "timestamp" to System.currentTimeMillis(),
+                            "type" to "NEW_CASE_ASSIGNED",
+                            "isRead" to false,
+                            "conversationId" to newConversationId
+                        )
+
+                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnFailureListener
+                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                    }
+            }
+    }
+
+    /**
+     * Updates the unread notification count for a client
+     * @param clientId The ID of the client to update
+     */
+    private fun updateClientUnreadNotificationCount(clientId: String) {
+        // Query to count unread notifications
+        database.child("notifications").child(clientId)
+            .orderByChild("isRead").equalTo(false)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val unreadCount = snapshot.childrenCount.toInt()
+
+                    // Update the client's unread notification count
+                    database.child("Users").child(clientId)
+                        .child("unreadNotifications").setValue(unreadCount)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryMessageFragment", "Failed to count unread notifications: ${error.message}")
+                }
+            })
+    }
+
 
     // Update the createNewLawyerClientConversation method
     private fun createNewLawyerClientConversation(lawyerId: String, clientId: String, originalConversationId: String) {
@@ -481,124 +693,6 @@ class SecretaryMessageFragment : Fragment() {
             .addOnFailureListener { e ->
                 Log.e("SecretaryMessageFragment", "Failed to add notification: ${e.message}")
             }
-    }
-
-    private fun findAvailableLawyer(): String? {
-        // This function would need to be implemented to query for a lawyer
-        // For now, we'll use a placeholder implementation
-        var lawyerId: String? = null
-
-        // Query the database for lawyers
-        database.child("Users").get()
-            .addOnSuccessListener { usersSnapshot ->
-                if (usersSnapshot.exists()) {
-                    // Find lawyers by checking role field
-                    val lawyers = usersSnapshot.children.filter { userSnapshot ->
-                        val role = userSnapshot.child("role").getValue(String::class.java)
-                        role == "lawyer"
-                    }
-
-                    if (lawyers.isNotEmpty()) {
-                        // Use the first lawyer we find
-                        lawyerId = lawyers.first().key
-                    }
-                }
-            }
-            .addOnFailureListener { e ->
-                Log.e("SecretaryMessageFragment", "Failed to query for users: ${e.message}")
-            }
-
-        return lawyerId
-    }
-
-    private fun addTransitionMessages(conversationId: String, lawyerId: String, secretaryId: String) {
-        // Get the conversation reference
-        val conversationRef = database.child("conversations").child(conversationId)
-
-        // Fetch the lawyer's name
-        database.child("lawyers").child(lawyerId).get()
-            .addOnSuccessListener { lawyerSnapshot ->
-                val lawyerFirstName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "The lawyer"
-
-                val lawyerName = if (lawyerFirstName.isEmpty()) lawyerFirstName else "$lawyerFirstName"
-
-                // Add a system message for adding the lawyer (not forwarding)
-                val addingLawyerMessage = mapOf(
-                    "message" to "Atty. $lawyerName has been added to this conversation to provide legal expertise.",
-                    "senderId" to "system",
-                    "timestamp" to ServerValue.TIMESTAMP
-                )
-
-                conversationRef.child("messages").push().setValue(addingLawyerMessage)
-                    .addOnSuccessListener {
-                        // Do NOT set secretaryActive to false
-                        // Do NOT set handledByLawyer to true
-
-                        // Add a welcome message from the lawyer
-                        val welcomeMessage = mapOf(
-                            "message" to "Hello, I'm Atty. $lawyerName. I've been brought in to provide legal assistance while you continue working with the secretary.",
-                            "senderId" to lawyerId,
-                            "timestamp" to (System.currentTimeMillis() + 1000)  // Adding 1 second to ensure proper ordering
-                        )
-
-                        conversationRef.child("messages").push().setValue(welcomeMessage)
-                            .addOnSuccessListener {
-                                // Set unread counter for lawyer
-                                conversationRef.child("unreadMessages").child(lawyerId).setValue(1)
-                                    .addOnSuccessListener {
-                                        Toast.makeText(
-                                            requireContext(),
-                                            "Attorney $lawyerName has been added to the conversation",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-
-                                        // Secretary remains an active participant
-                                        // No need to remove or change the secretary's status
-                                    }
-                            }
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("SecretaryMessageFragment", "Failed to add system messages: ${e.message}")
-                        Toast.makeText(
-                            requireContext(),
-                            "Added lawyer, but failed to add notification messages",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-            }
-            .addOnFailureListener { e ->
-                // Fallback if we can't get the lawyer's name
-                val addingLawyerMessage = mapOf(
-                    "message" to "A lawyer has been added to this conversation to provide legal expertise.",
-                    "senderId" to "system",
-                    "timestamp" to ServerValue.TIMESTAMP
-                )
-
-                conversationRef.child("messages").push().setValue(addingLawyerMessage)
-                    .addOnSuccessListener {
-                        // Do NOT set secretaryActive to false
-                        // Do NOT set handledByLawyer to true
-
-                        // Set unread counter for lawyer
-                        conversationRef.child("unreadMessages").child(lawyerId).setValue(1)
-                            .addOnSuccessListener {
-                                Toast.makeText(
-                                    requireContext(),
-                                    "A lawyer has been added to the conversation",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
-                    }
-            }
-    }
-
-    private fun noLawyersFoundMessage() {
-        Log.e("SecretaryMessageFragment", "No lawyers found in the system")
-        Toast.makeText(
-            requireContext(),
-            "No lawyers found in the system",
-            Toast.LENGTH_SHORT
-        ).show()
     }
 
     private fun setupSwipeToDelete() {
