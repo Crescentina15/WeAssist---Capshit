@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.remedio.weassist.R
 
 class SecretaryAppointmentAdapter(
@@ -40,8 +41,17 @@ class SecretaryAppointmentAdapter(
         holder.taskDate.text = appointment.date
         holder.taskTime.text = appointment.time
 
-        // Set default lawyer profile image
-        holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
+        // Load lawyer profile image using Glide if URL is available
+        if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
+            Glide.with(holder.itemView.context)
+                .load(appointment.lawyerProfileImage)
+                .placeholder(R.drawable.account_circle_24)
+                .error(R.drawable.account_circle_24)
+                .into(holder.lawyerProfileImage)
+        } else {
+            // Set default image if no URL is available
+            holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
+        }
 
         // Get the session state for this appointment, default to false (not started)
         val isSessionActive = sessionStates[appointment.appointmentId] ?: false

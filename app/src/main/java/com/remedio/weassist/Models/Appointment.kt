@@ -12,7 +12,7 @@ data class Appointment(
     val time: String = "",
     val problem: String = "",
     var lawyerId: String = "",
-    val lawyerProfileImage: String? = null,
+    var lawyerProfileImage: String? = null,
     var status: String? = "pending", // Default to pending
     var clientId: String = "",
     var secretaryId: String = "",

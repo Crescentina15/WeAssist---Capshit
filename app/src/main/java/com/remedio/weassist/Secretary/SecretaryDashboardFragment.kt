@@ -32,7 +32,7 @@ class SecretaryDashboardFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var appointmentAdapter: SecretaryAppointmentAdapter
     private var appointmentList = mutableListOf<Appointment>()
-    private lateinit var profileImageView: ImageView // Add this line
+    private lateinit var profileImageView: ImageView
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -241,9 +241,11 @@ class SecretaryDashboardFragment : Fragment() {
                                 override fun onDataChange(lawyerSnapshot: DataSnapshot) {
                                     val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
                                     val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
+                                    val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").value?.toString()
 
                                     if (lawyerLawFirm == secretaryLawFirm) {
                                         appointment.fullName = lawyerName
+                                        appointment.lawyerProfileImage = lawyerProfileImage // Set the lawyer's profile image URL
                                         appointmentList.add(appointment)
                                         appointmentAdapter.notifyDataSetChanged()
                                     }
