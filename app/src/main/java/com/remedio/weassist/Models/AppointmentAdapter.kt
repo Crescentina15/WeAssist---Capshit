@@ -73,10 +73,11 @@ class AppointmentAdapter(
         holder.lawyerName.text = "For Atty. ${appointment.lawyerName}"
         holder.appointmentStatus.text = appointment.status ?: "Pending"
 
+        // Load the lawyer's profile image
         if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
             Picasso.get().load(appointment.lawyerProfileImage).into(holder.lawyerProfileImage)
         } else {
-            holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
+            holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24) // Default image
         }
     }
 

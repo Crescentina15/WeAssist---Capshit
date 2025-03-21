@@ -262,18 +262,19 @@ class SecretaryAppointmentFragment : Fragment() {
 
     private fun fetchAppointmentsForLawyers(lawyerIds: List<String>) {
         val appointmentsRef = database.child("appointments")
-        val lawyersRef = database.child("lawyers") // Assuming lawyers are stored here
+        val lawyersRef = database.child("lawyers")
         Log.d("SecretaryCheck", "Fetching appointments for lawyerIds: $lawyerIds")
 
-        // First, fetch all lawyer details to get their names
+        // First, fetch all lawyer details to get their names and profile images
         lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(lawyersSnapshot: DataSnapshot) {
-                // Create a map of lawyerId to lawyerName
-                val lawyerNames = mutableMapOf<String, String>()
+                // Create a map of lawyerId to lawyerName and lawyerProfileImage
+                val lawyerDetails = mutableMapOf<String, Pair<String, String?>>()
                 for (lawyerSnapshot in lawyersSnapshot.children) {
                     val lawyerId = lawyerSnapshot.key ?: continue
                     val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
-                    lawyerNames[lawyerId] = lawyerName
+                    val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").getValue(String::class.java)
+                    lawyerDetails[lawyerId] = Pair(lawyerName, lawyerProfileImage)
                 }
 
                 // Now fetch appointments
@@ -286,20 +287,21 @@ class SecretaryAppointmentFragment : Fragment() {
                                 val clientId = child.child("clientId").getValue(String::class.java) ?: "Unknown"
 
                                 if (appointment != null && appointment.lawyerId in lawyerIds) {
-                                    // Set the appointment ID using the Firebase key
-                                    appointment.appointmentId = child.key ?: "Unknown"
-                                    appointment.clientId = clientId // Assign clientId
-
-                                    // Set the lawyer name based on the ID
-                                    appointment.lawyerName = lawyerNames[appointment.lawyerId] ?: "Unknown Lawyer"
+                                    // Create a new Appointment object with updated values
+                                    val updatedAppointment = appointment.copy(
+                                        appointmentId = child.key ?: "Unknown",
+                                        clientId = clientId,
+                                        lawyerName = lawyerDetails[appointment.lawyerId]?.first ?: "Unknown Lawyer",
+                                        lawyerProfileImage = lawyerDetails[appointment.lawyerId]?.second
+                                    )
 
                                     Log.d("SecretaryCheck",
-                                        "Adding appointment: ${appointment.fullName}, " +
-                                                "lawyerId=${appointment.lawyerId}, " +
-                                                "lawyerName=${appointment.lawyerName}, " +
-                                                "clientId=${appointment.clientId}")
+                                        "Adding appointment: ${updatedAppointment.fullName}, " +
+                                                "lawyerId=${updatedAppointment.lawyerId}, " +
+                                                "lawyerName=${updatedAppointment.lawyerName}, " +
+                                                "clientId=${updatedAppointment.clientId}")
 
-                                    appointmentList.add(appointment)
+                                    appointmentList.add(updatedAppointment)
                                 }
                             }
 
