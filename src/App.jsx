@@ -11,7 +11,7 @@ import ManageSecretary from "./ManageSecretary";
 import EditLawyer from "./EditLawyer";
 import Privacy from "./PrivacyPolicy";
 import PlansSubscription from "./PlansSubscription"; 
-import Payment from "./Payment"; 
+import SuccessPage from "./Payment"; // Add this import
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -73,8 +73,8 @@ const App = () => {
           element={user ? <PlansSubscription /> : <Navigate to="/login" />} 
         />
         <Route 
-          path="/payment" 
-          element={user ? <Payment /> : <Navigate to="/login" />} // 
+          path="/payment-success" 
+          element={user ? <SuccessPage /> : <Navigate to="/login" />} 
         />
       </Routes>
     </Router>

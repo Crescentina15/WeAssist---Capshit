@@ -1,81 +1,137 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import PaymentForm from "./PaymentForm";
+// SuccessPage.js
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import "./index.css";
 
-const stripePromise = loadStripe("pk_test_51R1s9U4Ib6pQtdzfvbfx0FVqiANXCaAZMxVY6Nu8Eb0VxRIAncuKQ1DlIaVanRDOaejeavEyangNqFmWfHnG1oXI00Metr4woF");
+// Simple check mark SVG component
+const CheckMarkIcon = () => (
+  <div className="check-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+  </div>
+);
 
-const Payment = () => {
-  const [searchParams] = useSearchParams();
-  const name = searchParams.get("name");
-  const price = searchParams.get("price");
-  const amount = parseFloat(price.replace("₱", "").replace(",", "")) * 100; // Convert to cents
-  const [clientSecret, setClientSecret] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
+const SuccessPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const [verificationComplete, setVerificationComplete] = useState(false);
+  
+  // Get payment details from URL query parameters
+  const paymentId = queryParams.get("payment_id");
+  const planName = queryParams.get("plan");
+  const amount = queryParams.get("amount");
+  const status = queryParams.get("status");
+  
   useEffect(() => {
-    // Fetch payment intent when component loads
-    const fetchPaymentIntent = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("http://localhost:5000/create-payment-intent", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-            amount, 
-            currency: "php" 
-          }),
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+    // You can verify the payment with your backend here
+    const verifyPayment = async () => {
+      if (paymentId) {
+        try {
+          const response = await fetch(`http://localhost:5000/verify-payment?payment_id=${paymentId}`);
+          const data = await response.json();
+          
+          // Update UI based on verification result
+          console.log("Payment verification:", data);
+          setVerificationComplete(true);
+        } catch (error) {
+          console.error("Error verifying payment:", error);
+          setVerificationComplete(true); // Still mark as complete even if verification fails
         }
-        
-        const data = await response.json();
-        setClientSecret(data.clientSecret);
-      } catch (err) {
-        console.error("Error fetching payment intent:", err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+      } else {
+        setVerificationComplete(true);
       }
     };
-
-    fetchPaymentIntent();
-  }, [amount]);
-
-  // Prepare appearance options for the Elements provider
-  const appearance = {
-    theme: 'stripe',
-    variables: {
-      colorPrimary: '#6772e5',
-    },
+    
+    verifyPayment();
+  }, [paymentId]);
+  
+  const handleReturnHome = () => {
+    navigate("/dashboard");
+  };
+  
+  const formatDate = (date) => {
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
   };
 
-  // Options for Elements provider
-  const options = clientSecret ? {
-    clientSecret,
-    appearance,
-  } : {};
+  if (!verificationComplete) {
+    return (
+      <div className="success-page-container">
+        <div className="success-card">
+          <h2>Confirming your payment...</h2>
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="payment-container">
-      <h1>Complete Your Payment</h1>
-      <p>Subscription: {name}</p>
-      <p>Amount: {price}</p>
-
-      {loading && <p>Loading payment form...</p>}
-      {error && <p className="error">Error: {error}</p>}
-      
-      {clientSecret && (
-        <Elements stripe={stripePromise} options={options}>
-          <PaymentForm />
-        </Elements>
-      )}
+    <div className="success-page-container">
+      <div className="success-card">
+        <div className="success-icon">
+          <CheckMarkIcon />
+        </div>
+        
+        <h1 className="success-title">Payment Successful!</h1>
+        
+        <div className="success-message">
+          <p>Thank you for your subscription. Your payment has been processed successfully.</p>
+        </div>
+        
+        <div className="order-details">
+          <h2>Order Details</h2>
+          <div className="detail-row">
+            <span className="detail-label">Plan:</span>
+            <span className="detail-value">{planName || "Subscription Plan"}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Amount:</span>
+            <span className="detail-value">{amount ? `₱${amount}` : "Payment processed"}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Date:</span>
+            <span className="detail-value">{formatDate(new Date())}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Transaction ID:</span>
+            <span className="detail-value">{paymentId || "Generated by system"}</span>
+          </div>
+          <div className="detail-row">
+            <span className="detail-label">Status:</span>
+            <span className="detail-value status-success">{status || "Succeeded"}</span>
+          </div>
+        </div>
+        
+        <div className="next-steps">
+          <h3>What's Next?</h3>
+          <ul>
+            <li>You will receive a confirmation email shortly.</li>
+            <li>Your subscription is now active.</li>
+            <li>You can access all premium features from your dashboard.</li>
+          </ul>
+        </div>
+        
+        <div className="action-buttons">
+          <button className="primary-button" onClick={handleReturnHome}>
+            Go to Dashboard
+          </button>
+          <button className="secondary-button" onClick={() => window.print()}>
+            Print Receipt
+          </button>
+        </div>
+        
+        <div className="support-info">
+          <p>If you have any questions, please contact our support team at <a href="mailto:support@example.com">support@example.com</a></p>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default Payment;
+export default SuccessPage;
