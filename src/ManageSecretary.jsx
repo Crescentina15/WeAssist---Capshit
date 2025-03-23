@@ -196,6 +196,7 @@ const ManageSecretary = () => {
               onChange={(e) => setSecretary({ ...secretary, name: e.target.value })}
               autoComplete="off"
               className="form-input"
+              style={{ color: "black" }}
             />
           </div>
           
@@ -207,6 +208,7 @@ const ManageSecretary = () => {
               onChange={(e) => setSecretary({ ...secretary, email: e.target.value })}
               autoComplete="off"
               className="form-input"
+              style={{ color: "black" }}
             />
           </div>
           
@@ -218,6 +220,7 @@ const ManageSecretary = () => {
               onChange={(e) => setSecretary({ ...secretary, password: e.target.value })}
               autoComplete="new-password"
               className="form-input"
+              style={{ color: "black" }}
             />
           </div>
           
@@ -229,6 +232,7 @@ const ManageSecretary = () => {
               onChange={(e) => setSecretary({ ...secretary, phone: e.target.value })}
               autoComplete="off"
               className="form-input"
+              style={{ color: "black" }}
             />
           </div>
           
