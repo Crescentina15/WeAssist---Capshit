@@ -28,7 +28,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
         lawyerNameTextView = findViewById(R.id.lawyer_name) // Reference to TextView
         profileSection = findViewById(R.id.profile_section) // Reference to profile header
-        profileIcon = findViewById(R.id.profile_icon) // Reference to profile image icon
+        profileIcon = findViewById(R.id.profile_image) // Reference to profile image icon
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("lawyers")
