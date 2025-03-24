@@ -68,17 +68,20 @@ class ClientAppointmentsFragment : Fragment() {
 
                                 Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
 
-                                // Fetch the lawyer's name if not already set
-                                if (appointment.lawyerName.isEmpty()) {
+                                // Fetch the lawyer's details if not already set
+                                if (appointment.lawyerName.isEmpty() || appointment.lawyerProfileImage.isNullOrEmpty()) {
                                     val lawyersRef = database.child("lawyers")
                                     lawyersRef.child(appointment.lawyerId)
                                         .addListenerForSingleValueEvent(object : ValueEventListener {
                                             override fun onDataChange(lawyerSnapshot: DataSnapshot) {
                                                 val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
+                                                val lawyerImage = lawyerSnapshot.child("profileImageUrl").value?.toString() ?: ""
+
                                                 appointment.lawyerName = lawyerName
+                                                appointment.lawyerProfileImage = lawyerImage
 
                                                 appointmentList.add(appointment)
-                                                Log.d("ClientCheck", "Added appointment with lawyer: $lawyerName")
+                                                Log.d("ClientCheck", "Added appointment with lawyer: $lawyerName, image: $lawyerImage")
 
                                                 // Check if all appointments are processed
                                                 processedAppointments++
