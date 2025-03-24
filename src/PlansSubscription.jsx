@@ -1,107 +1,75 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import "./index.css";
 
 // Using your existing Stripe key from the document
-const stripePromise = loadStripe("pk_test_51R1s9U4Ib6pQtdzfvbfx0FVqiANXCaAZMxVY6Nu8Eb0VxRIAncuKQ1DlIaVanRDOaejeavEyangNqFmWfHnG1oXI00Metr4woF");
+const stripePromise = loadStripe("pk_test_51R1JB1FK88cwX0GIKPBVnKvk71rR4fEuOLZQkfgW814lspsx14jcUk61Is7sq6uS7IAHSrdHzOWDCsZPRgDj5YFi00kewOXwwe");
 
-// CheckoutForm component to handle card input and payment submission
-const CheckoutForm = ({ selectedPlan, onSuccess, onCancel }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+// Payment method selection component
+const PaymentMethodSelector = ({ selectedPlan, onCancel }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [zip, setZip] = useState('');
+  
+  // Update your handleStripeCheckout function in the PaymentMethodSelector component:
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!stripe || !elements) {
-      return;
-    }
-
-    if (!name.trim() || !email.trim()) {
-      setError("Please provide both name and email");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Create a payment intent on your server
-      const response = await fetch("http://localhost:5000/create-payment-intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: selectedPlan.amount,
-          planName: selectedPlan.name,
-          planId: selectedPlan.id, // Include plan ID in the request
-          customer_name: name,
-          customer_email: email
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create payment intent");
-      }
-
-      const data = await response.json();
-
-      // Confirm the card payment
-      const result = await stripe.confirmCardPayment(data.clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: {
-            name: name,
-            email: email,
-            address: {
-              postal_code: zip
-            }
-          },
-        },
-        receipt_email: email
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      } else if (result.paymentIntent.status === 'succeeded') {
-        onSuccess(result.paymentIntent);
-      }
-    } catch (error) {
-      console.error("Payment error:", error);
-      setError(error.message || "Payment failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cardElementOptions = {
-    style: {
-      base: {
-        fontSize: '16px',
-        color: '#424770',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        '::placeholder': {
-          color: '#aab7c4',
-        },
+// Update the success_url and cancel_url in your frontend code
+const handleStripeCheckout = async () => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const stripe = await stripePromise;
+    
+    console.log('Creating checkout session for plan:', selectedPlan);
+    
+    // Call your backend to create a Checkout Session
+    const response = await fetch('http://localhost:5000/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      invalid: {
-        color: '#9e2146',
-      },
-    },
-    hidePostalCode: true
-  };
-
+      body: JSON.stringify({
+        planId: selectedPlan.id,
+        planName: selectedPlan.name,
+        amount: selectedPlan.amount,
+        success_url: 'http://localhost:5174/payment-success', // Updated port
+        cancel_url: 'http://localhost:5174/plans' // Updated port
+      }),
+    });
+    
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Server responded with status: ${response.status}, message: ${errorText}`);
+    }
+    
+    const session = await response.json();
+    console.log('Received session:', session);
+    
+    // Redirect to Stripe Checkout
+    console.log('Redirecting to Stripe checkout...');
+    const result = await stripe.redirectToCheckout({
+      sessionId: session.id,
+    });
+    
+    if (result.error) {
+      console.error('Stripe redirect error:', result.error);
+      throw new Error(result.error.message);
+    }
+  } catch (error) {
+    console.error('Detailed error:', error);
+    setError(error.message || 'Something went wrong. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+  
   return (
-    <div className="stripe-checkout-container">
-      <h2>Pay with card</h2>
+    <div className="payment-method-container">
+      <h2>Choose Payment Method</h2>
       <div className="selected-plan-summary">
         <h3>Selected Plan: {selectedPlan.name}</h3>
         <p>Price: {selectedPlan.price}</p>
@@ -109,78 +77,26 @@ const CheckoutForm = ({ selectedPlan, onSuccess, onCancel }) => {
         <button className="change-plan-btn" onClick={onCancel}>Change Plan</button>
       </div>
       
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="full-width-input"
-            required
-          />
-        </div>
-        
-        <div className="form-group">
-          <label>Card information</label>
-          <div className="card-element-wrapper">
-            <CardElement options={cardElementOptions} />
-          </div>
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="name">Cardholder name</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Full name on card"
-            className="full-width-input"
-            required
-          />
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="country">Country or region</label>
-          <select id="country" className="full-width-input" defaultValue="US">
-            <option value="US">United States</option>
-            <option value="PH">Philippines</option>
-            {/* Add more countries as needed */}
-          </select>
-        </div>
-        
-        <div className="form-group">
-          <label htmlFor="zip">ZIP</label>
-          <input
-            id="zip"
-            type="text"
-            value={zip}
-            onChange={(e) => setZip(e.target.value)}
-            className="full-width-input"
-            required
-          />
-        </div>
-        
-        {error && <div className="error-message">{error}</div>}
-        
+      <div className="payment-methods">
         <button 
-          type="submit" 
-          disabled={!stripe || loading} 
-          className="pay-button"
+          className="payment-method-btn stripe-btn" 
+          onClick={handleStripeCheckout}
+          disabled={loading}
         >
-          {loading ? "Processing..." : `Pay ${selectedPlan.price}`}
+          <div className="payment-method-icon">
+            <img src="https://cdn.jsdelivr.net/gh/stripe-samples/checkout-one-time-payments/client/html/images/stripe.svg" alt="Stripe" />
+          </div>
+          <div className="payment-method-text">
+            <h3>Pay with Stripe</h3>
+            <p>Secure checkout with credit card, debit card, and more</p>
+          </div>
         </button>
-      </form>
-      
-      <div className="stripe-footer">
-        <p>Powered by <span className="stripe-text">stripe</span></p>
-        <div className="footer-links">
-          <a href="/terms">Terms</a>
-          <a href="/privacy">Privacy</a>
-        </div>
+        
+        {/* You can add more payment methods here in the future */}
       </div>
+      
+      {loading && <div className="loading">Processing your request...</div>}
+      {error && <div className="error-message">{error}</div>}
     </div>
   );
 };
@@ -267,11 +183,6 @@ const PlansSubscription = () => {
     }
   };
 
-  const handlePaymentSuccess = (paymentIntent) => {
-    // Navigate to success page with payment details
-    navigate(`/payment-success?payment_id=${paymentIntent.id}&plan=${encodeURIComponent(selectedPlan.name)}&amount=${selectedPlan.amount}&status=succeeded`);
-  };
-
   const handleCancelPayment = () => {
     setSelectedPlan(null);
   };
@@ -304,15 +215,10 @@ const PlansSubscription = () => {
           </div>
         </>
       ) : (
-        <div className="payment-container">
-          <Elements stripe={stripePromise}>
-            <CheckoutForm 
-              selectedPlan={selectedPlan}
-              onSuccess={handlePaymentSuccess}
-              onCancel={handleCancelPayment}
-            />
-          </Elements>
-        </div>
+        <PaymentMethodSelector
+          selectedPlan={selectedPlan}
+          onCancel={handleCancelPayment}
+        />
       )}
     </div>
   );
