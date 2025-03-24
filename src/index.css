@@ -1803,3 +1803,123 @@ body {
     width: 100%;
   }
 }
+
+/* Add these styles to your index.css file */
+
+.analytics {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.analytics h2 {
+  color: #333;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+}
+
+.lawyer-appointments {
+  padding: 10px 0;
+}
+
+/* Line Graph Styles */
+.line-graph-container {
+  margin-top: 20px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.graph-labels {
+  display: flex;
+  align-items: center;
+}
+
+.y-axis-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 200px;
+  margin-right: 10px;
+  padding-right: 5px;
+  border-right: 1px solid #ddd;
+}
+
+.y-label {
+  font-size: 12px;
+  color: #666;
+  height: 20px;
+  text-align: right;
+}
+
+.line-graph {
+  border-bottom: 1px solid #ddd;
+}
+
+.x-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 35px;
+}
+
+.x-label {
+  font-size: 12px;
+  color: #666;
+  flex: 1;
+  text-align: center;
+  padding-top: 5px;
+}
+
+.data-point {
+  cursor: pointer;
+  transition: r 0.2s ease;
+}
+
+.data-point:hover {
+  r: 6;
+}
+
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 20px;
+  padding: 10px;
+  border-top: 1px solid #eee;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.color-swatch {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .graph-labels {
+    margin-left: 5px;
+  }
+  
+  .y-axis-labels {
+    width: 25px;
+  }
+  
+  .y-label {
+    font-size: 10px;
+  }
+  
+  .x-label {
+    font-size: 10px;
+    transform: rotate(-45deg);
+    white-space: nowrap;
+  }
+}
