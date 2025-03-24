@@ -207,11 +207,16 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun createSpecializationButtons(specializations: List<String>) {
-        val context = context ?: return  // ✅ Ensure context is not null
-        val resources = resources ?: return  // ✅ Ensure resources are available
-        val container = view?.findViewById<GridLayout>(R.id.specializations_layout) ?: return  // ✅ Ensure layout exists
+        val context = context ?: return
+        val resources = resources ?: return
+        val container = view?.findViewById<GridLayout>(R.id.specializations_layout) ?: return
 
         container.removeAllViews() // Clear existing buttons
+
+        // Define colors and dimensions
+        val buttonPadding = resources.getDimensionPixelSize(R.dimen.button_padding)
+        val buttonCornerRadius = resources.getDimensionPixelSize(R.dimen.button_corner_radius)
+        val buttonElevation = resources.getDimensionPixelSize(R.dimen.button_elevation)
 
         for (specialization in specializations) {
             val button = Button(context).apply {
@@ -223,17 +228,28 @@ class ClientHomeFragment : Fragment() {
                     rowSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
                     setMargins(8, 8, 8, 8)
                 }
+
+                // Apply visual styling
+                setBackgroundResource(R.drawable.specialization_button_background)
+                setTextColor(context.getColor(R.color.white))
+                textSize = 14f
+                setPadding(buttonPadding, buttonPadding, buttonPadding, buttonPadding)
+
+                // Add ripple effect
+                foreground = context.getDrawable(R.drawable.button_ripple_effect)
+
+                // Add elevation
+                elevation = buttonElevation.toFloat()
+
+                // Make text all caps for consistency
+                transformationMethod = null // Remove default all-caps if needed
+
                 setOnClickListener {
                     openLawyersList(specialization)
                 }
-                // Apply styling
-                backgroundTintList = context.getColorStateList(R.color.purple_500)
-                setTextColor(context.getColor(android.R.color.white))
-                textSize = 16f
-                setPadding(16, 8, 16, 8)
             }
 
-            container.addView(button)  // ✅ Ensure container is not null
+            container.addView(button)
         }
     }
 
