@@ -21,6 +21,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
     private lateinit var profileSection: View
     private lateinit var profileIcon: ImageView
     private var currentProfileImageUrl: String = ""
+    private var imageUrlListener: ValueEventListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -41,6 +42,7 @@ class LawyersDashboardActivity : AppCompatActivity() {
         }
 
         loadLawyerData()
+        setupImageUrlListener()
 
         if (intent.getBooleanExtra("SHOW_MESSAGE_FRAGMENT", false)) {
             val messageFragment = LawyerMessageFragment()
@@ -84,6 +86,31 @@ class LawyersDashboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupImageUrlListener() {
+        val userId = auth.currentUser?.uid ?: return
+
+        // Remove previous listener if exists
+        imageUrlListener?.let {
+            database.child(userId).child("profileImageUrl").removeEventListener(it)
+        }
+
+        imageUrlListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val newImageUrl = snapshot.getValue(String::class.java) ?: ""
+                if (newImageUrl.isNotEmpty() && newImageUrl != currentProfileImageUrl) {
+                    currentProfileImageUrl = newImageUrl
+                    updateProfileIcon(currentProfileImageUrl)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle error if needed
+            }
+        }
+
+        database.child(userId).child("profileImageUrl").addValueEventListener(imageUrlListener!!)
+    }
+
     fun loadLawyerData() {
         val userId = auth.currentUser?.uid
         if (userId != null) {
@@ -120,5 +147,14 @@ class LawyersDashboardActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.flFragment, fragment)
             .commit()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        imageUrlListener?.let {
+            auth.currentUser?.uid?.let { userId ->
+                database.child(userId).child("profileImageUrl").removeEventListener(it)
+            }
+        }
     }
 }
