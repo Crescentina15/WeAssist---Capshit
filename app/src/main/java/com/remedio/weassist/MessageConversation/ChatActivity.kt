@@ -56,10 +56,6 @@ class ChatActivity : AppCompatActivity() {
         userType = intent.getStringExtra("USER_TYPE")
         val appointmentId = intent.getStringExtra("APPOINTMENT_ID")
 
-        // Get the new flag for creating conversation on first message
-        createOnFirstMessage = intent.getBooleanExtra("CREATE_ON_FIRST_MESSAGE", false)
-        Log.d("ChatActivity", "Create conversation on first message: $createOnFirstMessage")
-
         Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId, appointmentId: $appointmentId, userType: $userType")
 
         // Set up RecyclerView
@@ -67,19 +63,61 @@ class ChatActivity : AppCompatActivity() {
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
 
-        // If we have an appointment ID but no conversation ID, try to find it
-        if (conversationId == null && appointmentId != null && currentUserId != null) {
+        // If we have a conversation ID, prioritize loading that conversation
+        if (conversationId != null) {
+            // Check if the conversation exists and load chat partner info
+            database.child("conversations").child(conversationId!!).get()
+                .addOnSuccessListener { snapshot ->
+                    // Even if the conversation doesn't exist, proceed with setup
+                    // Always determine chat partner
+                    if (userType == "client") {
+                        // Client is messaging lawyer or secretary
+                        if (secretaryId != null) {
+                            // First check if this ID is a lawyer
+                            database.child("lawyers").child(secretaryId!!).get()
+                                .addOnSuccessListener { lawyerSnapshot ->
+                                    if (lawyerSnapshot.exists()) {
+                                        getLawyerName(secretaryId!!)
+                                    } else {
+                                        // If not a lawyer, check if this is a secretary
+                                        database.child("secretaries").child(secretaryId!!).get()
+                                            .addOnSuccessListener { secretarySnapshot ->
+                                                if (secretarySnapshot.exists()) {
+                                                    getSecretaryName(secretaryId!!)
+                                                } else {
+                                                    // Default to "Lawyer" if neither found
+                                                    tvChatPartnerName.text = "Lawyer"
+                                                    listenForMessages()
+                                                }
+                                            }
+                                    }
+                                }
+                        } else {
+                            // Try to determine secretaryId/lawyerId from conversation
+                            extractSecretaryIdFromConversation(conversationId!!)
+                        }
+                    } else {
+                        // Lawyer or secretary is messaging client
+                        if (clientId != null) {
+                            getClientName(clientId!!)
+                        } else {
+                            // Try to determine clientId from conversation
+                            extractClientIdFromConversation(conversationId!!)
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e("ChatActivity", "Error checking conversation: ${e.message}")
+                    // Continue with setup even on error
+                    setupChatPartner()
+                }
+        } else if (appointmentId != null && currentUserId != null) {
             fetchConversationIdFromAppointment(appointmentId)
         } else {
             // Determine current user type and set up chat
             if (currentUserId != null) {
-                // If user type is already set via intent, skip determination
                 if (userType != null) {
-                    if (clientId == null && conversationId != null) {
-                        extractClientIdFromConversation(conversationId!!)
-                    } else {
-                        setupChatPartner()
-                    }
+                    setupChatPartner()
                 } else {
                     determineCurrentUserType()
                 }
@@ -227,13 +265,6 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun extractClientIdFromConversation(conversationId: String) {
-        // Check if this is a new conversation that we're waiting to create on first message
-        if (createOnFirstMessage) {
-            Log.d("ChatActivity", "Skipping participant extraction for new conversation that will be created on first message")
-            setupChatPartner()
-            return
-        }
-
         database.child("conversations").child(conversationId).child("participantIds")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -248,43 +279,66 @@ class ChatActivity : AppCompatActivity() {
                                             clientId = participantId
                                             Log.d("ChatActivity", "Extracted clientId: $clientId from conversation")
                                             setupChatPartner()
+                                        } else {
+                                            // If not found in Users, just use the ID anyway
+                                            clientId = participantId
+                                            Log.d("ChatActivity", "Using participantId as clientId: $clientId")
+                                            getClientName(clientId!!)
                                         }
                                     }
+                                    .addOnFailureListener { e ->
+                                        // On failure, just use the ID
+                                        clientId = participantId
+                                        Log.d("ChatActivity", "Error finding client, using ID: $clientId")
+                                        tvChatPartnerName.text = "Client"
+                                        listenForMessages()
+                                    }
+                                break
                             }
                         }
                     } else {
                         Log.e("ChatActivity", "No participants found in conversation")
-
-                        // If we're expecting to create the conversation on first message, don't show error
-                        if (!createOnFirstMessage) {
-                            Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
-                            finish()
-                        } else {
-                            setupChatPartner()
-                        }
+                        // Since we're showing existing conversations, we need a fallback
+                        // Just use a default name and proceed
+                        tvChatPartnerName.text = "Client"
+                        listenForMessages()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
-                    if (!createOnFirstMessage) {
-                        Toast.makeText(applicationContext, "Failed to load conversation data", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        setupChatPartner()
-                    }
+                    // Since we're showing existing conversations, provide fallback
+                    tvChatPartnerName.text = "Client"
+                    listenForMessages()
                 }
             })
     }
 
-    private fun extractSecretaryIdFromConversation(conversationId: String) {
-        // Check if this is a new conversation that we're waiting to create on first message
-        if (createOnFirstMessage) {
-            Log.d("ChatActivity", "Skipping secretary extraction for new conversation that will be created on first message")
-            setupChatPartner()
-            return
-        }
 
+    private fun extractSecretaryIdFromConversation(conversationId: String) {
+        // First check if the conversation has an appointedLawyerId field
+        database.child("conversations").child(conversationId).child("appointedLawyerId").get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    val lawyerId = snapshot.getValue(String::class.java)
+                    if (!lawyerId.isNullOrEmpty()) {
+                        secretaryId = lawyerId
+                        Log.d("ChatActivity", "Found appointedLawyerId: $secretaryId")
+                        getLawyerName(secretaryId!!)
+                        return@addOnSuccessListener
+                    }
+                }
+
+                // If no appointedLawyerId, check participants
+                checkParticipantsForSecretaryOrLawyer(conversationId)
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Error checking appointedLawyerId: ${e.message}")
+                checkParticipantsForSecretaryOrLawyer(conversationId)
+            }
+    }
+
+    private fun checkParticipantsForSecretaryOrLawyer(conversationId: String) {
         database.child("conversations").child(conversationId).child("participantIds")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -292,48 +346,61 @@ class ChatActivity : AppCompatActivity() {
                         for (participantSnapshot in snapshot.children) {
                             val participantId = participantSnapshot.key
                             if (participantId != currentUserId) {
-                                // First check if this is a secretary
-                                database.child("secretaries").child(participantId!!).get()
-                                    .addOnSuccessListener { secretarySnapshot ->
-                                        if (secretarySnapshot.exists()) {
+                                // Check if this is a lawyer
+                                database.child("lawyers").child(participantId!!).get()
+                                    .addOnSuccessListener { lawyerSnapshot ->
+                                        if (lawyerSnapshot.exists()) {
                                             secretaryId = participantId
-                                            Log.d("ChatActivity", "Extracted secretaryId: $secretaryId from conversation")
-                                            setupChatPartner()
+                                            Log.d("ChatActivity", "Found lawyer in participants: $secretaryId")
+                                            getLawyerName(secretaryId!!)
                                         } else {
-                                            // If not a secretary, check if this is a lawyer
-                                            database.child("lawyers").child(participantId).get()
-                                                .addOnSuccessListener { lawyerSnapshot ->
-                                                    if (lawyerSnapshot.exists()) {
-                                                        secretaryId = participantId  // Reuse secretaryId for lawyers too
-                                                        Log.d("ChatActivity", "Extracted lawyerId (as secretaryId): $secretaryId from conversation")
-                                                        setupChatPartner()
+                                            // If not a lawyer, check if it's a secretary
+                                            database.child("secretaries").child(participantId).get()
+                                                .addOnSuccessListener { secretarySnapshot ->
+                                                    if (secretarySnapshot.exists()) {
+                                                        secretaryId = participantId
+                                                        Log.d("ChatActivity", "Found secretary in participants: $secretaryId")
+                                                        getSecretaryName(secretaryId!!)
+                                                    } else {
+                                                        // Just use the ID anyway
+                                                        secretaryId = participantId
+                                                        Log.d("ChatActivity", "Using participantId: $secretaryId")
+                                                        tvChatPartnerName.text = "Lawyer"
+                                                        listenForMessages()
                                                     }
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    // On error, just use the ID
+                                                    secretaryId = participantId
+                                                    Log.d("ChatActivity", "Error finding secretary, using ID: $secretaryId")
+                                                    tvChatPartnerName.text = "Lawyer"
+                                                    listenForMessages()
                                                 }
                                         }
                                     }
+                                    .addOnFailureListener { e ->
+                                        // On error, just use the ID
+                                        secretaryId = participantId
+                                        Log.d("ChatActivity", "Error finding lawyer, using ID: $secretaryId")
+                                        tvChatPartnerName.text = "Lawyer"
+                                        listenForMessages()
+                                    }
+                                break
                             }
                         }
                     } else {
                         Log.e("ChatActivity", "No participants found in conversation")
-
-                        // If we're expecting to create the conversation on first message, don't show error
-                        if (!createOnFirstMessage) {
-                            Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
-                            finish()
-                        } else {
-                            setupChatPartner()
-                        }
+                        // Since we're showing existing conversations, provide fallback
+                        tvChatPartnerName.text = "Lawyer"
+                        listenForMessages()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
-                    if (!createOnFirstMessage) {
-                        Toast.makeText(applicationContext, "Failed to load conversation data", Toast.LENGTH_SHORT).show()
-                        finish()
-                    } else {
-                        setupChatPartner()
-                    }
+                    // Since we're showing existing conversations, provide fallback
+                    tvChatPartnerName.text = "Lawyer"
+                    listenForMessages()
                 }
             })
     }
@@ -595,8 +662,9 @@ class ChatActivity : AppCompatActivity() {
                 return
             }
 
-            val conversationId = generateConversationId(currentUserId!!, receiverId)
-            Log.d("ChatActivity", "Sending to conversation: $conversationId")
+            // Use the conversation ID from intent or generate one if needed
+            val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
+            Log.d("ChatActivity", "Sending to conversation: $actualConversationId")
 
             val message = Message(
                 senderId = currentUserId!!,
@@ -605,62 +673,109 @@ class ChatActivity : AppCompatActivity() {
                 timestamp = System.currentTimeMillis()
             )
 
-            // If this is the first message and we need to create the conversation
-            if (createOnFirstMessage) {
-                Log.d("ChatActivity", "Creating new conversation on first message")
-
-                // Create conversation structure first
-                val participantIds = mapOf(
-                    currentUserId!! to true,
-                    receiverId to true
-                )
-
-                val unreadMessages = mapOf(
-                    currentUserId!! to 0,
-                    receiverId to 1  // One unread message for recipient
-                )
-
-                // Determine if this is a lawyer conversation
-                val isLawyerConversation = userType == "client" && intent.getStringExtra("USER_TYPE") == "client"
-
-                val conversationData = if (isLawyerConversation) {
-                    mapOf(
-                        "participantIds" to participantIds,
-                        "unreadMessages" to unreadMessages,
-                        "appointedLawyerId" to receiverId,
-                        "handledByLawyer" to true
-                    )
-                } else {
-                    mapOf(
-                        "participantIds" to participantIds,
-                        "unreadMessages" to unreadMessages
-                    )
+            // Check if conversation exists first
+            database.child("conversations").child(actualConversationId).get()
+                .addOnSuccessListener { snapshot ->
+                    if (snapshot.exists()) {
+                        // Conversation exists, just add the message
+                        addMessageToExistingConversation(actualConversationId, message)
+                    } else {
+                        // Conversation doesn't exist, create it first with all required fields
+                        createConversationWithMessage(actualConversationId, message, receiverId)
+                    }
                 }
-
-                // Create the conversation and then add the message
-                val conversationRef = database.child("conversations").child(conversationId)
-                conversationRef.setValue(conversationData)
-                    .addOnSuccessListener {
-                        // Now add the message
-                        addMessageToConversation(conversationId, message)
-
-                        // Reset flag since conversation is now created
-                        createOnFirstMessage = false
-                    }
-                    .addOnFailureListener { e ->
-                        Log.e("ChatActivity", "Failed to create conversation: ${e.message}")
-                        Toast.makeText(this, "Failed to create conversation", Toast.LENGTH_SHORT).show()
-                    }
-            } else {
-                // Conversation already exists, just add the message
-                addMessageToConversation(conversationId, message)
-            }
+                .addOnFailureListener { e ->
+                    Log.e("ChatActivity", "Error checking conversation: ${e.message}")
+                    // Attempt to create conversation anyway
+                    createConversationWithMessage(actualConversationId, message, receiverId)
+                }
         } else {
             Log.e("ChatActivity", "Message cannot be sent! messageText=${messageText}, currentUserId=$currentUserId")
             if (messageText.isEmpty()) {
                 Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun createConversationWithMessage(conversationId: String, message: Message, receiverId: String) {
+        // Create conversation structure first
+        val participantIds = mapOf(
+            currentUserId!! to true,
+            receiverId to true
+        )
+
+        val unreadMessages = mapOf(
+            currentUserId!! to 0,
+            receiverId to 1  // One unread message for recipient
+        )
+
+        // Determine if this is a lawyer conversation
+        val isLawyerConversation = userType == "client" && secretaryId != null
+
+        val conversationData = if (isLawyerConversation) {
+            mapOf(
+                "participantIds" to participantIds,
+                "unreadMessages" to unreadMessages,
+                "appointedLawyerId" to receiverId,
+                "handledByLawyer" to true
+            )
+        } else {
+            mapOf(
+                "participantIds" to participantIds,
+                "unreadMessages" to unreadMessages
+            )
+        }
+
+        // Create the conversation and then add the message
+        val conversationRef = database.child("conversations").child(conversationId)
+        conversationRef.setValue(conversationData)
+            .addOnSuccessListener {
+                // Now add the message
+                val chatRef = database.child("conversations").child(conversationId).child("messages").push()
+                chatRef.setValue(message)
+                    .addOnSuccessListener {
+                        Log.d("ChatActivity", "Message sent successfully in new conversation")
+                        etMessageInput.text.clear()  // Clear the input field
+
+                        // Create notification for recipient
+                        createNotificationForRecipient(message)
+
+                        // Force refresh the messages list
+                        listenForMessages()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("ChatActivity", "Failed to send message in new conversation: ${e.message}")
+                        Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to create conversation: ${e.message}")
+                Toast.makeText(this, "Failed to create conversation", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun addMessageToExistingConversation(conversationId: String, message: Message) {
+        val chatRef = database.child("conversations").child(conversationId).child("messages").push()
+        Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
+
+        chatRef.setValue(message)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Message sent successfully")
+                etMessageInput.text.clear()  // Clear the input field
+
+                // Increment unread counter for recipient
+                incrementUnreadCounter(conversationId, message.receiverId)
+
+                // Create notification for recipient
+                createNotificationForRecipient(message)
+
+                // Force refresh the messages list
+                listenForMessages()
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to send message: ${e.message}")
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun addMessageToConversation(conversationId: String, message: Message) {
