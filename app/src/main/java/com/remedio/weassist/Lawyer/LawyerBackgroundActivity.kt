@@ -86,8 +86,9 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         }
 
                         if (foundAppointment && appointmentLawyerId != null) {
-                            // If appointment is accepted, message the lawyer directly
-                            startChatWithLawyer(appointmentLawyerId)
+                            // If appointment is accepted, open chat with the lawyer directly
+                            // But don't create a conversation yet
+                            startChatWithLawyerNoConversation(appointmentLawyerId)
                         } else {
                             // If no accepted appointment found, check regular appointments
                             checkRegularAppointmentsForChat()
@@ -109,6 +110,48 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                 }
             })
         }
+
+    }
+
+    private fun startChatWithLawyerNoConversation(lawyerId: String) {
+        Log.d(TAG, "Starting chat with lawyer: $lawyerId (no conversation created yet)")
+
+        // Generate the conversation ID between client and lawyer
+        val conversationId = if (currentUserId!! < lawyerId) {
+            "conversation_${currentUserId}_$lawyerId"
+        } else {
+            "conversation_${lawyerId}_$currentUserId"
+        }
+
+        // Check if a conversation already exists
+        val conversationRef = FirebaseDatabase.getInstance().getReference("conversations").child(conversationId)
+
+        conversationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Start the chat activity regardless of whether the conversation exists
+                val intent = Intent(this@LawyerBackgroundActivity, ChatActivity::class.java).apply {
+                    putExtra("CONVERSATION_ID", conversationId)
+                    putExtra("SECRETARY_ID", lawyerId) // Using SECRETARY_ID field for lawyer ID
+                    putExtra("USER_TYPE", "client")
+
+                    // Add a flag to indicate we're starting a new chat - conversation should be created only on first message
+                    putExtra("CREATE_ON_FIRST_MESSAGE", !snapshot.exists())
+                }
+                startActivity(intent)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Failed to check if conversation exists", error.toException())
+                // Still continue to chat activity but with the flag to create on first message
+                val intent = Intent(this@LawyerBackgroundActivity, ChatActivity::class.java).apply {
+                    putExtra("CONVERSATION_ID", conversationId)
+                    putExtra("SECRETARY_ID", lawyerId) // Using SECRETARY_ID field for lawyer ID
+                    putExtra("USER_TYPE", "client")
+                    putExtra("CREATE_ON_FIRST_MESSAGE", true)
+                }
+                startActivity(intent)
+            }
+        })
     }
 
     // Add this new method to check regular appointments for the chat
@@ -138,8 +181,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                     }
 
                     if (foundAppointment && appointmentLawyerId != null) {
-                        // If appointment is accepted, message the lawyer directly
-                        startChatWithLawyer(appointmentLawyerId)
+                        // If appointment is accepted, open chat with lawyer but don't create conversation
+                        startChatWithLawyerNoConversation(appointmentLawyerId)
                     } else {
                         // If no accepted appointment found in regular appointments either, use secretary
                         if (secretaryId.isNullOrEmpty()) {

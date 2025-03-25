@@ -25,6 +25,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var messagesAdapter: MessageAdapter
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
+    private var createOnFirstMessage = false
 
     // Chat participant IDs
     private var clientId: String? = null
@@ -54,6 +55,10 @@ class ChatActivity : AppCompatActivity() {
         clientId = intent.getStringExtra("CLIENT_ID")
         userType = intent.getStringExtra("USER_TYPE")
         val appointmentId = intent.getStringExtra("APPOINTMENT_ID")
+
+        // Get the new flag for creating conversation on first message
+        createOnFirstMessage = intent.getBooleanExtra("CREATE_ON_FIRST_MESSAGE", false)
+        Log.d("ChatActivity", "Create conversation on first message: $createOnFirstMessage")
 
         Log.d("ChatActivity", "Received in intent - conversationId: $conversationId, secretaryId: $secretaryId, clientId: $clientId, appointmentId: $appointmentId, userType: $userType")
 
@@ -222,6 +227,13 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun extractClientIdFromConversation(conversationId: String) {
+        // Check if this is a new conversation that we're waiting to create on first message
+        if (createOnFirstMessage) {
+            Log.d("ChatActivity", "Skipping participant extraction for new conversation that will be created on first message")
+            setupChatPartner()
+            return
+        }
+
         database.child("conversations").child(conversationId).child("participantIds")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -242,18 +254,37 @@ class ChatActivity : AppCompatActivity() {
                         }
                     } else {
                         Log.e("ChatActivity", "No participants found in conversation")
-                        Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
-                        finish()
+
+                        // If we're expecting to create the conversation on first message, don't show error
+                        if (!createOnFirstMessage) {
+                            Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
+                            finish()
+                        } else {
+                            setupChatPartner()
+                        }
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
+                    if (!createOnFirstMessage) {
+                        Toast.makeText(applicationContext, "Failed to load conversation data", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        setupChatPartner()
+                    }
                 }
             })
     }
 
     private fun extractSecretaryIdFromConversation(conversationId: String) {
+        // Check if this is a new conversation that we're waiting to create on first message
+        if (createOnFirstMessage) {
+            Log.d("ChatActivity", "Skipping secretary extraction for new conversation that will be created on first message")
+            setupChatPartner()
+            return
+        }
+
         database.child("conversations").child(conversationId).child("participantIds")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -284,13 +315,25 @@ class ChatActivity : AppCompatActivity() {
                         }
                     } else {
                         Log.e("ChatActivity", "No participants found in conversation")
-                        Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
-                        finish()
+
+                        // If we're expecting to create the conversation on first message, don't show error
+                        if (!createOnFirstMessage) {
+                            Toast.makeText(applicationContext, "Conversation data not found", Toast.LENGTH_SHORT).show()
+                            finish()
+                        } else {
+                            setupChatPartner()
+                        }
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
+                    if (!createOnFirstMessage) {
+                        Toast.makeText(applicationContext, "Failed to load conversation data", Toast.LENGTH_SHORT).show()
+                        finish()
+                    } else {
+                        setupChatPartner()
+                    }
                 }
             })
     }
@@ -319,10 +362,40 @@ class ChatActivity : AppCompatActivity() {
                                             getLawyerName(secretaryId!!)
                                         } else {
                                             Log.e("ChatActivity", "ID is neither secretary nor lawyer!")
-                                            Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
+
+                                            // If we're in create-on-first-message mode, this is expected
+                                            if (createOnFirstMessage) {
+                                                // We know this is supposed to be a lawyer, so just use the ID
+                                                getLawyerName(secretaryId!!)
+                                            } else {
+                                                Toast.makeText(this, "Chat partner information not available", Toast.LENGTH_SHORT).show()
+                                                finish()
+                                            }
+                                        }
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("ChatActivity", "Error checking lawyer: ${e.message}")
+
+                                        // If we're in create-on-first-message mode, continue anyway
+                                        if (createOnFirstMessage) {
+                                            tvChatPartnerName.text = "Lawyer"
+                                            listenForMessages()
+                                        } else {
+                                            Toast.makeText(this, "Failed to load chat partner information", Toast.LENGTH_SHORT).show()
                                             finish()
                                         }
                                     }
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ChatActivity", "Error checking secretary: ${e.message}")
+
+                            // If we're in create-on-first-message mode, continue anyway
+                            if (createOnFirstMessage) {
+                                getLawyerName(secretaryId!!)
+                            } else {
+                                Toast.makeText(this, "Failed to load chat partner information", Toast.LENGTH_SHORT).show()
+                                finish()
                             }
                         }
                 } else {
@@ -484,19 +557,32 @@ class ChatActivity : AppCompatActivity() {
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Lawyer not found!")
-                    Toast.makeText(this, "Lawyer information not found", Toast.LENGTH_SHORT).show()
-                    finish()
+
+                    // If we're expecting to create conversation on first message, don't show error
+                    if (createOnFirstMessage) {
+                        tvChatPartnerName.text = "Lawyer"
+                        listenForMessages()
+                    } else {
+                        Toast.makeText(this, "Lawyer information not found", Toast.LENGTH_SHORT).show()
+                        finish()
+                    }
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Error fetching lawyer data: ${e.message}")
-                Toast.makeText(this, "Failed to load lawyer information", Toast.LENGTH_SHORT).show()
-                finish()
+
+                // If we're expecting to create conversation on first message, don't show error
+                if (createOnFirstMessage) {
+                    tvChatPartnerName.text = "Lawyer"
+                    listenForMessages()
+                } else {
+                    Toast.makeText(this, "Failed to load lawyer information", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
             }
     }
 
 
-    // Add some debugging to your sendMessage method to verify messages are being sent
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
         Log.d("ChatActivity", "Attempting to send message: $messageText")
@@ -519,28 +605,86 @@ class ChatActivity : AppCompatActivity() {
                 timestamp = System.currentTimeMillis()
             )
 
-            val chatRef = database.child("conversations").child(conversationId).child("messages").push()
-            Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
+            // If this is the first message and we need to create the conversation
+            if (createOnFirstMessage) {
+                Log.d("ChatActivity", "Creating new conversation on first message")
 
-            // First, add the message to the conversation
-            chatRef.setValue(message)
-                .addOnSuccessListener {
-                    Log.d("ChatActivity", "Message sent successfully")
-                    etMessageInput.text.clear()  // Clear the input field
+                // Create conversation structure first
+                val participantIds = mapOf(
+                    currentUserId!! to true,
+                    receiverId to true
+                )
 
-                    // Force refresh the messages list
-                    listenForMessages()
+                val unreadMessages = mapOf(
+                    currentUserId!! to 0,
+                    receiverId to 1  // One unread message for recipient
+                )
+
+                // Determine if this is a lawyer conversation
+                val isLawyerConversation = userType == "client" && intent.getStringExtra("USER_TYPE") == "client"
+
+                val conversationData = if (isLawyerConversation) {
+                    mapOf(
+                        "participantIds" to participantIds,
+                        "unreadMessages" to unreadMessages,
+                        "appointedLawyerId" to receiverId,
+                        "handledByLawyer" to true
+                    )
+                } else {
+                    mapOf(
+                        "participantIds" to participantIds,
+                        "unreadMessages" to unreadMessages
+                    )
                 }
-                .addOnFailureListener { e ->
-                    Log.e("ChatActivity", "Failed to send message: ${e.message}")
-                    Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-                }
+
+                // Create the conversation and then add the message
+                val conversationRef = database.child("conversations").child(conversationId)
+                conversationRef.setValue(conversationData)
+                    .addOnSuccessListener {
+                        // Now add the message
+                        addMessageToConversation(conversationId, message)
+
+                        // Reset flag since conversation is now created
+                        createOnFirstMessage = false
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("ChatActivity", "Failed to create conversation: ${e.message}")
+                        Toast.makeText(this, "Failed to create conversation", Toast.LENGTH_SHORT).show()
+                    }
+            } else {
+                // Conversation already exists, just add the message
+                addMessageToConversation(conversationId, message)
+            }
         } else {
             Log.e("ChatActivity", "Message cannot be sent! messageText=${messageText}, currentUserId=$currentUserId")
             if (messageText.isEmpty()) {
                 Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
             }
         }
+    }
+
+    private fun addMessageToConversation(conversationId: String, message: Message) {
+        val chatRef = database.child("conversations").child(conversationId).child("messages").push()
+        Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
+
+        chatRef.setValue(message)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Message sent successfully")
+                etMessageInput.text.clear()  // Clear the input field
+
+                // Increment unread counter for recipient
+                incrementUnreadCounter(conversationId, message.receiverId)
+
+                // Create notification for recipient
+                createNotificationForRecipient(message)
+
+                // Force refresh the messages list
+                listenForMessages()
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to send message: ${e.message}")
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun determineReceiverId(): String? {
@@ -682,20 +826,24 @@ class ChatActivity : AppCompatActivity() {
         val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         Log.d("ChatActivity", "Listening for messages with conversationId: $actualConversationId")
 
-        // Reset unread messages counter for this user
-        database.child("conversations").child(actualConversationId)
-            .child("unreadMessages")
-            .child(currentUserId!!)
-            .setValue(0)
-
         // Listen for messages
         val messagesRef = database.child("conversations").child(actualConversationId).child("messages")
 
         // First, check if messages exist in the database
         messagesRef.get().addOnSuccessListener { snapshot ->
             Log.d("ChatActivity", "Database check: ${if (snapshot.exists()) "Messages exist" else "No messages found"}")
+
             if (snapshot.exists()) {
                 Log.d("ChatActivity", "Number of messages in database: ${snapshot.childrenCount}")
+
+                // Conversation exists, reset createOnFirstMessage flag
+                createOnFirstMessage = false
+
+                // Reset unread messages counter for this user
+                database.child("conversations").child(actualConversationId)
+                    .child("unreadMessages")
+                    .child(currentUserId!!)
+                    .setValue(0)
 
                 // Print sample of first message to debug
                 val firstMsg = snapshot.children.firstOrNull()
@@ -705,6 +853,15 @@ class ChatActivity : AppCompatActivity() {
                     Log.d("ChatActivity", "Sample message - Text: $msgText, Sender: $senderId")
                     Log.d("ChatActivity", "First message raw data: ${firstMsg.value}")
                 }
+            } else if (createOnFirstMessage) {
+                // Conversation doesn't exist yet, but that's expected since createOnFirstMessage is true
+                Log.d("ChatActivity", "Conversation doesn't exist yet, waiting for first message")
+
+                // Clear messages list and update UI for empty state
+                messagesList.clear()
+                messagesAdapter.notifyDataSetChanged()
+            } else {
+                Log.d("ChatActivity", "No messages found in conversation: $actualConversationId")
             }
         }
 
