@@ -187,19 +187,6 @@
             android:textColor="@color/black" />
       </LinearLayout>
 
-      <!-- Add Account Option -->
-      <LinearLayout
-          android:id="@+id/add_account"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:orientation="horizontal"
-          android:padding="15dp"
-          android:clickable="true"
-          android:focusable="true"
-          android:background="@drawable/clickable_item_background">
-
-
-      </LinearLayout>
 
       <!-- Log Out Option -->
       <LinearLayout
