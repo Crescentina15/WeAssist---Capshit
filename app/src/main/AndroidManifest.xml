@@ -35,12 +35,6 @@
             android:name=".Lawyer.LawyerEditProfileActivity"
             android:exported="false" />
         <activity
-            android:name=".Secretary.SecretaryFrontPage"
-            android:exported="false" />
-        <activity
-            android:name=".Lawyer.LawyerFrontPage"
-            android:exported="false" />
-        <activity
             android:name=".Lawyer.ConsultationLogsActivity"
             android:exported="false" />
         <activity
