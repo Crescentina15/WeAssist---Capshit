@@ -289,7 +289,7 @@ const Profile = () => {
             <>
               <button onClick={handleEdit} className="profile-edit-btn">
               <span className="icon-edit"></span>
-              Update Secretary
+              Update Profile
               </button> 
             </>
           ) : (

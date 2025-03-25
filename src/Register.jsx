@@ -6,6 +6,31 @@ import { auth, db } from "./script/firebase";
 import logo from "./assets/logo.png";
 import "./index.css"; 
 
+const RegistrationDescription = () => {
+  return (
+    <div className="registration-description-frame">
+      <div className="description-content">
+        <h2>WeAssist: Transforming Legal Services</h2>
+        <p>
+          At WeAssist, we understand that the legal landscape is evolving, and so are the needs of our clients. Our cutting-edge platform bridges the critical gap between traditional legal services and modern technological solutions.
+        </p>
+        <p>
+          We recognize the challenges professionals face in delivering efficient, accessible legal assistance: time constraints, communication barriers, and the complex process of document management.
+        </p>
+        <p>
+          WeAssist is a comprehensive legal technology solution designed to streamline legal workflows, enhance client communication, and optimize practice management.
+        </p>
+        <p>
+          By leveraging advanced mobile technology and intuitive design, we provide law firms with a powerful tool that reduces administrative burdens, improves client engagement, and creates a more responsive legal service ecosystem.
+        </p>
+        <p>
+          Our mission is to empower legal professionals with innovative technology that transforms how legal services are delivered and experienced.
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const Register = () => {
   const [formData, setFormData] = useState({
     lawFirm: "",
@@ -57,10 +82,13 @@ const Register = () => {
   return (
     <div className="register-page">
       <div className="register-card">
+        {/* Add the description frame */}
+        <RegistrationDescription />
+
         <div className="register-logo-side">
           <div className="logo-hexagon">
             <div className="logo-content">
-            <img src={logo} alt="WeAssist Logo" />
+              <img src={logo} alt="WeAssist Logo" />
             </div>
           </div>
         </div>
@@ -170,14 +198,12 @@ const Register = () => {
               />
             </div>
 
-
             <button type="submit" className="create-account-btn">CREATE ACCOUNT</button>
             
             <p className="login-link">
               Already have an account? <a href="/login">Login</a>
             </p>
           </form>
-          
         </div>
       </div>
     </div>

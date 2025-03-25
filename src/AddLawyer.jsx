@@ -191,9 +191,6 @@ const AddLawyer = () => {
           <button onClick={addLawyer} className="lawyer-primary-button">
             <span className="lawyer-button-icon">✓</span> Add Lawyer
           </button>
-          <button onClick={() => navigate("/")} className="lawyer-secondary-button">
-            <span className="lawyer-button-icon">✕</span> Cancel
-          </button>
         </div>
       </div>
     </div>
