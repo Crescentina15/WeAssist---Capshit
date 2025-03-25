@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="@android:color/white">
 
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -23,9 +22,7 @@
             android:fontFamily="@font/vesper_libre_bold"
             android:textColor="@android:color/white"
             android:textStyle="bold" />
-
     </LinearLayout>
-
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/appointments_recycler_view"
@@ -35,7 +32,16 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="16dp"
         android:clipToPadding="false"
-        android:padding="15dp"/>
+        android:padding="15dp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/empty_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="No appointments for today"
+        android:textSize="18sp"
+        android:visibility="gone" />
 
 </LinearLayout>
-    <!--Client -->

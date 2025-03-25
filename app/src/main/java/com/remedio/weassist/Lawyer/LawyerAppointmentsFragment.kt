@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -19,6 +20,7 @@ import com.remedio.weassist.R
 class LawyerAppointmentsFragment : Fragment() {
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var emptyView: TextView
     private lateinit var appointmentAdapter: LawyerAppointmentAdapter
     private lateinit var appointmentList: MutableList<Appointment>
     private lateinit var databaseRef: DatabaseReference
@@ -36,6 +38,7 @@ class LawyerAppointmentsFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_lawyer_appointments, container, false)
 
         recyclerView = view.findViewById(R.id.appointments_recycler_view)
+        emptyView = view.findViewById(R.id.empty_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         appointmentList = mutableListOf()
 
@@ -73,14 +76,12 @@ class LawyerAppointmentsFragment : Fragment() {
 
                 for (appointmentSnapshot in snapshot.children) {
                     try {
-                        // Check if this is really an appointment object first
                         if (appointmentSnapshot.hasChild("fullName") &&
                             appointmentSnapshot.hasChild("time") &&
                             appointmentSnapshot.hasChild("problem")) {
 
                             val appointment = appointmentSnapshot.getValue(Appointment::class.java)
                             appointment?.let {
-                                // If appointmentId is null or empty, use the snapshot key
                                 if (appointment.appointmentId.isEmpty()) {
                                     appointment.appointmentId = appointmentSnapshot.key ?: ""
                                 }
@@ -95,11 +96,23 @@ class LawyerAppointmentsFragment : Fragment() {
                 }
 
                 appointmentAdapter.updateAppointments(appointmentList)
+
+                // Show empty view if no appointments, otherwise show RecyclerView
+                if (appointmentList.isEmpty()) {
+                    recyclerView.visibility = View.GONE
+                    emptyView.visibility = View.VISIBLE
+                } else {
+                    recyclerView.visibility = View.VISIBLE
+                    emptyView.visibility = View.GONE
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(requireContext(), "Failed to load appointments", Toast.LENGTH_SHORT).show()
                 Log.e("AppointmentLoad", "Database error: ${error.message}", error.toException())
+                // Show empty view on error as well
+                recyclerView.visibility = View.GONE
+                emptyView.visibility = View.VISIBLE
             }
         })
     }
