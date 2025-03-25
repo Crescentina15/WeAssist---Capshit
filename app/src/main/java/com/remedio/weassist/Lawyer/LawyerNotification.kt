@@ -1,5 +1,6 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
@@ -17,6 +18,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.MessageConversation.ChatActivity
 import com.remedio.weassist.Models.NotificationAdapter
 import com.remedio.weassist.Models.NotificationItem
 import com.remedio.weassist.R
@@ -79,6 +81,10 @@ class LawyerNotification : AppCompatActivity() {
                         val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
                         val appointmentId = notificationSnapshot.child("appointmentId").getValue(String::class.java)
 
+                        // Add the new fields for forwarded conversations
+                        val conversationId = notificationSnapshot.child("conversationId").getValue(String::class.java)
+                        val forwardingMessage = notificationSnapshot.child("forwardingMessage").getValue(String::class.java)
+
                         val notification = NotificationItem(
                             id = id,
                             senderId = senderId,
@@ -87,7 +93,9 @@ class LawyerNotification : AppCompatActivity() {
                             timestamp = timestamp,
                             type = type,
                             isRead = isRead,
-                            appointmentId = appointmentId
+                            appointmentId = appointmentId,
+                            conversationId = conversationId,
+                            forwardingMessage = forwardingMessage
                         )
 
                         notificationsList.add(notification)
@@ -106,16 +114,50 @@ class LawyerNotification : AppCompatActivity() {
                 // Update UI based on notifications
                 checkForEmptyList()
 
+                // Update your NotificationAdapter click handler in the fetchNotifications method:
                 if (notifications.isNotEmpty()) {
                     // Initialize adapter with the notification click handler
+                    // In LawyerNotification.kt, update your click handler to navigate to LawyerFrontPage instead
+
                     notificationAdapter = NotificationAdapter(notifications) { notification ->
                         // Mark notification as read when clicked
                         markNotificationAsRead(lawyerId, notification.id)
 
-                        // Handle notification click based on type
                         when (notification.type) {
+                            "NEW_CASE_ASSIGNED" -> {
+                                notification.conversationId?.let { convId ->
+                                    // Navigate to LawyerFrontPage and show the message fragment
+                                    val intent = Intent(this@LawyerNotification, LawyersDashboardActivity::class.java)
+
+                                    // Pass the conversation ID to be used by the fragment
+                                    intent.putExtra("CONVERSATION_ID", convId)
+
+                                    // Add a flag to indicate we want to show the message fragment specifically
+                                    intent.putExtra("SHOW_MESSAGE_FRAGMENT", true)
+
+                                    // If you need to extract client ID from conversation ID
+                                    val parts = convId.split("_")
+                                    if (parts.size >= 3) {
+                                        // Assuming format is "conversation_userId1_userId2"
+                                        val userId1 = parts[1]
+                                        val userId2 = parts[2]
+                                        // Figure out which is the client ID (not the lawyer ID)
+                                        val clientId = if (userId1 == lawyerId) userId2 else userId1
+                                        intent.putExtra("CLIENT_ID", clientId)
+                                    }
+
+                                    // Start the activity
+                                    startActivity(intent)
+
+                                    // Optionally finish the current activity
+                                    finish()
+                                } ?: run {
+                                    Toast.makeText(this@LawyerNotification,
+                                        "Cannot open conversation, missing ID", Toast.LENGTH_SHORT).show()
+                                }
+                            }
                             "appointment_accepted" -> {
-                                // You could navigate to appointment details here if needed
+                                // Handle appointment acceptance notification
                                 Toast.makeText(this@LawyerNotification,
                                     "Appointment accepted", Toast.LENGTH_SHORT).show()
                             }
@@ -128,8 +170,7 @@ class LawyerNotification : AppCompatActivity() {
                     }
 
                     recyclerView.adapter = notificationAdapter
-
-                    // Set up swipe-to-remove functionality
+                    // Setup swipe-to-delete functionality
                     setupSwipeToDelete(lawyerId)
                 }
             }
@@ -294,6 +335,8 @@ class LawyerNotification : AppCompatActivity() {
         notificationMap["type"] = notification.type
         notificationMap["isRead"] = notification.isRead
         notification.appointmentId?.let { notificationMap["appointmentId"] = it }
+        notification.conversationId?.let { notificationMap["conversationId"] = it }
+        notification.forwardingMessage?.let { notificationMap["forwardingMessage"] = it }
 
         // Restore the notification in the database
         notificationRef.setValue(notificationMap)
