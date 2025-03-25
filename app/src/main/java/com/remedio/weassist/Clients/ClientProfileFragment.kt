@@ -34,6 +34,7 @@ class ClientProfileFragment : Fragment() {
     private lateinit var logoutButton: LinearLayout
 
     private val PREFS_NAME = "LoginPrefs"
+    private var valueEventListener: ValueEventListener? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -63,7 +64,7 @@ class ClientProfileFragment : Fragment() {
 
         val currentUser = auth.currentUser
         if (currentUser != null) {
-            fetchUserData(currentUser.uid)
+            setupRealTimeListener(currentUser.uid)
         } else {
             showToast("User not logged in")
         }
@@ -75,8 +76,13 @@ class ClientProfileFragment : Fragment() {
         logoutButton.setOnClickListener { logoutUser() }
     }
 
-    private fun fetchUserData(userId: String) {
-        database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+    private fun setupRealTimeListener(userId: String) {
+        // Remove previous listener if exists
+        valueEventListener?.let {
+            database.child(userId).removeEventListener(it)
+        }
+
+        valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 // Check if the Fragment is still attached and in a valid state
                 if (!isAdded || isDetached || activity == null) {
@@ -93,7 +99,9 @@ class ClientProfileFragment : Fragment() {
                     // Ensure the Fragment is still in a valid state before loading the image
                     if (isAdded && !isDetached && activity != null) {
                         if (profileImageUrl.isNotEmpty()) {
-                            Glide.with(requireContext()).load(profileImageUrl).into(profileImageView)
+                            Glide.with(requireContext())
+                                .load(profileImageUrl)
+                                .into(profileImageView)
                         }
                     }
                 } else {
@@ -106,7 +114,23 @@ class ClientProfileFragment : Fragment() {
                     showToast("Database error: ${error.message}")
                 }
             }
-        })
+        }
+
+        // Add the new listener
+        valueEventListener?.let {
+            database.child(userId).addValueEventListener(it)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Remove the listener when the view is destroyed to prevent memory leaks
+        valueEventListener?.let {
+            val currentUser = auth.currentUser
+            currentUser?.uid?.let { userId ->
+                database.child(userId).removeEventListener(it)
+            }
+        }
     }
 
     private fun logoutUser() {

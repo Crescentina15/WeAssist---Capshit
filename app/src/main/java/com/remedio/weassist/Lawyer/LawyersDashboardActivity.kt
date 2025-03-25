@@ -18,17 +18,18 @@ class LawyersDashboardActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
     private lateinit var auth: FirebaseAuth
     private lateinit var lawyerNameTextView: TextView
-    private lateinit var profileSection: View // Reference to the profile header section
-    private lateinit var profileIcon: ImageView // Profile icon in the header
+    private lateinit var profileSection: View
+    private lateinit var profileIcon: ImageView
+    private var currentProfileImageUrl: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lawyers_dashboard)
 
         val bottomNavigationView = findViewById<BottomNavigationView>(R.id.lawyerNav)
-        lawyerNameTextView = findViewById(R.id.lawyer_name) // Reference to TextView
-        profileSection = findViewById(R.id.profile_section) // Reference to profile header
-        profileIcon = findViewById(R.id.profile_image) // Reference to profile image icon
+        lawyerNameTextView = findViewById(R.id.lawyer_name)
+        profileSection = findViewById(R.id.profile_section)
+        profileIcon = findViewById(R.id.profile_image)
 
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("lawyers")
@@ -39,15 +40,10 @@ class LawyersDashboardActivity : AppCompatActivity() {
             startActivity(intent)
         }
 
-        // Load lawyer's data including name and profile image
         loadLawyerData()
 
-        // Check if we need to show the message fragment from a notification
         if (intent.getBooleanExtra("SHOW_MESSAGE_FRAGMENT", false)) {
-            // Create a new instance of LawyerMessageFragment
             val messageFragment = LawyerMessageFragment()
-
-            // Pass any data from intent to the fragment
             val bundle = Bundle()
             intent.getStringExtra("CONVERSATION_ID")?.let {
                 bundle.putString("CONVERSATION_ID", it)
@@ -56,37 +52,29 @@ class LawyersDashboardActivity : AppCompatActivity() {
                 bundle.putString("CLIENT_ID", it)
             }
             messageFragment.arguments = bundle
-
-            // Load the message fragment
             loadFragment(messageFragment)
-
-            // Update the bottom navigation to show the message tab as selected
             bottomNavigationView.selectedItemId = R.id.nav_message_lawyer
-
-            // Keep the header visible for the message fragment
             profileSection.visibility = View.VISIBLE
         } else {
-            // Set default fragment
             loadFragment(LawyerAppointmentsFragment())
         }
 
-        // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
             val selectedFragment: Fragment = when (item.itemId) {
                 R.id.nav_appointments_lawyer -> {
-                    profileSection.visibility = View.VISIBLE // Show header for Appointments
+                    profileSection.visibility = View.VISIBLE
                     LawyerAppointmentsFragment()
                 }
                 R.id.nav_message_lawyer -> {
-                    profileSection.visibility = View.VISIBLE // Show header for Messages
+                    profileSection.visibility = View.VISIBLE
                     LawyerMessageFragment()
                 }
                 R.id.nav_history_lawyer -> {
-                    profileSection.visibility = View.GONE // Hide header for History
+                    profileSection.visibility = View.GONE
                     LawyerAppointmentHistory()
                 }
                 R.id.nav_profile_lawyer -> {
-                    profileSection.visibility = View.GONE // Hide header for Profile
+                    profileSection.visibility = View.GONE
                     LawyerProfileFragment()
                 }
                 else -> LawyerAppointmentsFragment()
@@ -96,30 +84,32 @@ class LawyersDashboardActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadLawyerData() {
+    fun loadLawyerData() {
         val userId = auth.currentUser?.uid
         if (userId != null) {
             database.child(userId).get().addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
                     var lawyerName = snapshot.child("name").value.toString()
-                    val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java) ?: ""
+                    currentProfileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java) ?: ""
 
-                    // Ensure "Atty." is always prefixed
                     if (!lawyerName.startsWith("Atty.")) {
                         lawyerName = "Atty. $lawyerName"
                     }
 
                     lawyerNameTextView.text = lawyerName
 
-                    // Load profile image into the profile icon
-                    if (profileImageUrl.isNotEmpty()) {
-                        updateProfileIcon(profileImageUrl)
+                    if (currentProfileImageUrl.isNotEmpty()) {
+                        updateProfileIcon(currentProfileImageUrl)
                     }
                 }
             }.addOnFailureListener {
                 lawyerNameTextView.text = "Atty. Unknown Lawyer"
             }
         }
+    }
+
+    fun getCurrentProfileImageUrl(): String {
+        return currentProfileImageUrl
     }
 
     fun updateProfileIcon(profileImageUrl: String) {

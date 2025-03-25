@@ -32,10 +32,11 @@ class LawyerProfileFragment : Fragment() {
     private var profileSection: View? = null
     private val PREFS_NAME = "LoginPrefs"
     private var isNavigatingToAnotherActivity = false
+    private var valueEventListener: ValueEventListener? = null
+    private var imageUrlListener: ValueEventListener? = null
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
-        // Access the profile section from the activity
         if (context is LawyersDashboardActivity) {
             profileSection = context.findViewById(R.id.profile_section)
         }
@@ -47,11 +48,9 @@ class LawyerProfileFragment : Fragment() {
     ): View? {
         val view = inflater.inflate(R.layout.fragment_lawyer_profile, container, false)
 
-        // Initialize Firebase
         auth = FirebaseAuth.getInstance()
         database = FirebaseDatabase.getInstance().getReference("lawyers")
 
-        // Initialize UI elements
         usernameTextView = view.findViewById(R.id.lawyer_name)
         lawyerProfileImage = view.findViewById(R.id.profile_image)
         editProfileButton = view.findViewById(R.id.lawyer_edit_profile)
@@ -65,50 +64,37 @@ class LawyerProfileFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Fetch user data after the fragment is attached
         val currentUser = auth.currentUser
         if (currentUser != null) {
-            fetchUserData(currentUser.uid)
+            setupProfileUpdates(currentUser.uid)
+            setupImageUrlListener(currentUser.uid)
         } else {
             showToast("User not logged in")
         }
 
-        // Set button click listeners safely
         editProfileButton.setOnClickListener { openActivity(LawyerEditProfileActivity::class.java) }
         securityButton.setOnClickListener { openActivity(SecurityActivity::class.java) }
         privacyButton.setOnClickListener { openActivity(PrivacyActivity::class.java) }
         logoutButton.setOnClickListener { logoutUser() }
     }
 
-    override fun onResume() {
-        super.onResume()
-        profileSection?.visibility = View.GONE // Hide profile section
-        isNavigatingToAnotherActivity = false
-        auth.currentUser?.uid?.let { fetchUserData(it) }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        if (!isNavigatingToAnotherActivity) {
-            profileSection?.visibility = View.VISIBLE // Show profile section only if not navigating
+    private fun setupProfileUpdates(userId: String) {
+        valueEventListener?.let {
+            database.child(userId).removeEventListener(it)
         }
-    }
 
-    private fun fetchUserData(userId: String) {
-        database.child(userId).addListenerForSingleValueEvent(object : ValueEventListener {
+        valueEventListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (!isAdded) return // Prevent crash if fragment is detached
+                if (!isAdded) return
 
                 if (snapshot.exists()) {
                     val name = snapshot.child("name").getValue(String::class.java) ?: "N/A"
-                    val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java) ?: ""
-
-                    // Update UI
                     usernameTextView.text = name
 
-                    // Load profile image
-                    if (profileImageUrl.isNotEmpty()) {
-                        Glide.with(requireContext()).load(profileImageUrl).into(lawyerProfileImage)
+                    // Also check for image URL in case it's updated along with other profile data
+                    val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                    if (!imageUrl.isNullOrEmpty()) {
+                        loadProfileImage(imageUrl)
                     }
                 } else {
                     showToast("User data not found!")
@@ -120,27 +106,110 @@ class LawyerProfileFragment : Fragment() {
                     showToast("Database error: ${error.message}")
                 }
             }
-        })
+        }
+
+        valueEventListener?.let {
+            database.child(userId).addValueEventListener(it)
+        }
+    }
+
+    private fun setupImageUrlListener(userId: String) {
+        imageUrlListener?.let {
+            database.child(userId).child("profileImageUrl").removeEventListener(it)
+        }
+
+        imageUrlListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (!isAdded) return
+
+                val profileImageUrl = snapshot.getValue(String::class.java) ?: ""
+
+                // Get the most recent image from activity if available
+                val activity = activity as? LawyersDashboardActivity
+                val currentImageUrl = activity?.getCurrentProfileImageUrl() ?: ""
+
+                // Use the activity's image URL if available, otherwise use the one from snapshot
+                val imageToLoad = if (currentImageUrl.isNotEmpty()) currentImageUrl else profileImageUrl
+
+                if (imageToLoad.isNotEmpty()) {
+                    loadProfileImage(imageToLoad)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                if (isAdded) {
+                    showToast("Image update error: ${error.message}")
+                }
+            }
+        }
+
+        imageUrlListener?.let {
+            database.child(userId).child("profileImageUrl").addValueEventListener(it)
+        }
+    }
+
+    private fun loadProfileImage(imageUrl: String) {
+        Glide.with(requireContext())
+            .load(imageUrl)
+            .circleCrop()
+            .into(lawyerProfileImage)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        profileSection?.visibility = View.GONE
+        isNavigatingToAnotherActivity = false
+
+        // Refresh the profile image when coming back from edit activity
+        auth.currentUser?.uid?.let { userId ->
+            database.child(userId).child("profileImageUrl")
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        val imageUrl = snapshot.getValue(String::class.java)
+                        if (!imageUrl.isNullOrEmpty()) {
+                            loadProfileImage(imageUrl)
+                        }
+                    }
+                    override fun onCancelled(error: DatabaseError) {}
+                })
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (!isNavigatingToAnotherActivity) {
+            profileSection?.visibility = View.VISIBLE
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        auth.currentUser?.uid?.let { userId ->
+            valueEventListener?.let { listener ->
+                database.child(userId).removeEventListener(listener)
+            }
+            imageUrlListener?.let { listener ->
+                database.child(userId).child("profileImageUrl").removeEventListener(listener)
+            }
+        }
     }
 
     private fun logoutUser() {
-        if (!isAdded) return // Prevent crash if fragment is detached
+        if (!isAdded) return
 
-        // Clear stored login credentials
         val sharedPreferences = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         sharedPreferences.edit().clear().apply()
 
         auth.signOut()
         showToast("You have been logged out")
 
-        // Redirect to Login screen
         openActivity(Login::class.java)
         requireActivity().finish()
     }
 
     private fun openActivity(activityClass: Class<*>) {
         if (isAdded) {
-            isNavigatingToAnotherActivity = true // Ensure profile_section remains hidden
+            isNavigatingToAnotherActivity = true
             startActivity(Intent(requireActivity(), activityClass))
         }
     }
