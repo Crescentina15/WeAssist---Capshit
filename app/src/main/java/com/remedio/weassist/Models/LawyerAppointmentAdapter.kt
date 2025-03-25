@@ -14,6 +14,7 @@ class LawyerAppointmentAdapter(
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val clientNameTextView: TextView = itemView.findViewById(R.id.client_name_text_view)
+        val consultationDateTextView: TextView = itemView.findViewById(R.id.consultation_date_text_view)
         val consultationTimeTextView: TextView = itemView.findViewById(R.id.consultation_time_text_view)
         val problemTextView: TextView = itemView.findViewById(R.id.problem_text_view)
     }
@@ -28,6 +29,7 @@ class LawyerAppointmentAdapter(
         val appointment = appointments[position]
 
         holder.clientNameTextView.text = appointment.fullName
+        holder.consultationDateTextView.text = appointment.date
         holder.consultationTimeTextView.text = appointment.time
         holder.problemTextView.text = appointment.problem
 

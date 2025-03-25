@@ -48,6 +48,7 @@ class LawyerAppointmentsFragment : Fragment() {
                 putExtra("consultation_time", appointment.time)
                 putExtra("appointment_id", appointment.appointmentId)
                 putExtra("problem", appointment.problem)
+                putExtra("date", appointment.date) // Add date to intent
             }
             startActivity(intent)
         }
@@ -78,7 +79,8 @@ class LawyerAppointmentsFragment : Fragment() {
                     try {
                         if (appointmentSnapshot.hasChild("fullName") &&
                             appointmentSnapshot.hasChild("time") &&
-                            appointmentSnapshot.hasChild("problem")) {
+                            appointmentSnapshot.hasChild("problem") &&
+                            appointmentSnapshot.hasChild("date")) { // Check for date field
 
                             val appointment = appointmentSnapshot.getValue(Appointment::class.java)
                             appointment?.let {
