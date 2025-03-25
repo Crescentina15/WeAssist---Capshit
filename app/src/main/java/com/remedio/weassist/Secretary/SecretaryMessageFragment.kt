@@ -289,116 +289,184 @@ class SecretaryMessageFragment : Fragment() {
             }
     }
 
-    /**
-     * Creates a notification for the lawyer about a new case being forwarded to them
-     * @param lawyerId The ID of the lawyer to notify
-     * @param clientId The ID of the client whose case is being forwarded
-     * @param conversationId The ID of the original conversation
-     */
+    // Update this method in your SecretaryMessageFragment.kt file
     private fun createLawyerForwardingNotification(lawyerId: String, clientId: String, conversationId: String) {
         val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        // First get the secretary's name
+        // Get secretary name
         database.child("secretaries").child(currentSecretaryId).get()
             .addOnSuccessListener { secretarySnapshot ->
                 val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: "Secretary"
 
-                // Then get the client's name to include in the notification
+                // Get client name
                 database.child("Users").child(clientId).get()
                     .addOnSuccessListener { clientSnapshot ->
                         val firstName = clientSnapshot.child("firstName").getValue(String::class.java) ?: "A client"
                         val lastName = clientSnapshot.child("lastName").getValue(String::class.java) ?: ""
                         val clientName = if (lastName.isEmpty()) firstName else "$firstName $lastName"
 
-                        // Then create the notification
-                        val newConversationId = generateConversationId(clientId, lawyerId)
+                        // Format date and time exactly like in the image
+                        val currentDate = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+                            .format(java.util.Date())
+                        val currentTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+                            .format(java.util.Date())
 
-                        // Create notification data - matching the structure in LawyerNotification
-                        val notificationData = hashMapOf<String, Any>(
-                            "senderId" to currentSecretaryId, // Secretary as sender
-                            "senderName" to "Secretary $secretaryName", // Include actual secretary name
-                            "message" to "A new case from $clientName has been forwarded to you.",
-                            "timestamp" to System.currentTimeMillis(),
-                            "type" to "NEW_CASE_ASSIGNED",
-                            "isRead" to false,
-                            "conversationId" to newConversationId
-                        )
+                        // Get first message from conversation for "original problem"
+                        database.child("conversations").child(conversationId)
+                            .child("messages")
+                            .orderByChild("timestamp")
+                            .limitToFirst(1)
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(messageSnapshot: DataSnapshot) {
+                                    var originalProblem = "No details available"
 
-                        // Generate a unique notification ID
-                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnSuccessListener
+                                    if (messageSnapshot.exists() && messageSnapshot.childrenCount > 0) {
+                                        val firstMessage = messageSnapshot.children.first()
+                                        originalProblem = firstMessage.child("message").getValue(String::class.java) ?: "No details available"
+                                        // Don't truncate the message to match what's in the image -
+                                        // unless it's extremely long
+                                        if (originalProblem.length > 200) {
+                                            originalProblem = originalProblem.substring(0, 197) + "..."
+                                        }
+                                    }
 
-                        // Save notification to database
-                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
-                            .addOnSuccessListener {
-                                Log.d("SecretaryMessageFragment", "Notification created for lawyer: $lawyerId")
-                            }
-                            .addOnFailureListener { e ->
-                                Log.e("SecretaryMessageFragment", "Failed to create notification for lawyer: ${e.message}")
-                            }
+                                    // Create formatted forwarding message exactly matching the image
+                                    val forwardingMessage = "The case been forwarded\n" +
+                                            "from secretary $secretaryName regarding\n" +
+                                            "appointment on $currentDate at $currentTime.\n" +
+                                            "Original problem: $originalProblem"
+
+                                    // Create the new conversation ID
+                                    val newConversationId = generateConversationId(clientId, lawyerId)
+
+                                    // Create notification data
+                                    val notificationData = hashMapOf<String, Any>(
+                                        "senderId" to currentSecretaryId,
+                                        "senderName" to "Secretary $secretaryName",
+                                        "message" to "A new case from $clientName has been forwarded to you.",
+                                        "forwardingMessage" to forwardingMessage,
+                                        "timestamp" to System.currentTimeMillis(),
+                                        "type" to "NEW_CASE_ASSIGNED",
+                                        "isRead" to false,
+                                        "conversationId" to newConversationId
+                                    )
+
+                                    // Generate a unique notification ID and save to database
+                                    val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+                                    database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                                        .addOnSuccessListener {
+                                            Log.d("SecretaryMessageFragment", "Notification created for lawyer: $lawyerId")
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.e("SecretaryMessageFragment", "Failed to create notification: ${e.message}")
+                                        }
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {
+                                    Log.e("SecretaryMessageFragment", "Failed to fetch original problem: ${error.message}")
+                                    createNotificationWithoutOriginalProblem(
+                                        lawyerId, clientId, secretaryName, clientName, currentDate, currentTime
+                                    )
+                                }
+                            })
                     }
                     .addOnFailureListener { e ->
                         Log.e("SecretaryMessageFragment", "Failed to fetch client name: ${e.message}")
-
-                        // Create a notification with just the secretary name if we can't get the client's name
-                        val newConversationId = generateConversationId(clientId, lawyerId)
-
-                        val notificationData = hashMapOf<String, Any>(
-                            "senderId" to currentSecretaryId,
-                            "senderName" to "Secretary $secretaryName",
-                            "message" to "A new case has been forwarded to you.",
-                            "timestamp" to System.currentTimeMillis(),
-                            "type" to "NEW_CASE_ASSIGNED",
-                            "isRead" to false,
-                            "conversationId" to newConversationId
-                        )
-
-                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnFailureListener
-                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+                        createGenericNotification(lawyerId, clientId, secretaryName)
                     }
             }
             .addOnFailureListener { e ->
                 Log.e("SecretaryMessageFragment", "Failed to fetch secretary name: ${e.message}")
-
-                // Fallback if we can't get the secretary's name - proceed with client name lookup
-                database.child("Users").child(clientId).get()
-                    .addOnSuccessListener { clientSnapshot ->
-                        val firstName = clientSnapshot.child("firstName").getValue(String::class.java) ?: "A client"
-                        val lastName = clientSnapshot.child("lastName").getValue(String::class.java) ?: ""
-                        val clientName = if (lastName.isEmpty()) firstName else "$firstName $lastName"
-
-                        val newConversationId = generateConversationId(clientId, lawyerId)
-
-                        val notificationData = hashMapOf<String, Any>(
-                            "senderId" to currentSecretaryId,
-                            "senderName" to "Secretary", // Generic fallback
-                            "message" to "A new case from $clientName has been forwarded to you.",
-                            "timestamp" to System.currentTimeMillis(),
-                            "type" to "NEW_CASE_ASSIGNED",
-                            "isRead" to false,
-                            "conversationId" to newConversationId
-                        )
-
-                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnSuccessListener
-                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
-                    }
-                    .addOnFailureListener { clientError ->
-                        // Final fallback if both secretary and client name lookups fail
-                        val newConversationId = generateConversationId(clientId, lawyerId)
-
-                        val notificationData = hashMapOf<String, Any>(
-                            "senderId" to currentSecretaryId,
-                            "senderName" to "Secretary",
-                            "message" to "A new case has been forwarded to you.",
-                            "timestamp" to System.currentTimeMillis(),
-                            "type" to "NEW_CASE_ASSIGNED",
-                            "isRead" to false,
-                            "conversationId" to newConversationId
-                        )
-
-                        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return@addOnFailureListener
-                        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
-                    }
+                createCompletelyGenericNotification(lawyerId, clientId)
             }
+    }
+
+    // Add these fallback methods (modified to remove conversation message)
+    private fun createNotificationWithoutOriginalProblem(
+        lawyerId: String,
+        clientId: String,
+        secretaryName: String,
+        clientName: String,
+        currentDate: String,
+        currentTime: String
+    ) {
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val newConversationId = generateConversationId(clientId, lawyerId)
+
+        // Create a simpler forwarding message without the original problem
+        val forwardingMessage = "This conversation has been forwarded\n" +
+                "from secretary $secretaryName regarding\n" +
+                "appointment on $currentDate at $currentTime."
+
+        val notificationData = hashMapOf<String, Any>(
+            "senderId" to currentSecretaryId,
+            "senderName" to "Secretary $secretaryName",
+            "message" to "A new case from $clientName has been forwarded to you.",
+            "forwardingMessage" to forwardingMessage,
+            "timestamp" to System.currentTimeMillis(),
+            "type" to "NEW_CASE_ASSIGNED",
+            "isRead" to false,
+            "conversationId" to newConversationId
+        )
+
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+    }
+
+    private fun createGenericNotification(lawyerId: String, clientId: String, secretaryName: String) {
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val newConversationId = generateConversationId(clientId, lawyerId)
+
+        val currentDate = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        val currentTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+            .format(java.util.Date())
+
+        val forwardingMessage = "This conversation has been forwarded\n" +
+                "from secretary $secretaryName regarding\n" +
+                "appointment on $currentDate at $currentTime."
+
+        val notificationData = hashMapOf<String, Any>(
+            "senderId" to currentSecretaryId,
+            "senderName" to "Secretary $secretaryName",
+            "message" to "A new case has been forwarded to you.",
+            "forwardingMessage" to forwardingMessage,
+            "timestamp" to System.currentTimeMillis(),
+            "type" to "NEW_CASE_ASSIGNED",
+            "isRead" to false,
+            "conversationId" to newConversationId
+        )
+
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
+    }
+
+    private fun createCompletelyGenericNotification(lawyerId: String, clientId: String) {
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        val newConversationId = generateConversationId(clientId, lawyerId)
+
+        val currentDate = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        val currentTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+            .format(java.util.Date())
+
+        val forwardingMessage = "This conversation has been forwarded\n" +
+                "from a secretary regarding\n" +
+                "appointment on $currentDate at $currentTime."
+
+        val notificationData = hashMapOf<String, Any>(
+            "senderId" to currentSecretaryId,
+            "senderName" to "Secretary",
+            "message" to "A new case has been forwarded to you.",
+            "forwardingMessage" to forwardingMessage,
+            "timestamp" to System.currentTimeMillis(),
+            "type" to "NEW_CASE_ASSIGNED",
+            "isRead" to false,
+            "conversationId" to newConversationId
+        )
+
+        val notificationId = database.child("notifications").child(lawyerId).push().key ?: return
+        database.child("notifications").child(lawyerId).child(notificationId).setValue(notificationData)
     }
 
     /**

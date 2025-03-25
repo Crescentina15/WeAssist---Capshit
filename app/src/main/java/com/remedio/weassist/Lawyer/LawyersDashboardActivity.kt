@@ -42,8 +42,33 @@ class LawyersDashboardActivity : AppCompatActivity() {
         // Load lawyer's data including name and profile image
         loadLawyerData()
 
-        // Set default fragment
-        loadFragment(LawyerAppointmentsFragment())
+        // Check if we need to show the message fragment from a notification
+        if (intent.getBooleanExtra("SHOW_MESSAGE_FRAGMENT", false)) {
+            // Create a new instance of LawyerMessageFragment
+            val messageFragment = LawyerMessageFragment()
+
+            // Pass any data from intent to the fragment
+            val bundle = Bundle()
+            intent.getStringExtra("CONVERSATION_ID")?.let {
+                bundle.putString("CONVERSATION_ID", it)
+            }
+            intent.getStringExtra("CLIENT_ID")?.let {
+                bundle.putString("CLIENT_ID", it)
+            }
+            messageFragment.arguments = bundle
+
+            // Load the message fragment
+            loadFragment(messageFragment)
+
+            // Update the bottom navigation to show the message tab as selected
+            bottomNavigationView.selectedItemId = R.id.nav_message_lawyer
+
+            // Keep the header visible for the message fragment
+            profileSection.visibility = View.VISIBLE
+        } else {
+            // Set default fragment
+            loadFragment(LawyerAppointmentsFragment())
+        }
 
         // Set up navigation item selection
         bottomNavigationView.setOnItemSelectedListener { item ->
