@@ -135,6 +135,7 @@ const Register = () => {
                 onChange={handleChange} 
                 required 
                 style={{ color: "black" }}
+                autoComplete="new-password"
               />
             </div>
 
@@ -147,6 +148,7 @@ const Register = () => {
                 onChange={handleChange} 
                 required 
                 style={{ color: "black" }}
+                autoComplete="new-password" 
               />
             </div>
 
@@ -159,6 +161,7 @@ const Register = () => {
                 onChange={handleChange} 
                 required 
                 style={{ color: "black" }}
+                autoComplete="new-password"
               />
             </div>
 

@@ -229,7 +229,8 @@ const AdminPanel = ({ user, onLogout }) => {
           {lawyers.map(lawyer => (
             <div key={lawyer.id} className="legend-item">
               <div className="color-swatch" style={{ backgroundColor: lawyerColors[lawyer.id] }}></div>
-              <span>{lawyer.name}</span>
+              <span style={{ color: 'black' }}>{lawyer.name}</span>
+              
             </div>
           ))}
         </div>
