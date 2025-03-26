@@ -6,10 +6,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Consultation
@@ -21,7 +21,7 @@ class LawyerAppointmentHistory : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var recyclerView: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressIndicator: CircularProgressIndicator
     private lateinit var consultationList: ArrayList<Consultation>
     private lateinit var adapter: ConsultationAdapter
     private var profileSection: View? = null
@@ -40,7 +40,7 @@ class LawyerAppointmentHistory : Fragment() {
         auth = FirebaseAuth.getInstance()
         recyclerView = view.findViewById(R.id.recyclerViewAppointments)
         emptyStateLayout = view.findViewById(R.id.empty_state_layout)
-        progressBar = view.findViewById(R.id.progress_bar)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
 
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         consultationList = ArrayList()
@@ -56,19 +56,19 @@ class LawyerAppointmentHistory : Fragment() {
     }
 
     private fun showLoading() {
-        progressBar.visibility = View.VISIBLE
+        progressIndicator.visibility = View.VISIBLE
         recyclerView.visibility = View.GONE
         emptyStateLayout.visibility = View.GONE
     }
 
     private fun showEmptyState() {
-        progressBar.visibility = View.GONE
+        progressIndicator.visibility = View.GONE
         recyclerView.visibility = View.GONE
         emptyStateLayout.visibility = View.VISIBLE
     }
 
     private fun showConsultations() {
-        progressBar.visibility = View.GONE
+        progressIndicator.visibility = View.GONE
         recyclerView.visibility = View.VISIBLE
         emptyStateLayout.visibility = View.GONE
     }
