@@ -7,8 +7,10 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
@@ -20,6 +22,8 @@ class ClientAppointmentsFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var appointmentRecyclerView: RecyclerView
     private lateinit var appointmentList: ArrayList<Appointment>
+    private lateinit var emptyAppointmentsLayout: LinearLayout
+    private lateinit var progressIndicator: CircularProgressIndicator
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -30,6 +34,9 @@ class ClientAppointmentsFragment : Fragment() {
         // Initialize
         database = FirebaseDatabase.getInstance().reference
         appointmentRecyclerView = view.findViewById(R.id.appointments_recycler_view)
+        emptyAppointmentsLayout = view.findViewById(R.id.empty_appointments_layout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+
         appointmentRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         appointmentList = ArrayList()
@@ -40,12 +47,41 @@ class ClientAppointmentsFragment : Fragment() {
 
         if (clientId != null) {
             Log.d("ClientCheck", "Logged in as Client: $clientId")
+            // Show loading initially
+            showLoading()
             fetchAcceptedAppointments(clientId)
         } else {
             Log.e("ClientCheck", "No logged-in client found.")
+            showEmptyState()
         }
 
         return view
+    }
+
+    private fun showLoading() {
+        progressIndicator.visibility = View.VISIBLE
+        appointmentRecyclerView.visibility = View.GONE
+        emptyAppointmentsLayout.visibility = View.GONE
+    }
+
+    private fun showEmptyState() {
+        progressIndicator.visibility = View.GONE
+        appointmentRecyclerView.visibility = View.GONE
+        emptyAppointmentsLayout.visibility = View.VISIBLE
+    }
+
+    private fun showAppointments() {
+        progressIndicator.visibility = View.GONE
+        appointmentRecyclerView.visibility = View.VISIBLE
+        emptyAppointmentsLayout.visibility = View.GONE
+    }
+
+    private fun updateUiState() {
+        if (appointmentList.isEmpty()) {
+            showEmptyState()
+        } else {
+            showAppointments()
+        }
     }
 
     private fun fetchAcceptedAppointments(clientId: String) {
@@ -87,6 +123,7 @@ class ClientAppointmentsFragment : Fragment() {
                                                 processedAppointments++
                                                 if (processedAppointments >= totalAppointments) {
                                                     updateAdapter()
+                                                    updateUiState()
                                                 }
                                             }
 
@@ -95,6 +132,7 @@ class ClientAppointmentsFragment : Fragment() {
                                                 processedAppointments++
                                                 if (processedAppointments >= totalAppointments) {
                                                     updateAdapter()
+                                                    updateUiState()
                                                 }
                                             }
                                         })
@@ -103,6 +141,7 @@ class ClientAppointmentsFragment : Fragment() {
                                     processedAppointments++
                                     if (processedAppointments >= totalAppointments) {
                                         updateAdapter()
+                                        updateUiState()
                                     }
                                 }
                             } else {
@@ -113,15 +152,18 @@ class ClientAppointmentsFragment : Fragment() {
                         // If there are no appointments or all were null, update adapter anyway
                         if (totalAppointments == 0L || processedAppointments >= totalAppointments) {
                             updateAdapter()
+                            updateUiState()
                         }
                     } else {
                         Log.d("ClientCheck", "No accepted appointments found in DB.")
                         updateAdapter() // Update with empty list
+                        showEmptyState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ClientCheck", "Error fetching accepted appointments: ${error.message}")
+                    showEmptyState()
                 }
             })
     }

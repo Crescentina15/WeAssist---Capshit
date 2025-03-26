@@ -9,6 +9,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.PopupMenu
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -16,6 +17,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -29,6 +31,8 @@ class SecretaryMessageFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var conversationsRecyclerView: RecyclerView
     private lateinit var conversationsAdapter: ConversationAdapter
+    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var progressIndicator: CircularProgressIndicator
     private val conversationList = mutableListOf<Conversation>()
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
 
@@ -41,6 +45,9 @@ class SecretaryMessageFragment : Fragment() {
 
         val view = inflater.inflate(R.layout.fragment_secretary_message, container, false)
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
+        emptyStateLayout = view.findViewById(R.id.emptyStateLayout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // In SecretaryMessageFragment
@@ -62,6 +69,32 @@ class SecretaryMessageFragment : Fragment() {
         fetchConversations()
 
         return view
+    }
+
+    private fun showLoading() {
+        progressIndicator.visibility = View.VISIBLE
+        conversationsRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.GONE
+    }
+
+    private fun showEmptyState() {
+        progressIndicator.visibility = View.GONE
+        conversationsRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.VISIBLE
+    }
+
+    private fun showConversations() {
+        progressIndicator.visibility = View.GONE
+        conversationsRecyclerView.visibility = View.VISIBLE
+        emptyStateLayout.visibility = View.GONE
+    }
+
+    private fun updateUiState() {
+        if (conversationList.isEmpty()) {
+            showEmptyState()
+        } else {
+            showConversations()
+        }
     }
 
     private fun showConversationOptions(view: View, position: Int): Boolean {
@@ -786,6 +819,9 @@ class SecretaryMessageFragment : Fragment() {
                 conversationList.removeAt(position)
                 conversationsAdapter.notifyItemRemoved(position)
 
+                // Update UI state
+                updateUiState()
+
                 // Remove from Firebase
                 removeConversation(deletedConversation.conversationId)
 
@@ -798,6 +834,10 @@ class SecretaryMessageFragment : Fragment() {
                     // Restore the conversation if user clicks undo
                     conversationList.add(position, deletedConversation)
                     conversationsAdapter.notifyItemInserted(position)
+
+                    // Update UI state
+                    updateUiState()
+
                     restoreConversation(deletedConversation.conversationId)
                 }.show()
             }
@@ -927,6 +967,9 @@ class SecretaryMessageFragment : Fragment() {
     private fun fetchConversations() {
         if (currentUserId == null) return
 
+        // Show loading state while fetching data
+        showLoading()
+
         val conversationsRef = database.child("conversations")
         conversationsRef.orderByChild("participantIds/$currentUserId").equalTo(true)
             .addValueEventListener(object : ValueEventListener {
@@ -936,6 +979,7 @@ class SecretaryMessageFragment : Fragment() {
                     if (!snapshot.exists()) {
                         Log.e("FirebaseDB", "No conversations found for user: $currentUserId")
                         conversationsAdapter.notifyDataSetChanged()
+                        showEmptyState()
                         return
                     }
 
@@ -978,13 +1022,20 @@ class SecretaryMessageFragment : Fragment() {
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
                                 conversationsAdapter.notifyDataSetChanged()
+                                updateUiState()
                             }
                         }
+                    }
+
+                    // If no conversations to fetch, update UI immediately
+                    if (fetchCount == 0) {
+                        updateUiState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("SecretaryMessagesFragment", "Error fetching conversations: ${error.message}")
+                    showEmptyState()
                 }
             })
     }

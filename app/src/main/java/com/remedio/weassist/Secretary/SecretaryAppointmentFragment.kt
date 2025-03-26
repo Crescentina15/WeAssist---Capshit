@@ -9,11 +9,13 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -29,6 +31,8 @@ class SecretaryAppointmentFragment : Fragment() {
     private lateinit var lawyerIdList: ArrayList<String>
     private lateinit var adapter: AppointmentAdapter
     private lateinit var deleteDrawable: ColorDrawable
+    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var progressIndicator: CircularProgressIndicator
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -39,6 +43,8 @@ class SecretaryAppointmentFragment : Fragment() {
         // Initialize
         database = FirebaseDatabase.getInstance().reference
         appointmentRecyclerView = view.findViewById(R.id.appointment_recyclerview)
+        emptyStateLayout = view.findViewById(R.id.empty_state_layout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
         appointmentRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         appointmentList = ArrayList()
@@ -70,9 +76,36 @@ class SecretaryAppointmentFragment : Fragment() {
             fetchSecretaryLawFirm(secretaryId)
         } else {
             Log.e("SecretaryCheck", "No logged-in secretary found.")
+            showEmptyState()
         }
 
         return view
+    }
+
+    private fun showLoading() {
+        progressIndicator.visibility = View.VISIBLE
+        appointmentRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.GONE
+    }
+
+    private fun showEmptyState() {
+        progressIndicator.visibility = View.GONE
+        appointmentRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.VISIBLE
+    }
+
+    private fun showAppointments() {
+        progressIndicator.visibility = View.GONE
+        appointmentRecyclerView.visibility = View.VISIBLE
+        emptyStateLayout.visibility = View.GONE
+    }
+
+    private fun updateUiState() {
+        if (appointmentList.isEmpty()) {
+            showEmptyState()
+        } else {
+            showAppointments()
+        }
     }
 
     private fun setupSwipeToDelete() {
@@ -92,6 +125,9 @@ class SecretaryAppointmentFragment : Fragment() {
                 appointmentList.removeAt(position)
                 adapter.notifyItemRemoved(position)
 
+                // Update UI state
+                updateUiState()
+
                 // Show undo option
                 val snackbar = Snackbar.make(
                     requireView(),
@@ -106,6 +142,9 @@ class SecretaryAppointmentFragment : Fragment() {
                     // Re-add to list at the same position
                     appointmentList.add(position, deletedAppointment)
                     adapter.notifyItemInserted(position)
+
+                    // Update UI state
+                    updateUiState()
                 }
 
                 snackbar.show()
@@ -215,6 +254,7 @@ class SecretaryAppointmentFragment : Fragment() {
     }
 
     private fun fetchSecretaryLawFirm(secretaryId: String) {
+        showLoading() // Show loading indicator while fetching data
         val secretaryRef = database.child("secretaries").child(secretaryId)
         secretaryRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -224,11 +264,13 @@ class SecretaryAppointmentFragment : Fragment() {
                     fetchLawyersForLawFirm(lawFirm)
                 } else {
                     Log.e("SecretaryCheck", "Secretary data not found in DB for ID: $secretaryId")
+                    showEmptyState()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error fetching secretary data: ${error.message}")
+                showEmptyState()
             }
         })
     }
@@ -251,11 +293,13 @@ class SecretaryAppointmentFragment : Fragment() {
                         listenForAppointmentChanges(lawyerIdList)
                     } else {
                         Log.d("SecretaryCheck", "No lawyers found for lawFirm: $lawFirm")
+                        showEmptyState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("SecretaryCheck", "Error fetching lawyers: ${error.message}")
+                    showEmptyState()
                 }
             })
     }
@@ -307,19 +351,23 @@ class SecretaryAppointmentFragment : Fragment() {
 
                             // Update the adapter with the new data
                             adapter.updateAppointments(appointmentList)
+                            updateUiState() // Update UI based on appointment list
                         } else {
                             Log.d("SecretaryCheck", "No appointments found in DB.")
+                            showEmptyState() // Show empty state when no appointments are found
                         }
                     }
 
                     override fun onCancelled(error: DatabaseError) {
                         Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
+                        showEmptyState() // Show empty state on error
                     }
                 })
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error fetching lawyers: ${error.message}")
+                showEmptyState()
             }
         })
     }
@@ -334,6 +382,7 @@ class SecretaryAppointmentFragment : Fragment() {
                     appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
                     appointmentList.add(appointment)
                     adapter.updateAppointments(appointmentList)
+                    updateUiState() // Update UI state after adding appointment
                 }
             }
 
@@ -346,6 +395,7 @@ class SecretaryAppointmentFragment : Fragment() {
                     if (index != -1) {
                         appointmentList[index] = appointment
                         adapter.updateAppointments(appointmentList)
+                        updateUiState() // Update UI state after updating appointment
                     }
                 }
             }
@@ -357,6 +407,7 @@ class SecretaryAppointmentFragment : Fragment() {
                     appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
                     appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
                     adapter.updateAppointments(appointmentList)
+                    updateUiState() // Update UI state after removing appointment
                 }
             }
 
@@ -366,6 +417,7 @@ class SecretaryAppointmentFragment : Fragment() {
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error listening for appointment changes: ${error.message}")
+                updateUiState() // Update UI state on error
             }
         })
     }

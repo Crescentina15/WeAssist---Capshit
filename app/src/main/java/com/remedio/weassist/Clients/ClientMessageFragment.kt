@@ -9,11 +9,13 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -22,10 +24,14 @@ import com.remedio.weassist.MessageConversation.Conversation
 import com.remedio.weassist.MessageConversation.ConversationAdapter
 import com.remedio.weassist.R
 
+
 class ClientMessageFragment : Fragment() {
     private lateinit var database: DatabaseReference
     private lateinit var conversationsRecyclerView: RecyclerView
     private lateinit var conversationsAdapter: ConversationAdapter
+    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var progressIndicator: CircularProgressIndicator
+
     private val conversationList = mutableListOf<Conversation>()
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
     val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -36,7 +42,12 @@ class ClientMessageFragment : Fragment() {
     ): View? {
         fetchConversationsDebug()
         val view = inflater.inflate(R.layout.fragment_client_message, container, false)
+
+        // Initialize views
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
+        emptyStateLayout = view.findViewById(R.id.emptyStateLayout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
 
         // In ClientMessageFragment
@@ -57,6 +68,16 @@ class ClientMessageFragment : Fragment() {
         fetchConversations()
 
         return view
+    }
+
+    private fun updateEmptyState() {
+        if (conversationList.isEmpty()) {
+            emptyStateLayout.visibility = View.VISIBLE
+            conversationsRecyclerView.visibility = View.GONE
+        } else {
+            emptyStateLayout.visibility = View.GONE
+            conversationsRecyclerView.visibility = View.VISIBLE
+        }
     }
 
     private fun setupSwipeToDelete() {
@@ -82,6 +103,9 @@ class ClientMessageFragment : Fragment() {
                 conversationList.removeAt(position)
                 conversationsAdapter.notifyItemRemoved(position)
 
+                // Update empty state
+                updateEmptyState()
+
                 // Remove from Firebase
                 removeConversation(deletedConversation.conversationId)
 
@@ -94,6 +118,10 @@ class ClientMessageFragment : Fragment() {
                     // Restore the conversation if user clicks undo
                     conversationList.add(position, deletedConversation)
                     conversationsAdapter.notifyItemInserted(position)
+
+                    // Update empty state
+                    updateEmptyState()
+
                     restoreConversation(deletedConversation.conversationId)
                 }.show()
             }
@@ -223,6 +251,11 @@ class ClientMessageFragment : Fragment() {
     private fun fetchConversations() {
         if (currentUserId == null) return
 
+        // Show loading indicator and hide other views
+        progressIndicator.visibility = View.VISIBLE
+        conversationsRecyclerView.visibility = View.GONE
+        emptyStateLayout.visibility = View.GONE
+
         val conversationsRef = database.child("conversations")
         conversationsRef.orderByChild("participantIds/$currentUserId").equalTo(true)
             .addValueEventListener(object : ValueEventListener {
@@ -231,7 +264,8 @@ class ClientMessageFragment : Fragment() {
 
                     if (!snapshot.exists()) {
                         Log.e("FirebaseDB", "No conversations found for user: $currentUserId")
-                        conversationsAdapter.notifyDataSetChanged()
+                        progressIndicator.visibility = View.GONE
+                        updateEmptyState()
                         return
                     }
 
@@ -291,16 +325,28 @@ class ClientMessageFragment : Fragment() {
 
                             // Only update the adapter once all names are fetched
                             if (fetchCount == 0) {
+                                progressIndicator.visibility = View.GONE
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
                                 conversationsAdapter.notifyDataSetChanged()
+
+                                // Update empty state after data is loaded
+                                updateEmptyState()
                             }
                         }
+                    }
+
+                    // If no conversations to fetch, update UI immediately
+                    if (fetchCount == 0) {
+                        progressIndicator.visibility = View.GONE
+                        updateEmptyState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ClientMessagesFragment", "Error fetching conversations: ${error.message}")
+                    progressIndicator.visibility = View.GONE
+                    updateEmptyState()
                 }
             })
     }

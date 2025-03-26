@@ -13,7 +13,7 @@
         android:id="@+id/header"
         android:layout_width="match_parent"
         android:layout_height="56dp"
-        android:background="@color/purple_500"
+        android:background="#8000FF"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
@@ -25,7 +25,8 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginStart="16dp"/>
+            android:layout_marginStart="16dp"
+            app:tint="@color/white" />
 
         <TextView
             android:id="@+id/header_title"
@@ -63,24 +64,24 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintVertical_bias="0.4"
         tools:visibility="visible">
+
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/message"
+            android:contentDescription="No messages icon"
+            app:tint="@color/black" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="No conversations yet"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginHorizontal="32dp"
-            android:text="Your inbox is empty"
-            android:textAlignment="center"
-            android:textColor="@color/black" />
+            android:text="No messages yet"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#212121" />
 
     </LinearLayout>
 
@@ -91,6 +92,10 @@
         android:layout_height="wrap_content"
         android:indeterminate="true"
         android:visibility="gone"
+        app:indicatorColor="#8000FF"
+        app:trackColor="#E6E0F8"
+        app:indicatorSize="48dp"
+        app:trackThickness="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

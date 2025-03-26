@@ -14,11 +14,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -36,6 +38,8 @@ class LawyerMessageFragment : Fragment() {
     private var profileSection: View? = null
     private var rootView: View? = null
     private var isTransitioning = false
+    private lateinit var emptyStateLayout: LinearLayout
+    private lateinit var progressIndicator: CircularProgressIndicator
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -57,7 +61,8 @@ class LawyerMessageFragment : Fragment() {
 
         conversationsRecyclerView = view.findViewById(R.id.inbox_recycler_view)
         conversationsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-
+        emptyStateLayout = view.findViewById(R.id.empty_state_layout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
         // Initialize adapter
         conversationsAdapter = ConversationAdapter(
             conversationList,
@@ -180,6 +185,9 @@ class LawyerMessageFragment : Fragment() {
                 conversationList.removeAt(position)
                 conversationsAdapter.notifyItemRemoved(position)
 
+                // Update empty state
+                updateEmptyState()
+
                 // Remove from Firebase
                 removeConversation(deletedConversation.conversationId)
 
@@ -192,6 +200,7 @@ class LawyerMessageFragment : Fragment() {
                     // Restore the conversation if user clicks undo
                     conversationList.add(position, deletedConversation)
                     conversationsAdapter.notifyItemInserted(position)
+                    updateEmptyState()
                     restoreConversation(deletedConversation.conversationId)
                 }.show()
             }
@@ -318,8 +327,24 @@ class LawyerMessageFragment : Fragment() {
             }
     }
 
+    // Add this method to your class
+    private fun updateEmptyState() {
+        if (conversationList.isEmpty()) {
+            emptyStateLayout.visibility = View.VISIBLE
+            conversationsRecyclerView.visibility = View.GONE
+        } else {
+            emptyStateLayout.visibility = View.GONE
+            conversationsRecyclerView.visibility = View.VISIBLE
+        }
+    }
+    // Update the fetchConversations method to show loading and handle empty state
     private fun fetchConversations() {
         if (currentUserId == null) return
+
+        // Show loading indicator
+        progressIndicator.visibility = View.VISIBLE
+        emptyStateLayout.visibility = View.GONE
+        conversationsRecyclerView.visibility = View.GONE
 
         val conversationsRef = database.child("conversations")
         conversationsRef.orderByChild("participantIds/$currentUserId").equalTo(true)
@@ -329,7 +354,8 @@ class LawyerMessageFragment : Fragment() {
 
                     if (!snapshot.exists()) {
                         Log.e("FirebaseDB", "No conversations found for user: $currentUserId")
-                        conversationsAdapter.notifyDataSetChanged()
+                        progressIndicator.visibility = View.GONE
+                        updateEmptyState()
                         return
                     }
 
@@ -369,16 +395,26 @@ class LawyerMessageFragment : Fragment() {
 
                             // Only update the adapter once all client names are fetched
                             if (fetchCount == 0) {
+                                progressIndicator.visibility = View.GONE
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
                                 conversationsAdapter.notifyDataSetChanged()
+                                updateEmptyState()
                             }
                         }
+                    }
+
+                    // If no conversations to fetch, hide loading immediately
+                    if (fetchCount == 0) {
+                        progressIndicator.visibility = View.GONE
+                        updateEmptyState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("LawyerMessageFragment", "Error fetching conversations: ${error.message}")
+                    progressIndicator.visibility = View.GONE
+                    updateEmptyState()
                 }
             })
     }
