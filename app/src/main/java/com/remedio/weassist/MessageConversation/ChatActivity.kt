@@ -26,6 +26,8 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
     private var createOnFirstMessage = false
+    private var isSending = false // Add this with other class variables
+    private var pendingMessageId: String? = null
 
     // Chat participant IDs
     private var clientId: String? = null
@@ -127,8 +129,13 @@ class ChatActivity : AppCompatActivity() {
             }
         }
 
+        // Replace your current btnSendMessage.setOnClickListener with this:
+
         btnSendMessage.setOnClickListener {
-            sendMessage()
+            if (!isSending) {
+                isSending = true
+                sendMessage()
+            }
         }
 
         backButton.setOnClickListener {
@@ -580,7 +587,19 @@ class ChatActivity : AppCompatActivity() {
                     val firstName = clientSnapshot.child("firstName").value?.toString() ?: "Unknown"
                     val lastName = clientSnapshot.child("lastName").value?.toString() ?: ""
                     val fullName = "$firstName $lastName".trim()
+                    val imageUrl = clientSnapshot.child("profileImageUrl").value?.toString() ?: ""
+
                     tvChatPartnerName.text = fullName
+
+                    // Update conversation in Firebase
+                    conversationId?.let { convId ->
+                        val updates = hashMapOf<String, Any>(
+                            "clientName" to fullName,
+                            "clientImageUrl" to imageUrl
+                        )
+                        database.child("conversations").child(convId).updateChildren(updates)
+                    }
+
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Client not found!")
@@ -600,7 +619,19 @@ class ChatActivity : AppCompatActivity() {
             .addOnSuccessListener { secretarySnapshot ->
                 if (secretarySnapshot.exists()) {
                     val secretaryName = secretarySnapshot.child("name").value?.toString() ?: "Unknown"
+                    val imageUrl = secretarySnapshot.child("profilePicture").value?.toString() ?: ""
+
                     tvChatPartnerName.text = secretaryName
+
+                    // Update conversation in Firebase
+                    conversationId?.let { convId ->
+                        val updates = hashMapOf<String, Any>(
+                            "secretaryName" to secretaryName,
+                            "secretaryImageUrl" to imageUrl
+                        )
+                        database.child("conversations").child(convId).updateChildren(updates)
+                    }
+
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Secretary not found!")
@@ -615,17 +646,72 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
+    private fun updateConversationWithClientInfo(clientId: String, clientName: String, clientImageUrl: String) {
+        // If you're maintaining a local list of conversations, update it here
+        // Otherwise, this would update the conversation in Firebase
+
+        // Example if you have a local list:
+        /*
+        conversationList.find { it.clientId == clientId }?.let { conversation ->
+            conversation.clientName = clientName
+            conversation.clientImageUrl = clientImageUrl
+            notifyDataSetChanged()
+        }
+        */
+
+        // For Firebase update:
+        val updates = hashMapOf<String, Any>(
+            "clientName" to clientName,
+            "clientImageUrl" to clientImageUrl
+        )
+
+        database.child("conversations").child(conversationId ?: return).updateChildren(updates)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Updated conversation with client info")
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to update conversation with client info", e)
+            }
+    }
+
+    private fun updateConversationWithSecretaryInfo(secretaryId: String, secretaryName: String, secretaryImageUrl: String) {
+        // Similar to above but for secretary info
+
+        val updates = hashMapOf<String, Any>(
+            "secretaryName" to secretaryName,
+            "secretaryImageUrl" to secretaryImageUrl
+        )
+
+        database.child("conversations").child(conversationId ?: return).updateChildren(updates)
+            .addOnSuccessListener {
+                Log.d("ChatActivity", "Updated conversation with secretary info")
+            }
+            .addOnFailureListener { e ->
+                Log.e("ChatActivity", "Failed to update conversation with secretary info", e)
+            }
+    }
+
     private fun getLawyerName(lawyerId: String) {
         database.child("lawyers").child(lawyerId).get()
             .addOnSuccessListener { lawyerSnapshot ->
                 if (lawyerSnapshot.exists()) {
                     val name = lawyerSnapshot.child("name").value?.toString() ?: ""
+                    val imageUrl = lawyerSnapshot.child("profileImage").value?.toString() ?: ""
+
                     tvChatPartnerName.text = if (name.isNotEmpty()) name else "Lawyer"
+
+                    // Update conversation in Firebase
+                    conversationId?.let { convId ->
+                        val updates = hashMapOf<String, Any>(
+                            "secretaryName" to if (name.isNotEmpty()) name else "Lawyer",
+                            "secretaryImageUrl" to imageUrl
+                        )
+                        database.child("conversations").child(convId).updateChildren(updates)
+                    }
+
                     listenForMessages()
                 } else {
                     Log.e("ChatActivity", "Lawyer not found!")
-
-                    // If we're expecting to create conversation on first message, don't show error
                     if (createOnFirstMessage) {
                         tvChatPartnerName.text = "Lawyer"
                         listenForMessages()
@@ -637,8 +723,6 @@ class ChatActivity : AppCompatActivity() {
             }
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Error fetching lawyer data: ${e.message}")
-
-                // If we're expecting to create conversation on first message, don't show error
                 if (createOnFirstMessage) {
                     tvChatPartnerName.text = "Lawyer"
                     listenForMessages()
@@ -652,49 +736,47 @@ class ChatActivity : AppCompatActivity() {
 
     private fun sendMessage() {
         val messageText = etMessageInput.text.toString().trim()
-        Log.d("ChatActivity", "Attempting to send message: $messageText")
-
-        if (messageText.isNotEmpty() && currentUserId != null) {
-            val receiverId = determineReceiverId()
-            if (receiverId == null) {
-                Log.e("ChatActivity", "Could not determine receiver ID")
-                Toast.makeText(this, "Unable to send message: recipient not identified", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // Use the conversation ID from intent or generate one if needed
-            val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
-            Log.d("ChatActivity", "Sending to conversation: $actualConversationId")
-
-            val message = Message(
-                senderId = currentUserId!!,
-                receiverId = receiverId,
-                message = messageText,
-                timestamp = System.currentTimeMillis()
-            )
-
-            // Check if conversation exists first
-            database.child("conversations").child(actualConversationId).get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.exists()) {
-                        // Conversation exists, just add the message
-                        addMessageToExistingConversation(actualConversationId, message)
-                    } else {
-                        // Conversation doesn't exist, create it first with all required fields
-                        createConversationWithMessage(actualConversationId, message, receiverId)
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("ChatActivity", "Error checking conversation: ${e.message}")
-                    // Attempt to create conversation anyway
-                    createConversationWithMessage(actualConversationId, message, receiverId)
-                }
-        } else {
-            Log.e("ChatActivity", "Message cannot be sent! messageText=${messageText}, currentUserId=$currentUserId")
-            if (messageText.isEmpty()) {
-                Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
-            }
+        if (messageText.isEmpty() || currentUserId == null) {
+            Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        val receiverId = determineReceiverId() ?: run {
+            Toast.makeText(this, "Recipient not identified", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
+        val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
+        pendingMessageId = messageId
+
+        val message = Message(
+            senderId = currentUserId!!,
+            receiverId = receiverId,
+            message = messageText,
+            timestamp = System.currentTimeMillis()
+        )
+
+        // Add to local list immediately for instant UI feedback
+        messagesList.add(message)
+        messagesAdapter.notifyItemInserted(messagesList.size - 1)
+        rvChatMessages.scrollToPosition(messagesList.size - 1)
+        etMessageInput.text.clear()
+
+        // Send to Firebase
+        database.child("conversations").child(conversationId).child("messages").child(messageId)
+            .setValue(message)
+            .addOnSuccessListener {
+                pendingMessageId = null
+                incrementUnreadCounter(conversationId, receiverId)
+                createNotificationForRecipient(message)
+            }
+            .addOnFailureListener {
+                // Remove from local list if failed
+                messagesList.removeAll { it.timestamp == message.timestamp }
+                messagesAdapter.notifyDataSetChanged()
+                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun createConversationWithMessage(conversationId: String, message: Message, receiverId: String) {
@@ -735,7 +817,8 @@ class ChatActivity : AppCompatActivity() {
                 chatRef.setValue(message)
                     .addOnSuccessListener {
                         Log.d("ChatActivity", "Message sent successfully in new conversation")
-                        etMessageInput.text.clear()  // Clear the input field
+                        etMessageInput.text.clear()
+                        isSending = false // Reset flag
 
                         // Create notification for recipient
                         createNotificationForRecipient(message)
@@ -746,11 +829,13 @@ class ChatActivity : AppCompatActivity() {
                     .addOnFailureListener { e ->
                         Log.e("ChatActivity", "Failed to send message in new conversation: ${e.message}")
                         Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+                        isSending = false // Reset flag
                     }
             }
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Failed to create conversation: ${e.message}")
                 Toast.makeText(this, "Failed to create conversation", Toast.LENGTH_SHORT).show()
+                isSending = false // Reset flag
             }
     }
 
@@ -761,7 +846,8 @@ class ChatActivity : AppCompatActivity() {
         chatRef.setValue(message)
             .addOnSuccessListener {
                 Log.d("ChatActivity", "Message sent successfully")
-                etMessageInput.text.clear()  // Clear the input field
+                etMessageInput.text.clear()
+                isSending = false // Reset flag
 
                 // Increment unread counter for recipient
                 incrementUnreadCounter(conversationId, message.receiverId)
@@ -775,6 +861,7 @@ class ChatActivity : AppCompatActivity() {
             .addOnFailureListener { e ->
                 Log.e("ChatActivity", "Failed to send message: ${e.message}")
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+                isSending = false // Reset flag
             }
     }
 
@@ -937,30 +1024,24 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
-        // If we have a conversation ID from intent, use it directly
         val actualConversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         Log.d("ChatActivity", "Listening for messages with conversationId: $actualConversationId")
 
-        // Listen for messages
         val messagesRef = database.child("conversations").child(actualConversationId).child("messages")
 
-        // First, check if messages exist in the database
         messagesRef.get().addOnSuccessListener { snapshot ->
             Log.d("ChatActivity", "Database check: ${if (snapshot.exists()) "Messages exist" else "No messages found"}")
 
             if (snapshot.exists()) {
                 Log.d("ChatActivity", "Number of messages in database: ${snapshot.childrenCount}")
 
-                // Conversation exists, reset createOnFirstMessage flag
                 createOnFirstMessage = false
 
-                // Reset unread messages counter for this user
                 database.child("conversations").child(actualConversationId)
                     .child("unreadMessages")
                     .child(currentUserId!!)
                     .setValue(0)
 
-                // Print sample of first message to debug
                 val firstMsg = snapshot.children.firstOrNull()
                 if (firstMsg != null) {
                     val msgText = firstMsg.child("message").getValue(String::class.java)
@@ -969,10 +1050,7 @@ class ChatActivity : AppCompatActivity() {
                     Log.d("ChatActivity", "First message raw data: ${firstMsg.value}")
                 }
             } else if (createOnFirstMessage) {
-                // Conversation doesn't exist yet, but that's expected since createOnFirstMessage is true
                 Log.d("ChatActivity", "Conversation doesn't exist yet, waiting for first message")
-
-                // Clear messages list and update UI for empty state
                 messagesList.clear()
                 messagesAdapter.notifyDataSetChanged()
             } else {
@@ -982,58 +1060,66 @@ class ChatActivity : AppCompatActivity() {
 
         messagesRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                messagesList.clear()
+                val newMessages = mutableListOf<Message>()
 
                 Log.d("ChatActivity", "ValueEventListener fired, message count: ${snapshot.childrenCount}")
 
                 if (!snapshot.exists()) {
                     Log.d("ChatActivity", "No messages found in conversation: $actualConversationId")
-
-                    // Ensure adapter refreshes even when empty
+                    messagesList.clear()
                     messagesAdapter.notifyDataSetChanged()
                     return
                 }
 
-                // Print all message data for debugging
-                for (child in snapshot.children) {
-                    Log.d("ChatActivity", "Message data: ${child.value}")
-                }
-
                 for (messageSnapshot in snapshot.children) {
                     try {
-                        // Log the current message being processed
-                        Log.d("ChatActivity", "Processing message: ${messageSnapshot.value}")
+                        // Skip the pending message we're currently sending
+                        if (messageSnapshot.key == pendingMessageId) {
+                            continue
+                        }
 
-                        // Check if this is a system message first
                         val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
                         val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
                         val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
 
                         if (senderId == "system") {
-                            // This is a system message
                             val systemMessage = Message(
                                 senderId = "system",
-                                receiverId = "", // System messages don't have a specific receiver
+                                receiverId = "",
                                 message = messageText,
                                 timestamp = timestamp
                             )
-                            messagesList.add(systemMessage)
+                            newMessages.add(systemMessage)
                             Log.d("ChatActivity", "Added system message: $messageText")
                         } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
-                            // This is a regular message
                             val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java) ?: ""
 
-                            // Create message with sender name (if current user, leave null)
-                            val message = Message(
-                                senderId = senderId,
-                                receiverId = receiverId,
-                                message = messageText,
-                                timestamp = timestamp,
-                                senderName = null // Will be handled by adapter based on senderId
-                            )
+                            // Fetch sender's image URL based on their user type
+                            fetchSenderImageUrl(senderId) { imageUrl ->
+                                val message = Message(
+                                    senderId = senderId,
+                                    receiverId = receiverId,
+                                    message = messageText,
+                                    timestamp = timestamp,
+                                    senderName = null,
+                                    senderImageUrl = imageUrl
+                                )
+                                newMessages.add(message)
+                                Log.d("ChatActivity", "Added regular message: $messageText from $senderId with image: $imageUrl")
 
-                            messagesList.add(message)
-                            Log.d("ChatActivity", "Added regular message: $messageText from $senderId")
+                                // Only update UI if this is the last message being processed
+                                if (newMessages.size == snapshot.children.count { it.key != pendingMessageId }) {
+                                    messagesList.clear()
+                                    messagesList.addAll(newMessages.sortedBy { it.timestamp })
+                                    messagesAdapter.notifyDataSetChanged()
+
+                                    if (messagesList.isNotEmpty()) {
+                                        rvChatMessages.post {
+                                            rvChatMessages.scrollToPosition(messagesList.size - 1)
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             Log.e("ChatActivity", "Invalid message data: senderId=$senderId, message=$messageText")
                         }
@@ -1043,22 +1129,16 @@ class ChatActivity : AppCompatActivity() {
                     }
                 }
 
-                // Sort messages by timestamp
-                messagesList.sortBy { it.timestamp }
+                // Handle messages without images (system messages)
+                if (newMessages.isNotEmpty() && newMessages.any { it.senderImageUrl == null }) {
+                    messagesList.clear()
+                    messagesList.addAll(newMessages.sortedBy { it.timestamp })
+                    messagesAdapter.notifyDataSetChanged()
 
-                // Log the final list of messages
-                Log.d("ChatActivity", "Final message list size: ${messagesList.size}")
-                for (msg in messagesList) {
-                    Log.d("ChatActivity", "Final list - Message: ${msg.message}, Sender: ${msg.senderId}")
-                }
-
-                // Update the UI
-                messagesAdapter.notifyDataSetChanged()
-
-                if (messagesList.isNotEmpty()) {
-                    // Scroll to the bottom to see latest messages
-                    rvChatMessages.post {
-                        rvChatMessages.scrollToPosition(messagesList.size - 1)
+                    if (messagesList.isNotEmpty()) {
+                        rvChatMessages.post {
+                            rvChatMessages.scrollToPosition(messagesList.size - 1)
+                        }
                     }
                 }
             }
@@ -1068,6 +1148,102 @@ class ChatActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext, "Failed to load messages", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    private fun fetchSenderImageUrl(senderId: String, callback: (String?) -> Unit) {
+        if (senderId == currentUserId) {
+            // For current user, we can get the image from our own profile
+            when (userType) {
+                "client" -> {
+                    database.child("Users").child(senderId).child("profileImageUrl").get()
+                        .addOnSuccessListener { snapshot ->
+                            callback(snapshot.getValue(String::class.java))
+                        }
+                        .addOnFailureListener {
+                            callback(null)
+                        }
+                }
+                "secretary" -> {
+                    database.child("secretaries").child(senderId).child("profilePicture").get()
+                        .addOnSuccessListener { snapshot ->
+                            callback(snapshot.getValue(String::class.java))
+                        }
+                        .addOnFailureListener {
+                            callback(null)
+                        }
+                }
+                "lawyer" -> {
+                    database.child("lawyers").child(senderId).child("profileImage").get()
+                        .addOnSuccessListener { snapshot ->
+                            callback(snapshot.getValue(String::class.java))
+                        }
+                        .addOnFailureListener {
+                            callback(null)
+                        }
+                }
+                else -> callback(null)
+            }
+        } else {
+            // For other users, we need to determine their type first
+            determineUserType(senderId) { userType ->
+                when (userType) {
+                    "client" -> {
+                        database.child("Users").child(senderId).child("profileImageUrl").get()
+                            .addOnSuccessListener { snapshot ->
+                                callback(snapshot.getValue(String::class.java))
+                            }
+                            .addOnFailureListener {
+                                callback(null)
+                            }
+                    }
+                    "secretary" -> {
+                        database.child("secretaries").child(senderId).child("profilePicture").get()
+                            .addOnSuccessListener { snapshot ->
+                                callback(snapshot.getValue(String::class.java))
+                            }
+                            .addOnFailureListener {
+                                callback(null)
+                            }
+                    }
+                    "lawyer" -> {
+                        database.child("lawyers").child(senderId).child("profileImage").get()
+                            .addOnSuccessListener { snapshot ->
+                                callback(snapshot.getValue(String::class.java))
+                            }
+                            .addOnFailureListener {
+                                callback(null)
+                            }
+                    }
+                    else -> callback(null)
+                }
+            }
+        }
+    }
+
+    // Add this helper function to determine a user's type
+    private fun determineUserType(userId: String, callback: (String?) -> Unit) {
+        // Check if secretary
+        database.child("secretaries").child(userId).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    callback("secretary")
+                    return@addOnSuccessListener
+                }
+
+                // Check if lawyer
+                database.child("lawyers").child(userId).get()
+                    .addOnSuccessListener { lawyerSnapshot ->
+                        if (lawyerSnapshot.exists()) {
+                            callback("lawyer")
+                        } else {
+                            // Assume client if neither
+                            callback("client")
+                        }
+                    }
+            }
+            .addOnFailureListener {
+                callback(null)
+            }
     }
 
     // Updated checkForwardedStatus method combining your current implementation with the enhancements

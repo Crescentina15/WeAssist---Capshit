@@ -78,5 +78,7 @@ dependencies {
 
     implementation("com.cloudinary:cloudinary-android:2.0.0")
     implementation("com.github.bumptech.glide:glide:4.12.0")
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+
 
 }

@@ -6,20 +6,24 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
+import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
 class ConversationAdapter(
     private val conversationList: List<Conversation>,
     private val onItemClick: (Conversation) -> Unit,
-    private val currentUserId: String? = null,  // Add current user ID to determine the role
-    private val onLongClickListener: ((View, Int) -> Boolean)? = null // Optional long click listener
+    private val currentUserId: String? = null,
+    private val onLongClickListener: ((View, Int) -> Boolean)? = null
 ) : RecyclerView.Adapter<ConversationAdapter.ConversationViewHolder>() {
 
     class ConversationViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val nameTextView: TextView = view.findViewById(R.id.secretary_name)
         val lastMessageTextView: TextView = view.findViewById(R.id.last_message)
         val unreadCountTextView: TextView = view.findViewById(R.id.unread_count)
+        val timestampTextView: TextView = view.findViewById(R.id.timestamp)
+        val profileImageView: ShapeableImageView = view.findViewById(R.id.profile_image)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ConversationViewHolder {
@@ -31,58 +35,55 @@ class ConversationAdapter(
     override fun onBindViewHolder(holder: ConversationViewHolder, position: Int) {
         val conversation = conversationList[position]
 
-        // Determine if current user is a secretary (by checking if they're conversing with client)
-        val isSecretaryView = currentUserId != null && conversation.clientId != currentUserId
+        // Determine if current user is a secretary/lawyer (by checking if they're conversing with client)
+        val isStaffView = currentUserId != null && conversation.clientId != currentUserId
 
-        // Display the appropriate name based on user role
-        if (isSecretaryView) {
-            // Secretary viewing client conversation
+        // Display the appropriate name and image based on user role
+        if (isStaffView) {
+            // Staff (secretary/lawyer) viewing client conversation
             holder.nameTextView.text = conversation.clientName
+            loadProfileImage(holder.profileImageView, conversation.clientImageUrl)
         } else {
-            // Client viewing secretary conversation
+            // Client viewing staff conversation
             holder.nameTextView.text = conversation.secretaryName
+            loadProfileImage(holder.profileImageView, conversation.secretaryImageUrl)
         }
 
         holder.lastMessageTextView.text = conversation.lastMessage
         holder.unreadCountTextView.text = conversation.unreadCount.toString()
         holder.unreadCountTextView.visibility = if (conversation.unreadCount > 0) View.VISIBLE else View.GONE
 
+        // You can set timestamp if available in your Conversation model
+        // holder.timestampTextView.text = formatTimestamp(conversation.timestamp)
+
         // Check for forwarded conversation status
         checkIfConversationIsActive(conversation.conversationId) { isActive, isHandledByLawyer ->
-            if (!isActive && isSecretaryView) {
-                // This conversation has been forwarded and secretary is inactive
-                holder.itemView.alpha = 0.5f  // Dim the conversation
+            if (!isActive && isStaffView) {
+                // This conversation has been forwarded and staff is inactive
+                holder.itemView.alpha = 0.5f
                 holder.lastMessageTextView.text = "[Forwarded to lawyer] " + holder.lastMessageTextView.text
-
-                // We could also add a visual indicator here like a forwarded icon
-                // holder.forwardedIndicator.visibility = View.VISIBLE (if you add this view to your layout)
             } else {
                 holder.itemView.alpha = 1.0f
             }
 
-            // Set click listener - handle differently for inactive conversations
+            // Set click listener
             holder.itemView.setOnClickListener {
-                if (!isActive && isSecretaryView) {
-                    // Show a toast or dialog explaining the conversation is now handled by a lawyer
+                if (!isActive && isStaffView) {
                     val context = holder.itemView.context
                     Toast.makeText(
                         context,
                         "This conversation has been forwarded to a lawyer and is now read-only.",
                         Toast.LENGTH_SHORT
                     ).show()
-
-                    // Still allow viewing the conversation, but perhaps in a read-only mode
                     onItemClick(conversation)
                 } else {
-                    // Normal click behavior for active conversations
                     onItemClick(conversation)
                 }
             }
         }
 
-        // Only add long press listener if it's provided AND this is a secretary view
-        // AND the conversation is still active (not forwarded)
-        if (onLongClickListener != null && isSecretaryView) {
+        // Only add long press listener if it's provided AND this is a staff view
+        if (onLongClickListener != null && isStaffView) {
             checkIfConversationIsActive(conversation.conversationId) { isActive, _ ->
                 if (isActive) {
                     holder.itemView.setOnLongClickListener { view ->
@@ -96,7 +97,19 @@ class ConversationAdapter(
         }
     }
 
-    // Helper method to check conversation status
+    private fun loadProfileImage(imageView: ShapeableImageView, imageUrl: String?) {
+        if (!imageUrl.isNullOrEmpty()) {
+            Glide.with(imageView.context)
+                .load(imageUrl)
+                .placeholder(R.drawable.profile) // Your default profile drawable
+                .error(R.drawable.profile) // Fallback if error loading
+                .circleCrop() // Matches your circular ShapeableImageView
+                .into(imageView)
+        } else {
+            imageView.setImageResource(R.drawable.profile)
+        }
+    }
+
     private fun checkIfConversationIsActive(conversationId: String, callback: (Boolean, Boolean) -> Unit) {
         val database = FirebaseDatabase.getInstance().reference
         database.child("conversations").child(conversationId).get()
@@ -110,11 +123,9 @@ class ConversationAdapter(
                 callback(isActive, isHandledByLawyer)
             }
             .addOnFailureListener {
-                // Default to active if we can't determine
                 callback(true, false)
             }
     }
-
 
     override fun getItemCount(): Int = conversationList.size
 }

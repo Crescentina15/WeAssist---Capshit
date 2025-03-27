@@ -5,8 +5,10 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.remedio.weassist.R
+import de.hdodenhof.circleimageview.CircleImageView
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -17,7 +19,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     private val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
 
-    // Define view type constants
     companion object {
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
@@ -69,11 +70,26 @@ class MessageAdapter(private val messagesList: List<Message>) :
     // View holder for messages sent by the current user
     class SentMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.message_text)
-        //private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+        private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+        private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
 
         fun bind(message: Message) {
             tvMessage.text = message.message
-            //tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(message.timestamp))
+            tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                .format(Date(message.timestamp))
+
+            // Load sender image if available and view exists
+            ivProfile?.let { imageView ->
+                if (!message.senderImageUrl.isNullOrEmpty()) {
+                    Glide.with(itemView.context)
+                        .load(message.senderImageUrl)
+                        .placeholder(R.drawable.profile) // Default profile image
+                        .error(R.drawable.profile) // Fallback image
+                        .into(imageView)
+                } else {
+                    imageView.setImageResource(R.drawable.profile)
+                }
+            }
         }
     }
 
@@ -81,22 +97,36 @@ class MessageAdapter(private val messagesList: List<Message>) :
     class ReceivedMessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         private val tvMessage: TextView = itemView.findViewById(R.id.message_text)
         private val tvSenderName: TextView? = itemView.findViewById(R.id.sender_name)
+        private val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+        private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
 
         fun bind(message: Message) {
             tvMessage.text = message.message
 
-            // Either hide the sender name or use a default
-            if (tvSenderName != null) {
-                if (message.senderName != null) {
-                    tvSenderName.text = message.senderName
-                    tvSenderName.visibility = View.VISIBLE
-                } else {
-                    // Either hide it
-                    tvSenderName.visibility = View.GONE
+            // Set timestamp if view exists
+            tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                .format(Date(message.timestamp))
 
-                    // Or show a default
-                    // tvSenderName.text = "User"
-                    // tvSenderName.visibility = View.VISIBLE
+            // Set sender name if available and view exists
+            tvSenderName?.let { nameView ->
+                if (message.senderName != null) {
+                    nameView.text = message.senderName
+                    nameView.visibility = View.VISIBLE
+                } else {
+                    nameView.visibility = View.GONE
+                }
+            }
+
+            // Load sender image if available and view exists
+            ivProfile?.let { imageView ->
+                if (!message.senderImageUrl.isNullOrEmpty()) {
+                    Glide.with(itemView.context)
+                        .load(message.senderImageUrl)
+                        .placeholder(R.drawable.profile) // Default profile image
+                        .error(R.drawable.profile) // Fallback image
+                        .into(imageView)
+                } else {
+                    imageView.setImageResource(R.drawable.profile)
                 }
             }
         }
