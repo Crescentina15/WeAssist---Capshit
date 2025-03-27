@@ -34,24 +34,23 @@ class ConversationAdapter(
 
     override fun onBindViewHolder(holder: ConversationViewHolder, position: Int) {
         val conversation = conversationList[position]
-
-        // Determine if current user is a secretary/lawyer (by checking if they're conversing with client)
         val isStaffView = currentUserId != null && conversation.clientId != currentUserId
+        val isLawyer = conversation.secretaryName.startsWith("Lawyer:") ||
+                conversation.secretaryId.startsWith("lawyer_") // Adjust based on your ID pattern
 
-        // Display the appropriate name and image based on user role
         if (isStaffView) {
-            // Staff (secretary/lawyer) viewing client conversation
             holder.nameTextView.text = conversation.clientName
             loadProfileImage(holder.profileImageView, conversation.clientImageUrl)
         } else {
-            // Client viewing staff conversation
             holder.nameTextView.text = conversation.secretaryName
-            loadProfileImage(holder.profileImageView, conversation.secretaryImageUrl)
+            loadProfileImage(holder.profileImageView, conversation.secretaryImageUrl, isLawyer)
         }
 
+        // Rest of your binding code...
         holder.lastMessageTextView.text = conversation.lastMessage
         holder.unreadCountTextView.text = conversation.unreadCount.toString()
         holder.unreadCountTextView.visibility = if (conversation.unreadCount > 0) View.VISIBLE else View.GONE
+
 
         // You can set timestamp if available in your Conversation model
         // holder.timestampTextView.text = formatTimestamp(conversation.timestamp)
@@ -97,16 +96,33 @@ class ConversationAdapter(
         }
     }
 
-    private fun loadProfileImage(imageView: ShapeableImageView, imageUrl: String?) {
-        if (!imageUrl.isNullOrEmpty()) {
-            Glide.with(imageView.context)
-                .load(imageUrl)
-                .placeholder(R.drawable.profile) // Your default profile drawable
-                .error(R.drawable.profile) // Fallback if error loading
-                .circleCrop() // Matches your circular ShapeableImageView
-                .into(imageView)
+    private fun loadProfileImage(imageView: ShapeableImageView, imageUrl: String?, isLawyer: Boolean = false) {
+        val placeholder = if (isLawyer) {
+            R.drawable.baseline_circle_24
         } else {
-            imageView.setImageResource(R.drawable.profile)
+            R.drawable.baseline_circle_24
+        }
+
+        when {
+            !imageUrl.isNullOrEmpty() -> {
+                Glide.with(imageView.context)
+                    .load(imageUrl)
+                    .placeholder(placeholder)
+                    .error(placeholder)
+                    .circleCrop()
+                    .into(imageView)
+            }
+            isLawyer -> {
+                // Load default lawyer image if no URL provided
+                Glide.with(imageView.context)
+                    .load(R.drawable.baseline_circle_24)
+                    .circleCrop()
+                    .into(imageView)
+            }
+            else -> {
+                // Load default secretary image
+                imageView.setImageResource(R.drawable.baseline_circle_24)
+            }
         }
     }
 
