@@ -691,16 +691,19 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
+    // Update the getLawyerName function to prioritize profileImageUrl
     private fun getLawyerName(lawyerId: String) {
         database.child("lawyers").child(lawyerId).get()
             .addOnSuccessListener { lawyerSnapshot ->
                 if (lawyerSnapshot.exists()) {
                     val name = lawyerSnapshot.child("name").value?.toString() ?: ""
-                    val imageUrl = lawyerSnapshot.child("profileImage").value?.toString() ?: ""
+                    // Prioritize profileImageUrl, fall back to profileImage if needed
+                    val imageUrl = lawyerSnapshot.child("profileImageUrl").value?.toString() ?:
+                    lawyerSnapshot.child("profileImage").value?.toString() ?: ""
 
                     tvChatPartnerName.text = if (name.isNotEmpty()) name else "Lawyer"
 
-                    // Update conversation in Firebase
+                    // Update conversation in Firebase with the proper image URL
                     conversationId?.let { convId ->
                         val updates = hashMapOf<String, Any>(
                             "secretaryName" to if (name.isNotEmpty()) name else "Lawyer",
@@ -1173,9 +1176,12 @@ class ChatActivity : AppCompatActivity() {
                         }
                 }
                 "lawyer" -> {
-                    database.child("lawyers").child(senderId).child("profileImage").get()
+                    database.child("lawyers").child(senderId).get()
                         .addOnSuccessListener { snapshot ->
-                            callback(snapshot.getValue(String::class.java))
+                            // Prioritize profileImageUrl, fall back to profileImage
+                            val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                                ?: snapshot.child("profileImage").getValue(String::class.java)
+                            callback(imageUrl)
                         }
                         .addOnFailureListener {
                             callback(null)
@@ -1184,7 +1190,7 @@ class ChatActivity : AppCompatActivity() {
                 else -> callback(null)
             }
         } else {
-            // For other users, we need to determine their type first
+            // For other users, determine their type first
             determineUserType(senderId) { userType ->
                 when (userType) {
                     "client" -> {
@@ -1206,9 +1212,12 @@ class ChatActivity : AppCompatActivity() {
                             }
                     }
                     "lawyer" -> {
-                        database.child("lawyers").child(senderId).child("profileImage").get()
+                        database.child("lawyers").child(senderId).get()
                             .addOnSuccessListener { snapshot ->
-                                callback(snapshot.getValue(String::class.java))
+                                // Prioritize profileImageUrl, fall back to profileImage
+                                val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                                    ?: snapshot.child("profileImage").getValue(String::class.java)
+                                callback(imageUrl)
                             }
                             .addOnFailureListener {
                                 callback(null)
