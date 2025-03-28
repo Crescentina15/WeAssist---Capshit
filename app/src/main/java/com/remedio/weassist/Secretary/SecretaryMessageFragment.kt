@@ -1003,21 +1003,12 @@ class SecretaryMessageFragment : Fragment() {
                             .getValue(Int::class.java) ?: 0
 
                         fetchCount++
-                        fetchClientName(clientId) { clientName ->
-                            val conversation = Conversation(
-                                conversationId = conversationId,
-                                clientId = clientId,
-                                secretaryId = currentUserId ?: "",
-                                clientName = clientName,
-                                secretaryName = "", // Empty for secretary view
-                                lastMessage = lastMessage,
-                                unreadCount = unreadCount
-                            )
-
+                        // Fetch both client and secretary details
+                        fetchConversationDetails(clientId, conversationId, lastMessage, unreadCount) { conversation ->
                             tempConversationList.add(conversation)
                             fetchCount--
 
-                            // Only update the adapter once all client names are fetched
+                            // Only update the adapter once all details are fetched
                             if (fetchCount == 0) {
                                 conversationList.clear()
                                 conversationList.addAll(tempConversationList)
@@ -1040,16 +1031,67 @@ class SecretaryMessageFragment : Fragment() {
             })
     }
 
-    private fun fetchClientName(clientId: String, callback: (String) -> Unit) {
-        val clientsRef = database.child("Users").child(clientId)
+    // New method to fetch all conversation details
+    private fun fetchConversationDetails(
+        clientId: String,
+        conversationId: String,
+        lastMessage: String,
+        unreadCount: Int,
+        callback: (Conversation) -> Unit
+    ) {
+        // Fetch client details
+        database.child("Users").child(clientId).get().addOnSuccessListener { clientSnapshot ->
+            val clientName = "${clientSnapshot.child("firstName").value ?: "Unknown"} ${clientSnapshot.child("lastName").value ?: ""}".trim()
+            val clientImageUrl = clientSnapshot.child("profileImageUrl").value?.toString() ?: ""
 
-        clientsRef.get().addOnSuccessListener { snapshot ->
-            val firstName = snapshot.child("firstName").value?.toString() ?: "Unknown"
-            val lastName = snapshot.child("lastName").value?.toString() ?: ""
-            val fullName = "$firstName $lastName".trim()
-            callback(fullName)
+            // Fetch secretary details (current user)
+            val secretaryId = currentUserId ?: ""
+            database.child("secretaries").child(secretaryId).get().addOnSuccessListener { secretarySnapshot ->
+                val secretaryName = secretarySnapshot.child("name").value?.toString() ?: ""
+                val secretaryImageUrl = secretarySnapshot.child("profileImageUrl").value?.toString() ?: ""
+
+                val conversation = Conversation(
+                    conversationId = conversationId,
+                    secretaryId = secretaryId,
+                    secretaryName = secretaryName,
+                    secretaryImageUrl = secretaryImageUrl,
+                    lastMessage = lastMessage,
+                    unreadCount = unreadCount,
+                    clientId = clientId,
+                    clientName = clientName,
+                    clientImageUrl = clientImageUrl
+                )
+
+                callback(conversation)
+            }.addOnFailureListener {
+                // Fallback if secretary details can't be fetched
+                val conversation = Conversation(
+                    conversationId = conversationId,
+                    secretaryId = secretaryId,
+                    secretaryName = "",
+                    secretaryImageUrl = "",
+                    lastMessage = lastMessage,
+                    unreadCount = unreadCount,
+                    clientId = clientId,
+                    clientName = clientName,
+                    clientImageUrl = clientImageUrl
+                )
+                callback(conversation)
+            }
         }.addOnFailureListener {
-            callback("Unknown")
+            // Fallback if client details can't be fetched
+            val conversation = Conversation(
+                conversationId = conversationId,
+                secretaryId = currentUserId ?: "",
+                secretaryName = "",
+                secretaryImageUrl = "",
+                lastMessage = lastMessage,
+                unreadCount = unreadCount,
+                clientId = clientId,
+                clientName = "Unknown",
+                clientImageUrl = ""
+            )
+            callback(conversation)
         }
     }
 
