@@ -754,152 +754,86 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
-        val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
-        val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
-        pendingMessageId = messageId
+        // First get the sender's profile image URL
+        getCurrentUserImageUrl { imageUrl ->
+            val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
+            val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
+            pendingMessageId = messageId
 
-        val message = Message(
-            senderId = currentUserId!!,
-            receiverId = receiverId,
-            message = messageText,
-            timestamp = System.currentTimeMillis()
-        )
-
-        // Add to local list immediately for instant UI feedback
-        messagesList.add(message)
-        messagesAdapter.notifyItemInserted(messagesList.size - 1)
-        rvChatMessages.scrollToPosition(messagesList.size - 1)
-        etMessageInput.text.clear()
-
-        // Send to Firebase
-        database.child("conversations").child(conversationId).child("messages").child(messageId)
-            .setValue(message)
-            .addOnSuccessListener {
-                pendingMessageId = null
-                incrementUnreadCounter(conversationId, receiverId)
-                createNotificationForRecipient(message)
-                isSending = false
-                btnSendMessage.isEnabled = true // Re-enable button after successful send
-            }
-            .addOnFailureListener {
-                // Remove from local list if failed
-                messagesList.removeAll { it.timestamp == message.timestamp }
-                messagesAdapter.notifyDataSetChanged()
-                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-                isSending = false
-                btnSendMessage.isEnabled = true // Re-enable button after failure
-            }
-    }
-
-    private fun createConversationWithMessage(conversationId: String, message: Message, receiverId: String) {
-        // Create conversation structure first
-        val participantIds = mapOf(
-            currentUserId!! to true,
-            receiverId to true
-        )
-
-        val unreadMessages = mapOf(
-            currentUserId!! to 0,
-            receiverId to 1  // One unread message for recipient
-        )
-
-        // Determine if this is a lawyer conversation
-        val isLawyerConversation = userType == "client" && secretaryId != null
-
-        val conversationData = if (isLawyerConversation) {
-            mapOf(
-                "participantIds" to participantIds,
-                "unreadMessages" to unreadMessages,
-                "appointedLawyerId" to receiverId,
-                "handledByLawyer" to true
+            val message = Message(
+                senderId = currentUserId!!,
+                receiverId = receiverId,
+                message = messageText,
+                timestamp = System.currentTimeMillis(),
+                senderImageUrl = imageUrl
             )
-        } else {
-            mapOf(
-                "participantIds" to participantIds,
-                "unreadMessages" to unreadMessages
-            )
+
+            // Add to local list immediately for instant UI feedback
+            messagesList.add(message)
+            messagesAdapter.notifyItemInserted(messagesList.size - 1)
+            rvChatMessages.scrollToPosition(messagesList.size - 1)
+            etMessageInput.text.clear()
+
+            // Send to Firebase
+            database.child("conversations").child(conversationId).child("messages").child(messageId)
+                .setValue(message)
+                .addOnSuccessListener {
+                    pendingMessageId = null
+                    incrementUnreadCounter(conversationId, receiverId)
+                    createNotificationForRecipient(message)
+                    isSending = false
+                    btnSendMessage.isEnabled = true
+                }
+                .addOnFailureListener {
+                    // Remove from local list if failed
+                    messagesList.removeAll { it.timestamp == message.timestamp }
+                    messagesAdapter.notifyDataSetChanged()
+                    Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+                    isSending = false
+                    btnSendMessage.isEnabled = true
+                }
         }
+    }
 
-        // Create the conversation and then add the message
-        val conversationRef = database.child("conversations").child(conversationId)
-        conversationRef.setValue(conversationData)
-            .addOnSuccessListener {
-                // Now add the message
-                val chatRef = database.child("conversations").child(conversationId).child("messages").push()
-                chatRef.setValue(message)
-                    .addOnSuccessListener {
-                        Log.d("ChatActivity", "Message sent successfully in new conversation")
-                        etMessageInput.text.clear()
-                        isSending = false // Reset flag
-
-                        // Create notification for recipient
-                        createNotificationForRecipient(message)
-
-                        // Force refresh the messages list
-                        listenForMessages()
+    private fun getCurrentUserImageUrl(callback: (String?) -> Unit) {
+        when (userType) {
+            "client" -> {
+                database.child("Users").child(currentUserId!!).child("profileImageUrl").get()
+                    .addOnSuccessListener { snapshot ->
+                        callback(snapshot.getValue(String::class.java))
                     }
-                    .addOnFailureListener { e ->
-                        Log.e("ChatActivity", "Failed to send message in new conversation: ${e.message}")
-                        Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-                        isSending = false // Reset flag
+                    .addOnFailureListener {
+                        callback(null)
                     }
             }
-            .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Failed to create conversation: ${e.message}")
-                Toast.makeText(this, "Failed to create conversation", Toast.LENGTH_SHORT).show()
-                isSending = false // Reset flag
+            "secretary" -> {
+                database.child("secretaries").child(currentUserId!!).child("profilePicture").get()
+                    .addOnSuccessListener { snapshot ->
+                        callback(snapshot.getValue(String::class.java))
+                    }
+                    .addOnFailureListener {
+                        callback(null)
+                    }
             }
+            "lawyer" -> {
+                database.child("lawyers").child(currentUserId!!).get()
+                    .addOnSuccessListener { snapshot ->
+                        // Prioritize profileImageUrl, fall back to profileImage
+                        val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                            ?: snapshot.child("profileImage").getValue(String::class.java)
+                        callback(imageUrl)
+                    }
+                    .addOnFailureListener {
+                        callback(null)
+                    }
+            }
+            else -> callback(null)
+        }
     }
 
-    private fun addMessageToExistingConversation(conversationId: String, message: Message) {
-        val chatRef = database.child("conversations").child(conversationId).child("messages").push()
-        Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
 
-        chatRef.setValue(message)
-            .addOnSuccessListener {
-                Log.d("ChatActivity", "Message sent successfully")
-                etMessageInput.text.clear()
-                isSending = false // Reset flag
 
-                // Increment unread counter for recipient
-                incrementUnreadCounter(conversationId, message.receiverId)
 
-                // Create notification for recipient
-                createNotificationForRecipient(message)
-
-                // Force refresh the messages list
-                listenForMessages()
-            }
-            .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Failed to send message: ${e.message}")
-                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-                isSending = false // Reset flag
-            }
-    }
-
-    private fun addMessageToConversation(conversationId: String, message: Message) {
-        val chatRef = database.child("conversations").child(conversationId).child("messages").push()
-        Log.d("ChatActivity", "Push reference generated: ${chatRef.key}")
-
-        chatRef.setValue(message)
-            .addOnSuccessListener {
-                Log.d("ChatActivity", "Message sent successfully")
-                etMessageInput.text.clear()  // Clear the input field
-
-                // Increment unread counter for recipient
-                incrementUnreadCounter(conversationId, message.receiverId)
-
-                // Create notification for recipient
-                createNotificationForRecipient(message)
-
-                // Force refresh the messages list
-                listenForMessages()
-            }
-            .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Failed to send message: ${e.message}")
-                Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-            }
-    }
 
     private fun determineReceiverId(): String? {
         return when (userType) {
