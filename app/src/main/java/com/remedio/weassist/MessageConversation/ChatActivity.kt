@@ -5,11 +5,13 @@ import android.util.Log
 import android.view.View
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
@@ -35,6 +37,8 @@ class ChatActivity : AppCompatActivity() {
     private var currentUserId: String? = FirebaseAuth.getInstance().currentUser?.uid
     private var conversationId: String? = null
 
+    private lateinit var profileImageView: ImageView
+
     // Current user type
     private var userType: String? = null
 
@@ -47,6 +51,7 @@ class ChatActivity : AppCompatActivity() {
         btnSendMessage = findViewById(R.id.btnSendMessage)
         rvChatMessages = findViewById(R.id.rvChatMessages)
         backButton = findViewById(R.id.back_button)
+        profileImageView = findViewById(R.id.profile_image)
 
         database = FirebaseDatabase.getInstance().reference
         currentUserId = FirebaseAuth.getInstance().currentUser?.uid
@@ -592,6 +597,16 @@ class ChatActivity : AppCompatActivity() {
 
                     tvChatPartnerName.text = fullName
 
+                    // Load profile image
+                    if (imageUrl.isNotEmpty()) {
+                        Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.profile)
+                            .error(R.drawable.profile)
+                            .circleCrop()
+                            .into(profileImageView)
+                    }
+
                     // Update conversation in Firebase
                     conversationId?.let { convId ->
                         val updates = hashMapOf<String, Any>(
@@ -623,6 +638,16 @@ class ChatActivity : AppCompatActivity() {
                     val imageUrl = secretarySnapshot.child("profilePicture").value?.toString() ?: ""
 
                     tvChatPartnerName.text = secretaryName
+
+                    // Load profile image
+                    if (imageUrl.isNotEmpty()) {
+                        Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.profile)
+                            .error(R.drawable.profile)
+                            .circleCrop()
+                            .into(profileImageView)
+                    }
 
                     // Update conversation in Firebase
                     conversationId?.let { convId ->
@@ -703,6 +728,16 @@ class ChatActivity : AppCompatActivity() {
                     lawyerSnapshot.child("profileImage").value?.toString() ?: ""
 
                     tvChatPartnerName.text = if (name.isNotEmpty()) name else "Lawyer"
+
+                    // Load profile image
+                    if (imageUrl.isNotEmpty()) {
+                        Glide.with(this)
+                            .load(imageUrl)
+                            .placeholder(R.drawable.profile)
+                            .error(R.drawable.profile)
+                            .circleCrop()
+                            .into(profileImageView)
+                    }
 
                     // Update conversation in Firebase with the proper image URL
                     conversationId?.let { convId ->
