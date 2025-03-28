@@ -134,6 +134,7 @@ class ChatActivity : AppCompatActivity() {
         btnSendMessage.setOnClickListener {
             if (!isSending) {
                 isSending = true
+                btnSendMessage.isEnabled = false // Disable button while sending
                 sendMessage()
             }
         }
@@ -741,11 +742,15 @@ class ChatActivity : AppCompatActivity() {
         val messageText = etMessageInput.text.toString().trim()
         if (messageText.isEmpty() || currentUserId == null) {
             Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
+            isSending = false
+            btnSendMessage.isEnabled = true
             return
         }
 
         val receiverId = determineReceiverId() ?: run {
             Toast.makeText(this, "Recipient not identified", Toast.LENGTH_SHORT).show()
+            isSending = false
+            btnSendMessage.isEnabled = true
             return
         }
 
@@ -773,12 +778,16 @@ class ChatActivity : AppCompatActivity() {
                 pendingMessageId = null
                 incrementUnreadCounter(conversationId, receiverId)
                 createNotificationForRecipient(message)
+                isSending = false
+                btnSendMessage.isEnabled = true // Re-enable button after successful send
             }
             .addOnFailureListener {
                 // Remove from local list if failed
                 messagesList.removeAll { it.timestamp == message.timestamp }
                 messagesAdapter.notifyDataSetChanged()
                 Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
+                isSending = false
+                btnSendMessage.isEnabled = true // Re-enable button after failure
             }
     }
 
