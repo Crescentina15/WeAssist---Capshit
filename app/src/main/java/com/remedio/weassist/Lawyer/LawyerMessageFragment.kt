@@ -327,7 +327,6 @@ class LawyerMessageFragment : Fragment() {
             }
     }
 
-    // Add this method to your class
     private fun updateEmptyState() {
         if (conversationList.isEmpty()) {
             emptyStateLayout.visibility = View.VISIBLE
@@ -337,7 +336,7 @@ class LawyerMessageFragment : Fragment() {
             conversationsRecyclerView.visibility = View.VISIBLE
         }
     }
-    // Update the fetchConversations method to show loading and handle empty state
+
     private fun fetchConversations() {
         if (currentUserId == null) return
 
@@ -379,13 +378,13 @@ class LawyerMessageFragment : Fragment() {
                             .getValue(Int::class.java) ?: 0
 
                         fetchCount++
-                        fetchClientName(clientId) { clientName ->
+                        fetchClientDetails(clientId) { clientName, profileImageUrl ->
                             val conversation = Conversation(
                                 conversationId = conversationId,
                                 clientId = clientId,
-                                secretaryId = currentUserId ?: "", // In this case, secretaryId is used as lawyerId
+                                secretaryId = currentUserId ?: "",
                                 clientName = clientName,
-                                secretaryName = "", // Empty for lawyer view
+                                clientImageUrl = profileImageUrl ?: "",
                                 lastMessage = lastMessage,
                                 unreadCount = unreadCount
                             )
@@ -393,7 +392,6 @@ class LawyerMessageFragment : Fragment() {
                             tempConversationList.add(conversation)
                             fetchCount--
 
-                            // Only update the adapter once all client names are fetched
                             if (fetchCount == 0) {
                                 progressIndicator.visibility = View.GONE
                                 conversationList.clear()
@@ -404,7 +402,6 @@ class LawyerMessageFragment : Fragment() {
                         }
                     }
 
-                    // If no conversations to fetch, hide loading immediately
                     if (fetchCount == 0) {
                         progressIndicator.visibility = View.GONE
                         updateEmptyState()
@@ -419,16 +416,18 @@ class LawyerMessageFragment : Fragment() {
             })
     }
 
-    private fun fetchClientName(clientId: String, callback: (String) -> Unit) {
+
+    private fun fetchClientDetails(clientId: String, callback: (String, String?) -> Unit) {
         val clientsRef = database.child("Users").child(clientId)
 
         clientsRef.get().addOnSuccessListener { snapshot ->
             val firstName = snapshot.child("firstName").value?.toString() ?: "Unknown"
             val lastName = snapshot.child("lastName").value?.toString() ?: ""
             val fullName = "$firstName $lastName".trim()
-            callback(fullName)
+            val profileImageUrl = snapshot.child("profileImageUrl").value?.toString()
+            callback(fullName, profileImageUrl)
         }.addOnFailureListener {
-            callback("Unknown")
+            callback("Unknown", null)
         }
     }
 }
