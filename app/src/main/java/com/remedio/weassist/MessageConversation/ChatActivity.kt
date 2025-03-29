@@ -1,5 +1,7 @@
 package com.remedio.weassist.MessageConversation
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -17,6 +19,7 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
 import com.remedio.weassist.Clients.MessageAdapter
 import com.remedio.weassist.R
+import java.util.UUID
 
 class ChatActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
@@ -46,6 +49,8 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
 
+        val fileAttachmentButton: ImageButton = findViewById(R.id.file_attachment_button)
+
         tvChatPartnerName = findViewById(R.id.name_secretary)
         etMessageInput = findViewById(R.id.etMessageInput)
         btnSendMessage = findViewById(R.id.btnSendMessage)
@@ -69,6 +74,15 @@ class ChatActivity : AppCompatActivity() {
         messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.layoutManager = LinearLayoutManager(this)
         rvChatMessages.adapter = messagesAdapter
+
+        fileAttachmentButton.setOnClickListener {
+            // Generate a dynamic request code using UUID
+            val dynamicRequestCode = UUID.randomUUID().toString()
+
+            val intent = Intent(Intent.ACTION_PICK)
+            intent.type = "*/*" // Allow all file types to be picked
+            startActivityForResult(intent, dynamicRequestCode.hashCode())
+        }
 
         // If we have a conversation ID, prioritize loading that conversation
         if (conversationId != null) {
@@ -1377,5 +1391,20 @@ class ChatActivity : AppCompatActivity() {
 
         // Optional: Add a visual indicator that the conversation is read-only
         etMessageInput.setBackgroundResource(R.drawable.bg_input_disabled) // Create this drawable
+    }
+
+    // This is where you handle the result of the file picker
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        // You can dynamically check for the request code and process it accordingly
+        if (resultCode == RESULT_OK && requestCode != 0) { // Check if the requestCode is valid (non-zero)
+            val fileUri: Uri? = data?.data
+            fileUri?.let {
+                // Handle the selected file URI
+                // For example, you can upload it to Firebase or show it in your UI
+                Toast.makeText(this, "File Selected: $fileUri", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 }
