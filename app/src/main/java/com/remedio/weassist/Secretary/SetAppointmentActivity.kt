@@ -151,7 +151,6 @@ class SetAppointmentActivity : AppCompatActivity() {
     private fun fetchExistingAppointments(lawyerId: String, availableTimeSlots: MutableMap<String, MutableList<TimeSlotInfo>>) {
         val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
 
-        // Query appointments for this lawyer
         appointmentsRef.orderByChild("lawyerId").equalTo(lawyerId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -161,11 +160,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                             val time = appointmentSnapshot.child("time").getValue(String::class.java)
 
                             if (date != null && time != null) {
-                                // Mark this slot as booked
                                 availableTimeSlots[date]?.let { timeSlots ->
                                     for (i in timeSlots.indices) {
                                         if (timeSlots[i].timeSlot == time) {
-                                            // Keep the same time slot text but mark as unavailable
                                             timeSlots[i] = TimeSlotInfo(timeSlots[i].timeSlot, false)
                                         }
                                     }
@@ -174,11 +171,23 @@ class SetAppointmentActivity : AppCompatActivity() {
                         }
                     }
 
-                    // After processing all appointments, finalize the time slot map
-                    timeSlotMap.clear()
+                    // After processing all appointments, filter out dates with no available slots
+                    val filteredDates = mutableListOf<String>("Select Date")
+                    val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
                     for ((date, timeSlots) in availableTimeSlots) {
-                        timeSlotMap[date] = timeSlots
+                        val availableSlots = timeSlots.filter { it.isAvailable }
+                        if (availableSlots.isNotEmpty()) {
+                            filteredDates.add(date)
+                            filteredTimeSlotMap[date] = availableSlots
+                        }
                     }
+
+                    // Update the class variables with filtered data
+                    datesList.clear()
+                    datesList.addAll(filteredDates)
+                    timeSlotMap.clear()
+                    timeSlotMap.putAll(filteredTimeSlotMap)
 
                     // Now setup the UI with complete data
                     setupDateDropdown()
@@ -187,11 +196,19 @@ class SetAppointmentActivity : AppCompatActivity() {
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("SetAppointmentActivity", "Failed to fetch appointments: ${error.message}")
 
-                    // Fallback to just using available slots without booking information
-                    timeSlotMap.clear()
+                    // Fallback - filter available slots without booking information
+                    val filteredDates = mutableListOf<String>("Select Date")
+                    val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
                     for ((date, timeSlots) in availableTimeSlots) {
-                        timeSlotMap[date] = timeSlots
+                        filteredDates.add(date)
+                        filteredTimeSlotMap[date] = timeSlots
                     }
+
+                    datesList.clear()
+                    datesList.addAll(filteredDates)
+                    timeSlotMap.clear()
+                    timeSlotMap.putAll(filteredTimeSlotMap)
                     setupDateDropdown()
                 }
             })
@@ -220,17 +237,8 @@ class SetAppointmentActivity : AppCompatActivity() {
         timeDropdown.setOnItemClickListener { _, _, position, _ ->
             val times = timeSlotMap[selectedDate] ?: emptyList()
             if (position >= 0 && position < times.size) {
-                val timeSlotInfo = times[position]
-
-                if (timeSlotInfo.isAvailable) {
-                    selectedTime = timeSlotInfo.timeSlot
-                    btnSetAppointment.isEnabled = true
-                } else {
-                    selectedTime = null
-                    btnSetAppointment.isEnabled = false
-                    // Show toast message for taken time slot
-                    Toast.makeText(this, "This time slot is already taken", Toast.LENGTH_SHORT).show()
-                }
+                selectedTime = times[position].timeSlot
+                btnSetAppointment.isEnabled = true
             } else {
                 selectedTime = null
                 btnSetAppointment.isEnabled = false
@@ -243,8 +251,9 @@ class SetAppointmentActivity : AppCompatActivity() {
     }
 
     private fun updateTimeDropdown(timeSlots: List<TimeSlotInfo>) {
-        // Create a list of display strings for the dropdown (just the time slot text)
-        val displayTimeSlots = timeSlots.map { it.timeSlot }
+        // Filter out unavailable time slots and create display list
+        val availableTimeSlots = timeSlots.filter { it.isAvailable }
+        val displayTimeSlots = availableTimeSlots.map { it.timeSlot }
 
         val timeAdapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, displayTimeSlots)
         timeDropdown.setAdapter(timeAdapter)
@@ -252,7 +261,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         // Clear any previous selection
         timeDropdown.setText("", false)
 
-        if (timeSlots.isEmpty()) {
+        if (availableTimeSlots.isEmpty()) {
             timeDropdown.hint = "No times available"
             btnSetAppointment.isEnabled = false
         } else {
