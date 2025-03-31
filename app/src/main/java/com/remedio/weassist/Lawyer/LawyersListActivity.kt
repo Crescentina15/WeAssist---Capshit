@@ -55,10 +55,8 @@ class LawyersListActivity : AppCompatActivity() {
     }
 
     private fun loadLawyers(specialization: String?, lawFirm: String?) {
-        // First, load all law firm admins to have their data available
         lawFirmAdminReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(adminSnapshot: DataSnapshot) {
-                // Create a map of law firm names to their office addresses
                 val firmLocationMap = HashMap<String, String>()
 
                 for (adminData in adminSnapshot.children) {
@@ -69,7 +67,6 @@ class LawyersListActivity : AppCompatActivity() {
                     firmLocationMap[firmName] = officeAddress
                 }
 
-                // Now load lawyers with firm locations
                 loadLawyersWithFirmLocations(specialization, lawFirm, firmLocationMap)
             }
 
@@ -82,7 +79,8 @@ class LawyersListActivity : AppCompatActivity() {
     private fun loadLawyersWithFirmLocations(specialization: String?, lawFirm: String?, firmLocationMap: Map<String, String>) {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                lawyerList.clear()
+                val tempLawyerList = ArrayList<Lawyer>()
+
                 for (lawyerSnapshot in snapshot.children) {
                     val lawyerId = lawyerSnapshot.key ?: continue
                     val lawyerData = lawyerSnapshot.value as? Map<String, Any> ?: continue
@@ -99,8 +97,14 @@ class LawyersListActivity : AppCompatActivity() {
                     }
 
                     val lawyerFirm = lawyerData["lawFirm"]?.toString() ?: ""
-                    // Get the office address from the firm location map
                     val firmLocation = firmLocationMap[lawyerFirm] ?: ""
+
+                    val ratingsString = lawyerData["ratings"]?.toString() ?: "0"
+                    val ratings = try {
+                        ratingsString.toInt()
+                    } catch (e: NumberFormatException) {
+                        0
+                    }
 
                     val lawyer = Lawyer(
                         id = lawyerId,
@@ -109,57 +113,49 @@ class LawyersListActivity : AppCompatActivity() {
                         lawFirm = lawyerFirm,
                         licenseNumber = lawyerData["licenseNumber"]?.toString() ?: "",
                         experience = lawyerData["experience"]?.toString() ?: "",
-                        profileImageUrl = lawyerData["profileImageUrl"]?.toString(), // Add this line
-                        location = firmLocation,  // Set the firm's office address as location
-                        ratings = lawyerData["ratings"]?.toString() ?: "",
+                        profileImageUrl = lawyerData["profileImageUrl"]?.toString(),
+                        location = firmLocation,
+                        rate = ratings.toString(), // Store as string but sort numerically
                         contact = contact
                     )
 
                     if ((specialization == null || lawyer.specialization == specialization) &&
                         (lawFirm == null || lawyer.lawFirm == lawFirm)
                     ) {
-                        lawyerList.add(lawyer)
+                        tempLawyerList.add(lawyer)
                     }
                 }
 
-                lawyerAdapter = LawyerAdapter(lawyerList) { selectedLawyer ->
-                    val context = this@LawyersListActivity
+                // Sort lawyers by ratings in descending order (highest first)
+                lawyerList.clear()
+                lawyerList.addAll(tempLawyerList.sortedByDescending {
+                    it.rate?.toIntOrNull() ?: 0
+                })
 
-                    if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
-                        // Launch LawyerBackgroundActivity for clients
-                        val intent = Intent(context, LawyerBackgroundActivity::class.java)
-                        intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                        startActivity(intent)
-                    } else {
-                        // Existing logic for other cases
-                        val intent = when {
-                            fromManageAvailability -> Intent(
-                                context,
-                                AddAvailabilityActivity::class.java
-                            )
-
-                            fromAddBackgroundActivity -> Intent(
-                                context,
-                                AddBackgroundActivity::class.java
-                            )
-
-                            fromAddBalanceActivity -> Intent(
-                                context,
-                                AddBalanceActivity::class.java
-                            )
-
-                            else -> Intent(context, SetAppointmentActivity::class.java)
+                lawyerAdapter = LawyerAdapter(
+                    lawyersList = lawyerList,
+                    onLawyerClick = { selectedLawyer ->
+                        val context = this@LawyersListActivity
+                        if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
+                            val intent = Intent(context, LawyerBackgroundActivity::class.java)
+                            intent.putExtra("LAWYER_ID", selectedLawyer.id)
+                            startActivity(intent)
+                        } else {
+                            val intent = when {
+                                fromManageAvailability -> Intent(context, AddAvailabilityActivity::class.java)
+                                fromAddBackgroundActivity -> Intent(context, AddBackgroundActivity::class.java)
+                                fromAddBalanceActivity -> Intent(context, AddBalanceActivity::class.java)
+                                else -> Intent(context, SetAppointmentActivity::class.java)
+                            }
+                            intent.putExtra("LAWYER_ID", selectedLawyer.id)
+                            intent.putExtra("LAWYER_NAME", selectedLawyer.name)
+                            intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
+                            intent.putExtra("LOCATION", selectedLawyer.location)
+                            startActivity(intent)
                         }
-
-                        intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                        intent.putExtra("LAWYER_NAME", selectedLawyer.name)
-                        intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
-                        // Also pass the location from law firm admin
-                        intent.putExtra("LOCATION", selectedLawyer.location)
-
-                        startActivity(intent)
                     }
-                }
+                    // isTopLawyer is not passed here (defaults to false)
+                )
 
                 recyclerView.adapter = lawyerAdapter
             }

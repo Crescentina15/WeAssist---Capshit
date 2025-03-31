@@ -2,51 +2,52 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
+    android:layout_width="160dp"
+    android:layout_height="200dp"
     android:layout_margin="8dp"
     app:cardCornerRadius="12dp"
     app:cardElevation="6dp"
-    android:padding="18dp"
-    android:layout_marginBottom="12dp"
     app:cardBackgroundColor="#FFFFFF">
 
   <LinearLayout
-      android:layout_width="wrap_content"
-      android:layout_height="wrap_content"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
       android:orientation="vertical"
-      android:gravity="center_horizontal">
+      android:gravity="center_horizontal"
+      android:padding="12dp">
 
     <ImageView
         android:id="@+id/lawyer_image"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:layout_marginBottom="8dp"
-        android:src="@drawable/account_circle_24"
         android:scaleType="centerCrop"
-        android:background="@drawable/account_circle_24" />
+        android:background="@drawable/baseline_circle_24"/>
 
     <TextView
         android:id="@+id/lawyer_name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
         android:layout_marginBottom="4dp"
         android:text="Atty. John Doe"
         android:textColor="@android:color/black"
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:fontFamily="@font/inria_serif_bold"
-        android:gravity="center" />
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"/>
 
     <TextView
         android:id="@+id/lawyer_specialization"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:text="Notary Lawyer"
+        android:text="Specialization"
         android:textColor="@android:color/darker_gray"
-        android:textSize="14sp"
-        android:gravity="center" />
+        android:textSize="12sp"
+        android:gravity="center"
+        android:maxLines="1"
+        android:ellipsize="end"/>
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -58,16 +59,17 @@
           android:layout_width="16dp"
           android:layout_height="16dp"
           android:src="@drawable/baseline_star_rate_24"
-          android:layout_marginEnd="4dp" />
+          android:layout_marginEnd="4dp"
+          app:tint="#FFC107" />
 
       <TextView
-          android:id="@+id/lawyer_rating"
+          android:id="@+id/lawyer_ratings"
           android:layout_width="wrap_content"
           android:layout_height="wrap_content"
-          android:text="4.3 (130 reviews)"
+          android:text="500"
           android:textColor="#FFA000"
-          android:textSize="12sp" />
+          android:textSize="14sp"
+          android:textStyle="bold"/>
     </LinearLayout>
   </LinearLayout>
 </androidx.cardview.widget.CardView>
-    <!-- Sa Dashbiard sa client end -->

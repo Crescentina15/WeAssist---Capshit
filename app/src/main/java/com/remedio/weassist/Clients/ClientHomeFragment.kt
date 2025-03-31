@@ -15,9 +15,14 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.Lawyer.Lawyer
+import com.remedio.weassist.Lawyer.LawyerAdapter
+import com.remedio.weassist.Lawyer.LawyerBackgroundActivity
 import com.remedio.weassist.Miscellaneous.ChatbotActivity
 import com.remedio.weassist.Lawyer.LawyersListActivity
 import com.remedio.weassist.R
@@ -29,6 +34,9 @@ class ClientHomeFragment : Fragment() {
     private lateinit var welcomeMessageTextView: TextView
     private lateinit var specializationsLayout: GridLayout
     private lateinit var profileImageView: ImageView
+    private lateinit var topLawyerRecyclerView: RecyclerView
+    private lateinit var topLawyerAdapter: LawyerAdapter
+    private var topLawyersList = mutableListOf<Lawyer>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -46,6 +54,10 @@ class ClientHomeFragment : Fragment() {
         val searchButton: Button = view.findViewById(R.id.search_button)
         val notificationButton: ImageButton = view.findViewById(R.id.notification_icon) // Notifications button
         profileImageView = view.findViewById(R.id.profile_image) // Initialize profileImageView
+        topLawyerRecyclerView = view.findViewById(R.id.top_lawyer_list)
+
+        setupTopLawyersRecyclerView()
+
 
         // Fetch user's first name and profile image URL from Firebase
         auth.currentUser?.let { fetchUserData(it.uid) } ?: run {
@@ -69,8 +81,59 @@ class ClientHomeFragment : Fragment() {
 
         // Fetch specializations and dynamically create buttons
         fetchSpecializations()
+        fetchTopLawyers()
 
         return view
+    }
+
+    private fun setupTopLawyersRecyclerView() {
+        topLawyerRecyclerView.layoutManager = LinearLayoutManager(
+            context,
+            LinearLayoutManager.HORIZONTAL,
+            false
+        )
+
+        topLawyerAdapter = LawyerAdapter(
+            lawyersList = topLawyersList,
+            onLawyerClick = { lawyer ->
+                val intent = Intent(requireContext(), LawyerBackgroundActivity::class.java)
+                intent.putExtra("LAWYER_ID", lawyer.id)
+                startActivity(intent)
+            },
+            isTopLawyer = true
+        )
+
+        topLawyerRecyclerView.adapter = topLawyerAdapter
+    }
+
+    private fun fetchTopLawyers() {
+        database.orderByChild("rate").equalTo("500") // Changed from "ratings" to "rate"
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val tempList = mutableListOf<Lawyer>()
+                    for (lawyerSnapshot in snapshot.children) {
+                        val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
+                        lawyer?.let {
+                            // Check if rate is exactly 500
+                            if (it.rate == "500") {
+                                tempList.add(it)
+                            }
+                        }
+                    }
+                    topLawyersList.clear()
+                    topLawyersList.addAll(tempList)
+                    topLawyerAdapter.notifyDataSetChanged()
+
+                    if (topLawyersList.isEmpty()) {
+                        view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
+                            "No Top Rated Lawyers Available"
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(context, "Failed to load top lawyers", Toast.LENGTH_SHORT).show()
+                }
+            })
     }
 
     private fun fetchUserData(userId: String) {

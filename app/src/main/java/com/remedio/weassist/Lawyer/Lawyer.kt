@@ -16,11 +16,10 @@ data class Lawyer(
     val jurisdiction: String? = null,
     val employer: String? = null,
     val bio: String? = null,
-    val rate: String? = null,
+    val rate: String? = null, // Changed from ratings to rate
     val profileImage: String? = null,
-    val profileImageUrl: String? = null, // Nullable field
+    val profileImageUrl: String? = null,
     val location: String = "",
-    val ratings: String = "",
     val contact: Contact? = null,
     val lawFirmAdminId: String = ""
 ) : Parcelable {
@@ -41,8 +40,6 @@ data class Lawyer(
         parcel.readString(),
         parcel.readString(), // Read profileImageUrl as nullable
         parcel.readString() ?: "",
-        parcel.readString() ?: "",
-        parcel.readParcelable(Contact::class.java.classLoader)
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
@@ -62,7 +59,6 @@ data class Lawyer(
         parcel.writeString(profileImage)
         parcel.writeString(profileImageUrl) // Write profileImageUrl as nullable
         parcel.writeString(location)
-        parcel.writeString(ratings)
         parcel.writeParcelable(contact, flags)
     }
 
