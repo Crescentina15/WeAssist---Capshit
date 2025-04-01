@@ -109,6 +109,9 @@ class ClientHomeFragment : Fragment() {
 
         specializationSpinner.adapter = adapter
 
+        // Set "All Specializations" as default selected
+        specializationSpinner.setSelection(0, false)
+
         specializationSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 val selectedSpecialization = if (position == 0) null else parent?.getItemAtPosition(position).toString()
@@ -131,11 +134,11 @@ class ClientHomeFragment : Fragment() {
         }
         topLawyerAdapter.notifyDataSetChanged()
 
-        if (topLawyersList.isEmpty()) {
-            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
-                "No Top Rated Lawyers Available"
+        if (specialization == null || specialization == "All Specializations") {
+            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text = "Top Lawyers"
         } else {
-            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text = "Top Lawyer"
+            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
+                if (topLawyersList.isEmpty()) "No Top Rated Lawyers Available" else "Top Lawyer"
         }
     }
 
