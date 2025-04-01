@@ -7,11 +7,14 @@ import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.GridLayout
 import android.widget.ImageButton
 import android.widget.ImageView
+import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -36,7 +39,10 @@ class ClientHomeFragment : Fragment() {
     private lateinit var profileImageView: ImageView
     private lateinit var topLawyerRecyclerView: RecyclerView
     private lateinit var topLawyerAdapter: LawyerAdapter
+    private lateinit var specializationSpinner: Spinner
     private var topLawyersList = mutableListOf<Lawyer>()
+    private var allSpecializations = mutableListOf<String>()
+    private var allTopLawyers = mutableListOf<Lawyer>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -46,18 +52,19 @@ class ClientHomeFragment : Fragment() {
 
         // Initialize Firebase
         auth = FirebaseAuth.getInstance()
-        database = FirebaseDatabase.getInstance().getReference("lawyers") // Change to your lawyers node
+        database = FirebaseDatabase.getInstance().getReference("lawyers")
 
         // Initialize UI elements
         welcomeMessageTextView = view.findViewById(R.id.welcome_message)
         specializationsLayout = view.findViewById(R.id.specializations_layout)
         val searchButton: Button = view.findViewById(R.id.search_button)
-        val notificationButton: ImageButton = view.findViewById(R.id.notification_icon) // Notifications button
-        profileImageView = view.findViewById(R.id.profile_image) // Initialize profileImageView
+        val notificationButton: ImageButton = view.findViewById(R.id.notification_icon)
+        profileImageView = view.findViewById(R.id.profile_image)
         topLawyerRecyclerView = view.findViewById(R.id.top_lawyer_list)
+        specializationSpinner = view.findViewById(R.id.specialization_spinner)
 
         setupTopLawyersRecyclerView()
-
+        setupSpecializationSpinner()
 
         // Fetch user's first name and profile image URL from Firebase
         auth.currentUser?.let { fetchUserData(it.uid) } ?: run {
@@ -86,6 +93,52 @@ class ClientHomeFragment : Fragment() {
         return view
     }
 
+    private fun setupSpecializationSpinner() {
+        // Add "All Specializations" as the first option
+        val spinnerOptions = mutableListOf<String>().apply {
+            add("All Specializations")
+        }
+
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            spinnerOptions
+        ).apply {
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        }
+
+        specializationSpinner.adapter = adapter
+
+        specializationSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val selectedSpecialization = if (position == 0) null else parent?.getItemAtPosition(position).toString()
+                filterTopLawyers(selectedSpecialization)
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                filterTopLawyers(null)
+            }
+        }
+    }
+
+    private fun filterTopLawyers(specialization: String?) {
+        if (specialization == null || specialization == "All Specializations") {
+            topLawyersList.clear()
+            topLawyersList.addAll(allTopLawyers)
+        } else {
+            topLawyersList.clear()
+            topLawyersList.addAll(allTopLawyers.filter { it.specialization == specialization })
+        }
+        topLawyerAdapter.notifyDataSetChanged()
+
+        if (topLawyersList.isEmpty()) {
+            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
+                "No Top Rated Lawyers Available"
+        } else {
+            view?.findViewById<TextView>(R.id.top_lawyer_title)?.text = "Top Lawyer"
+        }
+    }
+
     private fun setupTopLawyersRecyclerView() {
         topLawyerRecyclerView.layoutManager = LinearLayoutManager(
             context,
@@ -107,21 +160,22 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun fetchTopLawyers() {
-        database.orderByChild("rate").equalTo("500") // Changed from "ratings" to "rate"
+        database.orderByChild("rate").equalTo("500")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val tempList = mutableListOf<Lawyer>()
                     for (lawyerSnapshot in snapshot.children) {
                         val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
                         lawyer?.let {
-                            // Check if rate is exactly 500
                             if (it.rate == "500") {
                                 tempList.add(it)
                             }
                         }
                     }
+                    allTopLawyers.clear()
+                    allTopLawyers.addAll(tempList)
                     topLawyersList.clear()
-                    topLawyersList.addAll(tempList)
+                    topLawyersList.addAll(allTopLawyers)
                     topLawyerAdapter.notifyDataSetChanged()
 
                     if (topLawyersList.isEmpty()) {
@@ -141,13 +195,11 @@ class ClientHomeFragment : Fragment() {
 
         userRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // Check if the Fragment is still attached and in a valid state
                 if (!isAdded || isDetached || activity == null) {
                     return
                 }
 
                 if (snapshot.exists()) {
-                    // Fetch and display the user's first name
                     val firstName = snapshot.child("firstName").getValue(String::class.java)
                     if (!firstName.isNullOrEmpty()) {
                         welcomeMessageTextView.text = "Welcome!\n$firstName"
@@ -156,10 +208,8 @@ class ClientHomeFragment : Fragment() {
                         welcomeMessageTextView.text = "Welcome!"
                     }
 
-                    // Fetch and display the profile image URL
                     val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
                     if (!profileImageUrl.isNullOrEmpty()) {
-                        // Ensure the Fragment is still in a valid state before loading the image
                         if (isAdded && !isDetached && activity != null) {
                             Glide.with(requireContext()).load(profileImageUrl).into(profileImageView)
                         }
@@ -183,7 +233,6 @@ class ClientHomeFragment : Fragment() {
         val badge = LayoutInflater.from(context).inflate(R.layout.notification_badge, null)
         val tvBadgeCount = badge.findViewById<TextView>(R.id.tvBadgeCount)
 
-        // Add the badge to the notification button
         val params = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT
@@ -191,32 +240,20 @@ class ClientHomeFragment : Fragment() {
         params.gravity = Gravity.END or Gravity.TOP
         params.setMargins(0, 0, 0, 0)
 
-        // Get the parent of the notification button (should be a FrameLayout or similar)
         val buttonParent = notificationButton.parent as ViewGroup
         val buttonIndex = buttonParent.indexOfChild(notificationButton)
 
-        // Create a new FrameLayout to hold the button and the badge
         val frameLayout = FrameLayout(requireContext())
 
-        // Remove button from its parent
         buttonParent.removeView(notificationButton)
-
-        // Add button to FrameLayout
         frameLayout.addView(notificationButton)
-
-        // Add badge to FrameLayout
         frameLayout.addView(badge, params)
-
-        // Add FrameLayout back to the original parent at the same position
         buttonParent.addView(frameLayout, buttonIndex)
 
-        // Initially hide the badge
         badge.visibility = View.GONE
 
-        // Listen for notification count changes
         val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // Listen to notifications
         val notificationsRef = FirebaseDatabase.getInstance().getReference("notifications").child(currentUserId)
         notificationsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -229,7 +266,6 @@ class ClientHomeFragment : Fragment() {
                     }
                 }
 
-                // Update badge visibility and count
                 if (unreadCount > 0) {
                     badge.visibility = View.VISIBLE
                     tvBadgeCount.text = if (unreadCount > 99) "99+" else unreadCount.toString()
@@ -247,7 +283,7 @@ class ClientHomeFragment : Fragment() {
     private fun fetchSpecializations() {
         database.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val specializations = mutableSetOf<String>() // Use a set to avoid duplicates
+                val specializations = mutableSetOf<String>()
 
                 for (lawyerSnapshot in snapshot.children) {
                     val specialization = lawyerSnapshot.child("specialization").getValue(String::class.java)
@@ -256,11 +292,17 @@ class ClientHomeFragment : Fragment() {
                     }
                 }
 
-                // Log specializations for debugging
-                Log.d("Specializations", specializations.toString())
+                allSpecializations.clear()
+                allSpecializations.addAll(specializations.sorted())
 
-                // Dynamically create buttons for each specialization
-                createSpecializationButtons(specializations.toList())
+                // Update spinner with specializations
+                val spinnerAdapter = specializationSpinner.adapter as ArrayAdapter<String>
+                spinnerAdapter.clear()
+                spinnerAdapter.add("All Specializations")
+                spinnerAdapter.addAll(allSpecializations)
+                spinnerAdapter.notifyDataSetChanged()
+
+                createSpecializationButtons(allSpecializations)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -274,9 +316,8 @@ class ClientHomeFragment : Fragment() {
         val resources = resources ?: return
         val container = view?.findViewById<GridLayout>(R.id.specializations_layout) ?: return
 
-        container.removeAllViews() // Clear existing buttons
+        container.removeAllViews()
 
-        // Define colors and dimensions
         val buttonPadding = resources.getDimensionPixelSize(R.dimen.button_padding)
         val buttonCornerRadius = resources.getDimensionPixelSize(R.dimen.button_corner_radius)
         val buttonElevation = resources.getDimensionPixelSize(R.dimen.button_elevation)
@@ -292,20 +333,13 @@ class ClientHomeFragment : Fragment() {
                     setMargins(8, 8, 8, 8)
                 }
 
-                // Apply visual styling
                 setBackgroundResource(R.drawable.specialization_button_background)
                 setTextColor(context.getColor(R.color.white))
                 textSize = 14f
                 setPadding(buttonPadding, buttonPadding, buttonPadding, buttonPadding)
-
-                // Add ripple effect
                 foreground = context.getDrawable(R.drawable.button_ripple_effect)
-
-                // Add elevation
                 elevation = buttonElevation.toFloat()
-
-                // Make text all caps for consistency
-                transformationMethod = null // Remove default all-caps if needed
+                transformationMethod = null
 
                 setOnClickListener {
                     openLawyersList(specialization)
@@ -318,7 +352,7 @@ class ClientHomeFragment : Fragment() {
 
     private fun openLawyersList(specialization: String) {
         val intent = Intent(requireContext(), LawyersListActivity::class.java)
-        intent.putExtra("SPECIALIZATION", specialization) // Pass specialization
+        intent.putExtra("SPECIALIZATION", specialization)
         startActivity(intent)
     }
 }

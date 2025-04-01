@@ -180,15 +180,30 @@
     </GridLayout>
 
     <!-- Top Lawyer Section -->
-    <TextView
-        android:id="@+id/top_lawyer_title"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Top Lawyer"
-        android:textSize="20sp"
-        android:textColor="@android:color/black"
-        android:fontFamily="@font/inria_serif_bold" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="16dp">
+
+      <TextView
+          android:id="@+id/top_lawyer_title"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Top Lawyer"
+          android:textSize="20sp"
+          android:textColor="@android:color/black"
+          android:fontFamily="@font/inria_serif_bold" />
+
+      <Spinner
+          android:id="@+id/specialization_spinner"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="16dp"
+          android:background="@android:drawable/btn_dropdown"
+          android:spinnerMode="dropdown"/>
+    </LinearLayout>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/top_lawyer_list"
