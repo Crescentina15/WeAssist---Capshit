@@ -167,6 +167,8 @@ class ClientHomeFragment : Fragment() {
                     for (lawyerSnapshot in snapshot.children) {
                         val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
                         lawyer?.let {
+                            // Ensure the lawyer ID is set from the snapshot key
+                            it.id = lawyerSnapshot.key ?: ""
                             if (it.rate == "500") {
                                 tempList.add(it)
                             }

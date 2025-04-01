@@ -4,7 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 
 data class Lawyer(
-    val id: String = "",
+    var id: String = "",
     val name: String = "",
     val specialization: String = "",
     val lawFirm: String = "",

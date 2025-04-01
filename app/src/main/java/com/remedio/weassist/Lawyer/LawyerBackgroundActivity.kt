@@ -36,7 +36,8 @@ class LawyerBackgroundActivity : AppCompatActivity() {
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
         if (lawyerId.isNullOrEmpty()) {
-            Toast.makeText(this, "Lawyer ID not found", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Invalid lawyer selected", Toast.LENGTH_SHORT).show()
+            finish()
             return
         }
 
@@ -615,6 +616,9 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                 if (snapshot.exists()) {
                     val lawyer = snapshot.getValue(Lawyer::class.java)
                     lawyer?.let {
+                        // Ensure ID is set
+                        it.id = lawyerId
+
                         binding.lawyerName.text = it.name
                         binding.lawyerSpecialization.text = "Specialization: ${it.specialization}"
                         binding.lawyerBio.text = "Bio: ${it.bio}"
@@ -623,46 +627,33 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         binding.lawyerGraduationYear.text = "Graduation Year: ${it.graduationYear}"
                         binding.lawyerCertifications.text = "Certifications: ${it.certifications}"
                         binding.lawyerJurisdiction.text = "Jurisdiction: ${it.jurisdiction}"
-                        binding.lawyerRate.text = "Professional Rate: ${it.rate}"
+                        binding.lawyerRate.text = "Rate: ${it.rate}"
 
-                        // Load lawyer profile image
-                        loadLawyerProfileImage(it.profileImageUrl)
-
-                        // Try to get secretary ID while we're fetching lawyer data
-                        // Check for several possible field names
-                        val possibleFieldNames = listOf(
-                            "secretaryId", "secretary_id", "secretary",
-                            "secretaryUID", "secretaryUid", "secretary_uid"
-                        )
-
-                        for (fieldName in possibleFieldNames) {
-                            val potentialId = snapshot.child(fieldName).getValue(String::class.java)
-                            if (!potentialId.isNullOrEmpty()) {
-                                secretaryId = potentialId
-                                Log.d(TAG, "Found secretaryId as '$fieldName': $secretaryId")
-                                break
-                            }
-                        }
-
-                        // Retrieve adminUID from lawyer's details
-                        val adminUID = snapshot.child("adminUID").getValue(String::class.java)
-
-                        if (!adminUID.isNullOrEmpty()) {
-                            Log.d("LawFirmDetails", "Fetching law firm details for adminUID: $adminUID")
-                            retrieveLawFirmFromAdmin(adminUID)
+                        // Load image with better error handling
+                        if (!it.profileImageUrl.isNullOrEmpty()) {
+                            Glide.with(this@LawyerBackgroundActivity)
+                                .load(it.profileImageUrl)
+                                .placeholder(R.drawable.profile)
+                                .error(R.drawable.profile)
+                                .into(binding.profileImage)
                         } else {
-                            Log.e("LawFirmDetails", "No adminUID found for lawyer: $lawyerId")
-                            binding.lawyerFirm.text = "Law Firm: Not Available"
-                            binding.lawyerLocation.text = "Location: Not Available"
+                            binding.profileImage.setImageResource(R.drawable.profile)
                         }
+
+                        // Check for null or empty values and handle them
+                        if (it.name.isEmpty()) binding.lawyerName.text = "Name not available"
+                        if (it.specialization.isEmpty()) binding.lawyerSpecialization.text = "Specialization: Not specified"
+                        // Add similar checks for other fields as needed
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
+                    finish() // Close the activity if no data found
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(applicationContext, "Failed to load lawyer data", Toast.LENGTH_SHORT).show()
+                finish()
             }
         })
     }

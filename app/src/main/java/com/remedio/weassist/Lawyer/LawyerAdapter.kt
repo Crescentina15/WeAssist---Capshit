@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.remedio.weassist.R
@@ -60,7 +61,11 @@ class LawyerAdapter(
         }
 
         holder.itemView.setOnClickListener {
-            onLawyerClick(lawyer)
+            if (lawyer.id.isNotEmpty()) {
+                onLawyerClick(lawyer)
+            } else {
+                Toast.makeText(holder.itemView.context, "Lawyer information not available", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
