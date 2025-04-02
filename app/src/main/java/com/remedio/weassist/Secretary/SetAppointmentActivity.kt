@@ -355,7 +355,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         if (clientId != null) {
             // Get the secretary ID for this lawyer
             val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
-            lawyerRef.child("secretaryID").addListenerForSingleValueEvent(object : ValueEventListener {
+            lawyerRef.child("secretaryId").addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
                         val secretaryId = snapshot.getValue(String::class.java)
@@ -564,7 +564,7 @@ class SetAppointmentActivity : AppCompatActivity() {
         // Get the secretaryID for this lawyer
         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(lawyerId)
 
-        lawyerRef.child("secretaryID").addListenerForSingleValueEvent(object : ValueEventListener {
+        lawyerRef.child("secretaryId").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     val secretaryId = snapshot.getValue(String::class.java)
