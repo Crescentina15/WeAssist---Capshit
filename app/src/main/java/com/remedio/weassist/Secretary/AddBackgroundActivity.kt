@@ -81,9 +81,15 @@ class AddBackgroundActivity : AppCompatActivity() {
                             bio.setText(it.bio ?: "")
                             rate.setText(it.rate ?: "")
 
-                            // Load profile image if available
-                            if (!it.profileImage.isNullOrEmpty()) {
-                                Picasso.get().load(it.profileImage).into(lawyerProfile)
+                            // Load profile image if available - updated to use profileImageUrl
+                            it.profileImageUrl?.let { imageUrl ->
+                                if (imageUrl.isNotEmpty()) {
+                                    Picasso.get()
+                                        .load(imageUrl)
+                                        .placeholder(R.drawable.account_circle_24) // fallback image
+                                        .error(R.drawable.account_circle_24) // error image
+                                        .into(lawyerProfile)
+                                }
                             }
                         }
                     }
@@ -113,14 +119,14 @@ class AddBackgroundActivity : AppCompatActivity() {
             "jurisdiction" to jurisdiction.text.toString(),
             "experience" to experience.text.toString(),
             "employer" to employer.text.toString(),
-            "bio" to bio.text.toString(),  // Ensure bio is correctly updated
+            "bio" to bio.text.toString(),
             "rate" to rate.text.toString()
         )
 
         databaseReference.child(lawyerId!!).updateChildren(updates).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Toast.makeText(this, "Background saved successfully!", Toast.LENGTH_SHORT).show()
-                finish() // Navigate back to the previous screen
+                finish()
             } else {
                 Toast.makeText(this, "Failed to save background.", Toast.LENGTH_SHORT).show()
             }
