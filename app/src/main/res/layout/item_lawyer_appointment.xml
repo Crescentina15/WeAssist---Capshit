@@ -68,5 +68,14 @@
             android:maxLines="3"
             android:ellipsize="end" />
 
+        <Button
+            android:id="@+id/end_session_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="End Session"
+            android:visibility="gone"/>
+
+
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

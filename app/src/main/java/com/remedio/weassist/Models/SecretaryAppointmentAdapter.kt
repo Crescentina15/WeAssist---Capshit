@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
 class SecretaryAppointmentAdapter(
@@ -57,13 +58,22 @@ class SecretaryAppointmentAdapter(
         val isSessionActive = sessionStates[appointment.appointmentId] ?: false
         holder.sessionButton.text = if (isSessionActive) "End Session" else "Start Session"
 
-        // Handle session button click
         holder.sessionButton.setOnClickListener {
-            val newState = !(sessionStates[appointment.appointmentId] ?: false) // Toggle state
-            sessionStates[appointment.appointmentId] = newState // Save new state
-
+            val newState = !(sessionStates[appointment.appointmentId] ?: false)
+            sessionStates[appointment.appointmentId] = newState
             holder.sessionButton.text = if (newState) "End Session" else "Start Session"
-            onSessionToggle(appointment, newState) // Callback to handle session start/end logic
+            onSessionToggle(appointment, newState)
+
+            // Update in Firebase
+            val sessionRef = FirebaseDatabase.getInstance().reference
+                .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                .child(appointment.appointmentId)
+
+            if (newState) {
+                sessionRef.setValue(true)
+            } else {
+                sessionRef.removeValue()
+            }
         }
     }
 

@@ -49,16 +49,23 @@ class LawyerAppointmentsFragment : Fragment() {
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
         appointmentList = mutableListOf()
 
-        appointmentAdapter = LawyerAppointmentAdapter(appointmentList) { appointment ->
-            val intent = Intent(requireContext(), ConsultationActivity::class.java).apply {
-                putExtra("client_name", appointment.fullName)
-                putExtra("consultation_time", appointment.time)
-                putExtra("appointment_id", appointment.appointmentId)
-                putExtra("problem", appointment.problem)
-                putExtra("date", appointment.date) // Add date to intent
+        appointmentAdapter = LawyerAppointmentAdapter(
+            appointmentList,
+            { appointment ->
+                val intent = Intent(requireContext(), ConsultationActivity::class.java).apply {
+                    putExtra("client_name", appointment.fullName)
+                    putExtra("consultation_time", appointment.time)
+                    putExtra("appointment_id", appointment.appointmentId)
+                    putExtra("problem", appointment.problem)
+                    putExtra("date", appointment.date)
+                }
+                startActivity(intent)
+            },
+            { appointment ->
+                // Handle end session
+                endSession(appointment)
             }
-            startActivity(intent)
-        }
+        )
 
         recyclerView.adapter = appointmentAdapter
 
@@ -67,7 +74,58 @@ class LawyerAppointmentsFragment : Fragment() {
 
         loadAcceptedAppointments()
 
+        setupSessionListener()
+
         return view
+    }
+
+    private fun setupSessionListener() {
+        val currentUser = auth.currentUser ?: return
+        val lawyerId = currentUser.uid
+        val sessionRef = FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(lawyerId).child("active_sessions")
+
+        sessionRef.addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val appointmentId = snapshot.key ?: return
+                val isActive = snapshot.getValue(Boolean::class.java) ?: false
+                appointmentAdapter.setSessionActive(appointmentId, isActive)
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                val appointmentId = snapshot.key ?: return
+                val isActive = snapshot.getValue(Boolean::class.java) ?: false
+                appointmentAdapter.setSessionActive(appointmentId, isActive)
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val appointmentId = snapshot.key ?: return
+                appointmentAdapter.setSessionActive(appointmentId, false)
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SessionListener", "Error listening to session changes", error.toException())
+            }
+        })
+    }
+
+    private fun endSession(appointment: Appointment) {
+        val currentUser = auth.currentUser ?: return
+        val lawyerId = currentUser.uid
+
+        // Update in Firebase
+        val sessionRef = FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(lawyerId).child("active_sessions")
+            .child(appointment.appointmentId)
+
+        sessionRef.removeValue().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Toast.makeText(requireContext(), "Session ended", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun showLoading() {
