@@ -107,6 +107,7 @@ class LawyerAppointmentsFragment : Fragment() {
         })
     }
 
+    // In LawyerAppointmentsFragment.kt
     private fun endSession(appointment: Appointment) {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
@@ -117,16 +118,30 @@ class LawyerAppointmentsFragment : Fragment() {
             .child(appointment.appointmentId)
             .removeValue()
             .addOnSuccessListener {
-                // Also update the appointment status in the shared appointments node
+                // Update the appointment status to mark it as completed
                 FirebaseDatabase.getInstance().reference
                     .child("accepted_appointment")
                     .child(appointment.appointmentId)
-                    .child("sessionActive")
-                    .removeValue()
+                    .child("status")  // Add status field
+                    .setValue("completed")  // Mark as completed
                     .addOnSuccessListener {
-                        Toast.makeText(requireContext(),
-                            "Session ended successfully",
-                            Toast.LENGTH_SHORT).show()
+                        // Also remove the sessionActive flag
+                        FirebaseDatabase.getInstance().reference
+                            .child("accepted_appointment")
+                            .child(appointment.appointmentId)
+                            .child("sessionActive")
+                            .removeValue()
+                            .addOnSuccessListener {
+                                Toast.makeText(requireContext(),
+                                    "Session ended successfully",
+                                    Toast.LENGTH_SHORT).show()
+
+                                // Remove from accepted_appointment node
+                                FirebaseDatabase.getInstance().reference
+                                    .child("accepted_appointment")
+                                    .child(appointment.appointmentId)
+                                    .removeValue()
+                            }
                     }
             }
             .addOnFailureListener {

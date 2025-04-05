@@ -326,58 +326,55 @@ class LawyerBackgroundActivity : AppCompatActivity() {
     }
 
     private fun checkAcceptedAppointments() {
-        // Check the accepted_appointment node first, since this explicitly contains accepted appointments
         val acceptedApptRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
 
         acceptedApptRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                var hasAcceptedAppointment = false
+                var hasActiveAppointment = false
                 Log.d(TAG, "Checking accepted_appointment node")
 
                 if (snapshot.exists()) {
-                    // Iterate through all entries in the accepted_appointment node
                     for (appointmentSnapshot in snapshot.children) {
                         val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
 
                         val clientId = appointmentData?.get("clientId")?.toString()
                         val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
+                        val status = appointmentData?.get("status")?.toString()
 
-                        // Check if this appointment matches our current user and lawyer
-                        if (clientId == currentUserId && appointmentLawyerId == lawyerId) {
-                            hasAcceptedAppointment = true
-                            Log.d(TAG, "Found matching appointment in accepted_appointment node!")
+                        // Only consider it an active appointment if status is not "completed"
+                        if (clientId == currentUserId &&
+                            appointmentLawyerId == lawyerId &&
+                            status != "completed") {
+                            hasActiveAppointment = true
+                            Log.d(TAG, "Found active appointment in accepted_appointment node!")
                             break
                         }
                     }
                 }
 
-                if (hasAcceptedAppointment) {
+                if (hasActiveAppointment) {
                     updateButtonsVisibility(true)
                 } else {
-                    // If nothing found in accepted_appointment, check regular appointments
                     checkRegularAppointments()
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Failed to check accepted_appointment", error.toException())
-                // Fall back to regular appointments check
                 checkRegularAppointments()
             }
         })
     }
 
     private fun checkRegularAppointments() {
-        // Check the appointments node
         val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
 
         appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                var hasAcceptedAppointment = false
+                var hasActiveAppointment = false
                 Log.d(TAG, "Checking appointments node")
 
                 if (snapshot.exists()) {
-                    // Iterate through all entries in the appointments node
                     for (appointmentSnapshot in snapshot.children) {
                         val appointmentData = appointmentSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
 
@@ -385,74 +382,27 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                         val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
                         val status = appointmentData?.get("status")?.toString()
 
-                        // Check if this appointment matches and is accepted
+                        // Only consider active if status is accepted and not completed
                         if (clientId == currentUserId &&
                             appointmentLawyerId == lawyerId &&
                             status == "accepted") {
-                            hasAcceptedAppointment = true
-                            Log.d(TAG, "Found matching ACCEPTED appointment in appointments node!")
+                            hasActiveAppointment = true
+                            Log.d(TAG, "Found active appointment in appointments node!")
                             break
                         }
                     }
                 }
 
-                if (hasAcceptedAppointment) {
-                    updateButtonsVisibility(true)
-                } else {
-                    // Check individual appointment nodes with IDs
-                    checkIndividualAppointmentNodes()
-                }
+                updateButtonsVisibility(hasActiveAppointment)
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e(TAG, "Failed to check appointments", error.toException())
-                checkIndividualAppointmentNodes()
-            }
-        })
-    }
-
-    private fun checkIndividualAppointmentNodes() {
-        // Get the root reference to check top-level nodes that might be appointment IDs
-        val rootRef = FirebaseDatabase.getInstance().getReference()
-
-        rootRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                var hasAcceptedAppointment = false
-
-                // Look for node names that start with "OL" which appear to be your appointment IDs
-                for (nodeSnapshot in snapshot.children) {
-                    val nodeName = nodeSnapshot.key
-
-                    // If it looks like an appointment ID node
-                    if (nodeName?.startsWith("OL") == true) {
-                        val appointmentData = nodeSnapshot.getValue(object : GenericTypeIndicator<HashMap<String, Any>>() {})
-
-                        val clientId = appointmentData?.get("clientId")?.toString()
-                        val appointmentLawyerId = appointmentData?.get("lawyerId")?.toString()
-                        val status = appointmentData?.get("status")?.toString()
-
-                        // Check if this appointment matches and is accepted
-                        if (clientId == currentUserId &&
-                            appointmentLawyerId == lawyerId &&
-                            (status == "accepted" || nodeName.contains("accepted", ignoreCase = true))) {
-                            hasAcceptedAppointment = true
-                            Log.d(TAG, "Found matching ACCEPTED appointment in node: $nodeName")
-                            break
-                        }
-                    }
-                }
-
-                // Final update after checking all possible locations
-                updateButtonsVisibility(hasAcceptedAppointment)
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e(TAG, "Failed to check root nodes", error.toException())
-                // Default to showing Set Appointment button
                 updateButtonsVisibility(false)
             }
         })
     }
+
 
     private fun updateButtonsVisibility(hasAppointment: Boolean) {
         runOnUiThread {
