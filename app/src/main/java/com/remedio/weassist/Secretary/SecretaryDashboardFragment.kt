@@ -95,11 +95,32 @@ class SecretaryDashboardFragment : Fragment() {
         }
 
 
+
         recyclerView.adapter = appointmentAdapter
 
         fetchAcceptedAppointments()
 
         return view
+    }
+
+    // Add this to handle appointment removals
+    private val appointmentRemovalListener = object : ChildEventListener {
+        override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {}
+        override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {}
+
+        override fun onChildRemoved(snapshot: DataSnapshot) {
+            val appointmentId = snapshot.key ?: return
+            val position = appointmentList.indexOfFirst { it.appointmentId == appointmentId }
+            if (position != -1) {
+                appointmentList.removeAt(position)
+                appointmentAdapter.notifyItemRemoved(position)
+            }
+        }
+
+        override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+        override fun onCancelled(error: DatabaseError) {
+            Log.e("SecretaryDashboard", "Appointment removal listener cancelled", error.toException())
+        }
     }
 
 

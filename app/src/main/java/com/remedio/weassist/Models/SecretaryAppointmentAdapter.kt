@@ -18,12 +18,14 @@ import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
 class SecretaryAppointmentAdapter(
-    private val appointmentList: List<Appointment>,
+    private val appointmentList: MutableList<Appointment>, // Changed to MutableList
     private val onSessionStart: (Appointment) -> Unit
 ) : RecyclerView.Adapter<SecretaryAppointmentAdapter.SecretaryAppointmentViewHolder>() {
 
     private val sessionStates = mutableMapOf<String, Boolean>()
     private var sessionListener: ChildEventListener? = null
+
+
 
     class SecretaryAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val lawyerProfileImage: ImageView = itemView.findViewById(R.id.lawyer_profile_image)
@@ -125,6 +127,52 @@ class SecretaryAppointmentAdapter(
         }
     }
 
+    // Add this to SecretaryAppointmentAdapter
+    private var appointmentListener: ChildEventListener? = null
+
+    fun startListeningForAppointments() {
+        stopListeningForAppointments()
+
+        appointmentListener = object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handled by the fragment
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handled by the fragment
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val appointmentId = snapshot.key ?: return
+                val position = appointmentList.indexOfFirst { it.appointmentId == appointmentId }
+                if (position != -1) {
+                    appointmentList.removeAt(position)
+                    notifyItemRemoved(position)
+                }
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAdapter", "Appointment listener cancelled", error.toException())
+            }
+        }
+
+        // Listen to the accepted_appointment node
+        FirebaseDatabase.getInstance().reference
+            .child("accepted_appointment")
+            .addChildEventListener(appointmentListener!!)
+    }
+
+    fun stopListeningForAppointments() {
+        appointmentListener?.let {
+            FirebaseDatabase.getInstance().reference
+                .child("accepted_appointment")
+                .removeEventListener(it)
+        }
+        appointmentListener = null
+    }
+
+
     private fun updateSessionState(snapshot: DataSnapshot) {
         val appointmentId = snapshot.key ?: return
         val isActive = snapshot.getValue(Boolean::class.java) ?: false
@@ -144,15 +192,19 @@ class SecretaryAppointmentAdapter(
         sessionListener = null
     }
 
-    override fun onViewDetachedFromWindow(holder: SecretaryAppointmentViewHolder) {
-        super.onViewDetachedFromWindow(holder)
-        stopListeningForSessions()
-    }
-
+    // Update onViewAttachedToWindow and onViewDetachedFromWindow
     override fun onViewAttachedToWindow(holder: SecretaryAppointmentViewHolder) {
         super.onViewAttachedToWindow(holder)
         startListeningForSessions()
+        startListeningForAppointments()
     }
+
+    override fun onViewDetachedFromWindow(holder: SecretaryAppointmentViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        stopListeningForSessions()
+        stopListeningForAppointments()
+    }
+
 
     override fun getItemCount(): Int = appointmentList.size
 

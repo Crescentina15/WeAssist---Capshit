@@ -107,7 +107,6 @@ class LawyerAppointmentsFragment : Fragment() {
         })
     }
 
-    // In LawyerAppointmentsFragment.kt
     private fun endSession(appointment: Appointment) {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
@@ -118,30 +117,28 @@ class LawyerAppointmentsFragment : Fragment() {
             .child(appointment.appointmentId)
             .removeValue()
             .addOnSuccessListener {
-                // Update the appointment status to mark it as completed
-                FirebaseDatabase.getInstance().reference
-                    .child("accepted_appointment")
-                    .child(appointment.appointmentId)
-                    .child("status")  // Add status field
-                    .setValue("completed")  // Mark as completed
-                    .addOnSuccessListener {
-                        // Also remove the sessionActive flag
-                        FirebaseDatabase.getInstance().reference
-                            .child("accepted_appointment")
-                            .child(appointment.appointmentId)
-                            .child("sessionActive")
-                            .removeValue()
-                            .addOnSuccessListener {
-                                Toast.makeText(requireContext(),
-                                    "Session ended successfully",
-                                    Toast.LENGTH_SHORT).show()
+                val updates = HashMap<String, Any?>()
 
-                                // Remove from accepted_appointment node
-                                FirebaseDatabase.getInstance().reference
-                                    .child("accepted_appointment")
-                                    .child(appointment.appointmentId)
-                                    .removeValue()
-                            }
+                // Remove from lawyer's appointments
+                updates["/lawyers/$lawyerId/appointments/${appointment.appointmentId}"] = null
+
+                // Remove from accepted_appointment node
+                updates["/accepted_appointment/${appointment.appointmentId}"] = null
+
+                FirebaseDatabase.getInstance().reference.updateChildren(updates)
+                    .addOnSuccessListener {
+                        Toast.makeText(requireContext(),
+                            "Session ended successfully",
+                            Toast.LENGTH_SHORT).show()
+
+                        // Update both the adapter and local list
+                        appointmentAdapter.removeAppointment(appointment.appointmentId)
+                        appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
+                    }
+                    .addOnFailureListener {
+                        Toast.makeText(requireContext(),
+                            "Failed to update appointment records",
+                            Toast.LENGTH_SHORT).show()
                     }
             }
             .addOnFailureListener {

@@ -71,4 +71,15 @@ class LawyerAppointmentAdapter(
         sessionStates[appointmentId] = isActive
         notifyDataSetChanged()
     }
+    fun removeAppointment(appointmentId: String) {
+        // Create a new list without the removed appointment
+        val newList = appointments.filterNot { it.appointmentId == appointmentId }
+        updateAppointments(newList)
+    }
+    fun removeAppointmentById(appointmentId: String) {
+        // Create a new list without the removed appointment
+        val newList = appointments.filterNot { it.appointmentId == appointmentId }
+        updateAppointments(newList)
+    }
+
 }
