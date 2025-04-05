@@ -111,11 +111,20 @@ class LawyerAppointmentsFragment : Fragment() {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
 
+        // Create pending rating notification
+        val ratingNotification = hashMapOf(
+            "lawyerId" to lawyerId,
+            "appointmentId" to appointment.appointmentId,
+            "timestamp" to System.currentTimeMillis()
+        )
+
         // Remove from active sessions
         FirebaseDatabase.getInstance().reference
+            .child("pending_ratings")
+            .child(appointment.clientId)
             .child("lawyers").child(lawyerId).child("active_sessions")
             .child(appointment.appointmentId)
-            .removeValue()
+            .setValue(ratingNotification)
             .addOnSuccessListener {
                 val updates = HashMap<String, Any?>()
 

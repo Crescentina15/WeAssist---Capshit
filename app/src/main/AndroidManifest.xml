@@ -101,6 +101,7 @@
         <activity
             android:name=".Secretary.SecretaryNotificationActivity"
             android:exported="false" />
+
         <activity
             android:name=".Secretary.SecretaryDashboardActivity"
             android:exported="true" />
