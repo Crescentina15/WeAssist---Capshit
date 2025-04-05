@@ -19,6 +19,8 @@
         <activity
             android:name=".Lawyer.LawyerNotification"
             android:exported="false" />
+        <activity android:name=".LoginAndRegister.ChangePasswordActivity"
+            android:exported="false" />
         <activity
             android:name=".Miscellaneous.MyApp"
             android:exported="false" />

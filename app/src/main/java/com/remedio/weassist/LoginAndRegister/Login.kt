@@ -71,7 +71,20 @@ class Login : AppCompatActivity() {
                         } else {
                             clearLoginDetails()
                         }
-                        fetchAndRedirectUser(user.uid)
+
+                        // Check if password needs to be changed
+                        checkPasswordChangeRequired(user.uid, password) { changeRequired ->
+                            if (changeRequired) {
+                                // Redirect to change password screen
+                                val intent = Intent(this, ChangePasswordActivity::class.java)
+                                intent.putExtra("FIRST_LOGIN", true)
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                // Normal login flow
+                                fetchAndRedirectUser(user.uid)
+                            }
+                        }
                     } else {
                         Toast.makeText(this, "Please verify your email before logging in.", Toast.LENGTH_LONG).show()
                     }
@@ -79,6 +92,48 @@ class Login : AppCompatActivity() {
                     Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    private fun isTemporaryPassword(password: String): Boolean {
+        // Check if the password follows the temporary password pattern
+        return password.startsWith("Temp") && password.endsWith("!")
+    }
+
+    private fun checkPasswordChangeRequired(uid: String, password: String, callback: (Boolean) -> Unit) {
+        // First check if the password itself looks like a temporary password
+        if (isTemporaryPassword(password)) {
+            callback(true)
+            return
+        }
+
+        val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers").child(uid)
+        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(uid)
+
+        // First check if user is a lawyer
+        lawyerRef.get().addOnSuccessListener { lawyerSnapshot ->
+            if (lawyerSnapshot.exists()) {
+                // Check if passwordChanged flag exists
+                val passwordChanged = lawyerSnapshot.child("passwordChanged").getValue(Boolean::class.java) ?: false
+                callback(!passwordChanged)
+            } else {
+                // If not a lawyer, check if secretary
+                secretaryRef.get().addOnSuccessListener { secretarySnapshot ->
+                    if (secretarySnapshot.exists()) {
+                        val passwordChanged = secretarySnapshot.child("passwordChanged").getValue(Boolean::class.java) ?: false
+                        callback(!passwordChanged)
+                    } else {
+                        // Not a lawyer or secretary, no need to change password
+                        callback(false)
+                    }
+                }.addOnFailureListener {
+                    // In case of error, don't force password change
+                    callback(false)
+                }
+            }
+        }.addOnFailureListener {
+            // In case of error, don't force password change
+            callback(false)
+        }
     }
 
     private fun fetchAndRedirectUser(uid: String) {
@@ -136,15 +191,12 @@ class Login : AppCompatActivity() {
         }
     }
 
-
-
     private fun saveLawyerName(name: String) {
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val editor = sharedPreferences.edit()
         editor.putString("lawyer_name", name)
         editor.apply()
     }
-
 
     private fun saveUserRole(role: String) {
         val sharedPreferences = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
