@@ -67,13 +67,10 @@
             android:id="@+id/btn_session"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:text="End Session"
+            android:text="Start Session"
+            android:enabled="true"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#FF5252"
-            android:paddingHorizontal="12dp"
-            android:layout_marginTop="8dp"
-            android:paddingVertical="6dp" />
+            android:backgroundTint="#008000" />
     </LinearLayout>
 </androidx.cardview.widget.CardView>
     <!-- Makita sa dashboard -->

@@ -1,5 +1,6 @@
 package com.remedio.weassist.Models
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +9,9 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.google.firebase.database.ChildEventListener
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
@@ -18,6 +22,7 @@ class SecretaryAppointmentAdapter(
 
     // Store session states for each appointment
     private val sessionStates = mutableMapOf<String, Boolean>()
+    private var sessionListener: ChildEventListener? = null
 
     class SecretaryAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val lawyerProfileImage: ImageView = itemView.findViewById(R.id.lawyer_profile_image)
@@ -32,6 +37,67 @@ class SecretaryAppointmentAdapter(
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.task_item_card, parent, false) // Ensure correct layout name
         return SecretaryAppointmentViewHolder(view)
+    }
+    fun startListeningForSessions() {
+        stopListeningForSessions() // Clear any existing listener
+
+        sessionListener = object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                updateSessionState(snapshot)
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                updateSessionState(snapshot)
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                val appointmentId = snapshot.key ?: return
+                sessionStates[appointmentId] = false
+                notifyDataSetChanged()
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAdapter", "Session listener cancelled", error.toException())
+            }
+        }
+
+        // Listen for all sessions related to these appointments
+        appointmentList.forEach { appointment ->
+            FirebaseDatabase.getInstance().reference
+                .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                .child(appointment.appointmentId)
+                .addChildEventListener(sessionListener!!)
+        }
+    }
+
+    private fun updateSessionState(snapshot: DataSnapshot) {
+        val appointmentId = snapshot.key ?: return
+        val isActive = snapshot.getValue(Boolean::class.java) ?: false
+        sessionStates[appointmentId] = isActive
+        notifyDataSetChanged()
+    }
+
+    fun stopListeningForSessions() {
+        sessionListener?.let { listener ->
+            appointmentList.forEach { appointment ->
+                FirebaseDatabase.getInstance().reference
+                    .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                    .child(appointment.appointmentId)
+                    .removeEventListener(listener)
+            }
+        }
+        sessionListener = null
+    }
+
+    override fun onViewDetachedFromWindow(holder: SecretaryAppointmentViewHolder) {
+        super.onViewDetachedFromWindow(holder)
+        stopListeningForSessions()
+    }
+
+    override fun onViewAttachedToWindow(holder: SecretaryAppointmentViewHolder) {
+        super.onViewAttachedToWindow(holder)
+        startListeningForSessions()
     }
 
 

@@ -69,13 +69,18 @@ class SecretaryDashboardFragment : Fragment() {
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment, isSessionActive ->
-            if (isSessionActive) {
-                // Start session
-                Toast.makeText(requireContext(), "Session started for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
-            } else {
-                // End session
-                endSession(appointment)
+        // In the onSessionToggle callback:
+        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment, isStarting ->
+            if (isStarting) {
+                FirebaseDatabase.getInstance().reference
+                    .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                    .child(appointment.appointmentId)
+                    .setValue(true)
+                    .addOnSuccessListener {
+                        Toast.makeText(requireContext(),
+                            "Session started for ${appointment.fullName}",
+                            Toast.LENGTH_SHORT).show()
+                    }
             }
         }
 
@@ -84,6 +89,16 @@ class SecretaryDashboardFragment : Fragment() {
         fetchAcceptedAppointments()
 
         return view
+    }
+
+    override fun onResume() {
+        super.onResume()
+        appointmentAdapter.startListeningForSessions()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        appointmentAdapter.stopListeningForSessions()
     }
 
     private fun setupNotificationBadge(notificationButton: ImageButton) {

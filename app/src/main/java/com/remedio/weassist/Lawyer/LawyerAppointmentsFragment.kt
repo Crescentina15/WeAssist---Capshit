@@ -88,14 +88,11 @@ class LawyerAppointmentsFragment : Fragment() {
         sessionRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
                 val appointmentId = snapshot.key ?: return
-                val isActive = snapshot.getValue(Boolean::class.java) ?: false
-                appointmentAdapter.setSessionActive(appointmentId, isActive)
+                appointmentAdapter.setSessionActive(appointmentId, true)
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                val appointmentId = snapshot.key ?: return
-                val isActive = snapshot.getValue(Boolean::class.java) ?: false
-                appointmentAdapter.setSessionActive(appointmentId, isActive)
+                // Handle changes if needed
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
@@ -114,18 +111,29 @@ class LawyerAppointmentsFragment : Fragment() {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
 
-        // Update in Firebase
-        val sessionRef = FirebaseDatabase.getInstance().reference
+        // Remove from active sessions
+        FirebaseDatabase.getInstance().reference
             .child("lawyers").child(lawyerId).child("active_sessions")
             .child(appointment.appointmentId)
-
-        sessionRef.removeValue().addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Toast.makeText(requireContext(), "Session ended", Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), "Failed to end session", Toast.LENGTH_SHORT).show()
+            .removeValue()
+            .addOnSuccessListener {
+                // Also update the appointment status in the shared appointments node
+                FirebaseDatabase.getInstance().reference
+                    .child("accepted_appointment")
+                    .child(appointment.appointmentId)
+                    .child("sessionActive")
+                    .removeValue()
+                    .addOnSuccessListener {
+                        Toast.makeText(requireContext(),
+                            "Session ended successfully",
+                            Toast.LENGTH_SHORT).show()
+                    }
             }
-        }
+            .addOnFailureListener {
+                Toast.makeText(requireContext(),
+                    "Failed to end session",
+                    Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun showLoading() {

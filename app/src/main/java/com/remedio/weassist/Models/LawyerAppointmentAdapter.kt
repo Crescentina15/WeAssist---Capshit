@@ -11,10 +11,9 @@ import com.remedio.weassist.R
 class LawyerAppointmentAdapter(
     private var appointments: List<Appointment>,
     private val onItemClick: (Appointment) -> Unit,
-    private val onEndSessionClick: (Appointment) -> Unit // New callback for ending session
+    private val onEndSessionClick: (Appointment) -> Unit
 ) : RecyclerView.Adapter<LawyerAppointmentAdapter.ViewHolder>() {
 
-    // Store session states for each appointment
     private val sessionStates = mutableMapOf<String, Boolean>()
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -22,7 +21,8 @@ class LawyerAppointmentAdapter(
         val consultationDateTextView: TextView = itemView.findViewById(R.id.consultation_date_text_view)
         val consultationTimeTextView: TextView = itemView.findViewById(R.id.consultation_time_text_view)
         val problemTextView: TextView = itemView.findViewById(R.id.problem_text_view)
-        val endSessionButton: Button = itemView.findViewById(R.id.end_session_button) // Add this button to your layout
+        val endSessionButton: Button = itemView.findViewById(R.id.end_session_button)
+        val sessionStatusText: TextView = itemView.findViewById(R.id.session_status_text) // Add this TextView to your layout
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -33,17 +33,21 @@ class LawyerAppointmentAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val appointment = appointments[position]
+        val isSessionActive = sessionStates[appointment.appointmentId] ?: false
 
         holder.clientNameTextView.text = appointment.fullName
         holder.consultationDateTextView.text = appointment.date
         holder.consultationTimeTextView.text = appointment.time
         holder.problemTextView.text = appointment.problem
 
-        // Check if session is active
-        val isSessionActive = sessionStates[appointment.appointmentId] ?: false
-
-        // Show/hide end session button based on session state
-        holder.endSessionButton.visibility = if (isSessionActive) View.VISIBLE else View.GONE
+        if (isSessionActive) {
+            holder.endSessionButton.visibility = View.VISIBLE
+            holder.sessionStatusText.visibility = View.GONE
+        } else {
+            holder.endSessionButton.visibility = View.GONE
+            holder.sessionStatusText.visibility = View.VISIBLE
+            holder.sessionStatusText.text = "No active session"
+        }
 
         holder.itemView.setOnClickListener {
             onItemClick(appointment)
@@ -63,7 +67,6 @@ class LawyerAppointmentAdapter(
         notifyDataSetChanged()
     }
 
-    // Call this method when secretary starts a session
     fun setSessionActive(appointmentId: String, isActive: Boolean) {
         sessionStates[appointmentId] = isActive
         notifyDataSetChanged()
