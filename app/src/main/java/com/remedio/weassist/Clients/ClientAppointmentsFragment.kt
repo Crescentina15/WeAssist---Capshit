@@ -49,7 +49,7 @@ class ClientAppointmentsFragment : Fragment() {
             Log.d("ClientCheck", "Logged in as Client: $clientId")
             // Show loading initially
             showLoading()
-            fetchAcceptedAppointments(clientId)
+            fetchClientAppointments(clientId)
         } else {
             Log.e("ClientCheck", "No logged-in client found.")
             showEmptyState()
@@ -84,11 +84,12 @@ class ClientAppointmentsFragment : Fragment() {
         }
     }
 
-    private fun fetchAcceptedAppointments(clientId: String) {
-        val acceptedAppointmentsRef = database.child("accepted_appointment")
-        Log.d("ClientCheck", "Fetching accepted appointments for clientId: $clientId")
+    private fun fetchClientAppointments(clientId: String) {
+        val appointmentsRef = database.child("appointments")
+        Log.d("ClientCheck", "Fetching appointments for clientId: $clientId")
 
-        acceptedAppointmentsRef.orderByChild("clientId").equalTo(clientId)
+        // First query by clientId, then filter by status
+        appointmentsRef.orderByChild("clientId").equalTo(clientId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     appointmentList.clear()
@@ -98,11 +99,13 @@ class ClientAppointmentsFragment : Fragment() {
 
                         for (child in snapshot.children) {
                             val appointment = child.getValue(Appointment::class.java)
-                            if (appointment != null) {
+                            // Only process if status is "Accepted"
+                            if (appointment != null &&
+                                (appointment.status == "Accepted" || appointment.status == "Forwarded")) {
                                 // Store the appointment ID from Firebase
                                 appointment.appointmentId = child.key ?: ""
 
-                                Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+                                Log.d("ClientCheck", "Found accepted appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
 
                                 // Fetch the lawyer's details if not already set
                                 if (appointment.lawyerName.isEmpty() || appointment.lawyerProfileImage.isNullOrEmpty()) {
@@ -146,23 +149,21 @@ class ClientAppointmentsFragment : Fragment() {
                                 }
                             } else {
                                 processedAppointments++
+                                if (processedAppointments >= totalAppointments) {
+                                    updateAdapter()
+                                    updateUiState()
+                                }
                             }
                         }
-
-                        // If there are no appointments or all were null, update adapter anyway
-                        if (totalAppointments == 0L || processedAppointments >= totalAppointments) {
-                            updateAdapter()
-                            updateUiState()
-                        }
                     } else {
-                        Log.d("ClientCheck", "No accepted appointments found in DB.")
+                        Log.d("ClientCheck", "No appointments found for client in DB.")
                         updateAdapter() // Update with empty list
                         showEmptyState()
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Log.e("ClientCheck", "Error fetching accepted appointments: ${error.message}")
+                    Log.e("ClientCheck", "Error fetching appointments: ${error.message}")
                     showEmptyState()
                 }
             })
@@ -170,7 +171,9 @@ class ClientAppointmentsFragment : Fragment() {
 
     // Helper method to update the adapter
     private fun updateAdapter() {
-        val adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
+        val sortedList = appointmentList.sortedWith(compareBy { it.status != "Accepted" })
+
+        val adapter = AppointmentAdapter(ArrayList(sortedList), true, true) { selectedAppointment ->
             showAppointmentDetails(selectedAppointment)
         }
         appointmentRecyclerView.adapter = adapter
