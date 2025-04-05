@@ -69,20 +69,31 @@ class SecretaryDashboardFragment : Fragment() {
         recyclerView = view.findViewById(R.id.today_task_recycler_view)
         recyclerView.layoutManager = LinearLayoutManager(requireContext())
 
-        // In the onSessionToggle callback:
-        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment, isStarting ->
-            if (isStarting) {
-                FirebaseDatabase.getInstance().reference
-                    .child("lawyers").child(appointment.lawyerId).child("active_sessions")
-                    .child(appointment.appointmentId)
-                    .setValue(true)
-                    .addOnSuccessListener {
-                        Toast.makeText(requireContext(),
-                            "Session started for ${appointment.fullName}",
-                            Toast.LENGTH_SHORT).show()
-                    }
-            }
+        // Change this part in your SecretaryDashboardFragment
+        appointmentAdapter = SecretaryAppointmentAdapter(appointmentList) { appointment ->
+            // Update Firebase
+            FirebaseDatabase.getInstance().reference
+                .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                .child(appointment.appointmentId)
+                .setValue(true)
+                .addOnSuccessListener {
+                    Toast.makeText(
+                        requireContext(),
+                        "Session started for ${appointment.fullName}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+                .addOnFailureListener { e ->
+                    // Revert UI if Firebase update fails - using the new method name
+                    appointmentAdapter.updateSessionState(appointment.appointmentId, false)
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to start session: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
         }
+
 
         recyclerView.adapter = appointmentAdapter
 
@@ -90,6 +101,8 @@ class SecretaryDashboardFragment : Fragment() {
 
         return view
     }
+
+
 
     override fun onResume() {
         super.onResume()
@@ -283,7 +296,5 @@ class SecretaryDashboardFragment : Fragment() {
         })
     }
 
-    private fun endSession(appointment: Appointment) {
-        Toast.makeText(requireContext(), "Session ended for ${appointment.fullName}", Toast.LENGTH_SHORT).show()
-    }
+
 }

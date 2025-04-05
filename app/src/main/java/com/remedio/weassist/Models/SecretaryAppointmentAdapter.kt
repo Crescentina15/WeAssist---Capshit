@@ -1,5 +1,6 @@
 package com.remedio.weassist.Models
 
+import android.graphics.Color
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -7,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.database.ChildEventListener
@@ -17,10 +19,9 @@ import com.remedio.weassist.R
 
 class SecretaryAppointmentAdapter(
     private val appointmentList: List<Appointment>,
-    private val onSessionToggle: (Appointment, Boolean) -> Unit // Callback to handle session toggle
+    private val onSessionStart: (Appointment) -> Unit
 ) : RecyclerView.Adapter<SecretaryAppointmentAdapter.SecretaryAppointmentViewHolder>() {
 
-    // Store session states for each appointment
     private val sessionStates = mutableMapOf<String, Boolean>()
     private var sessionListener: ChildEventListener? = null
 
@@ -32,14 +33,68 @@ class SecretaryAppointmentAdapter(
         val sessionButton: Button = itemView.findViewById(R.id.btn_session)
     }
 
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SecretaryAppointmentViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.task_item_card, parent, false) // Ensure correct layout name
+            .inflate(R.layout.task_item_card, parent, false)
         return SecretaryAppointmentViewHolder(view)
     }
+
+    override fun onBindViewHolder(holder: SecretaryAppointmentViewHolder, position: Int) {
+        val appointment = appointmentList[position]
+        val isSessionActive = sessionStates[appointment.appointmentId] ?: false
+
+        // Set appointment details
+        holder.taskTitle.text = "Appointment with Atty. ${appointment.fullName}"
+        holder.taskDate.text = appointment.date
+        holder.taskTime.text = appointment.time
+
+        // Load lawyer profile image
+        if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
+            Glide.with(holder.itemView.context)
+                .load(appointment.lawyerProfileImage)
+                .placeholder(R.drawable.account_circle_24)
+                .error(R.drawable.account_circle_24)
+                .into(holder.lawyerProfileImage)
+        } else {
+            holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
+        }
+
+        // Configure session button based on state
+        if (isSessionActive) {
+            holder.sessionButton.text = "Session Started"
+            holder.sessionButton.isEnabled = false
+            holder.sessionButton.setBackgroundColor(Color.GRAY)
+            holder.sessionButton.alpha = 0.7f
+        } else {
+            holder.sessionButton.text = "Start Session"
+            holder.sessionButton.isEnabled = true
+            holder.sessionButton.setBackgroundColor(
+                ContextCompat.getColor(holder.itemView.context, R.color.green)
+            )
+            holder.sessionButton.alpha = 1f
+        }
+
+        // Set click listener only for inactive sessions
+        holder.sessionButton.setOnClickListener {
+            if (!isSessionActive) {
+                // Update local state immediately for better UX
+                sessionStates[appointment.appointmentId] = true
+                notifyItemChanged(position)
+
+                // Notify fragment and update Firebase
+                onSessionStart(appointment)
+            }
+        }
+    }
+
+    fun updateSessionState(appointmentId: String, isActive: Boolean) {
+        sessionStates[appointmentId] = isActive
+        notifyDataSetChanged()
+    }
+
+
     fun startListeningForSessions() {
-        stopListeningForSessions() // Clear any existing listener
+        stopListeningForSessions()
 
         sessionListener = object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -62,7 +117,6 @@ class SecretaryAppointmentAdapter(
             }
         }
 
-        // Listen for all sessions related to these appointments
         appointmentList.forEach { appointment ->
             FirebaseDatabase.getInstance().reference
                 .child("lawyers").child(appointment.lawyerId).child("active_sessions")
@@ -100,48 +154,7 @@ class SecretaryAppointmentAdapter(
         startListeningForSessions()
     }
 
-
-    override fun onBindViewHolder(holder: SecretaryAppointmentViewHolder, position: Int) {
-        val appointment = appointmentList[position]
-
-        holder.taskTitle.text = "Appointment with Atty. ${appointment.fullName}"
-        holder.taskDate.text = appointment.date
-        holder.taskTime.text = appointment.time
-
-        // Load lawyer profile image using Glide if URL is available
-        if (!appointment.lawyerProfileImage.isNullOrEmpty()) {
-            Glide.with(holder.itemView.context)
-                .load(appointment.lawyerProfileImage)
-                .placeholder(R.drawable.account_circle_24)
-                .error(R.drawable.account_circle_24)
-                .into(holder.lawyerProfileImage)
-        } else {
-            // Set default image if no URL is available
-            holder.lawyerProfileImage.setImageResource(R.drawable.account_circle_24)
-        }
-
-        // Get the session state for this appointment, default to false (not started)
-        val isSessionActive = sessionStates[appointment.appointmentId] ?: false
-        holder.sessionButton.text = if (isSessionActive) "End Session" else "Start Session"
-
-        holder.sessionButton.setOnClickListener {
-            val newState = !(sessionStates[appointment.appointmentId] ?: false)
-            sessionStates[appointment.appointmentId] = newState
-            holder.sessionButton.text = if (newState) "End Session" else "Start Session"
-            onSessionToggle(appointment, newState)
-
-            // Update in Firebase
-            val sessionRef = FirebaseDatabase.getInstance().reference
-                .child("lawyers").child(appointment.lawyerId).child("active_sessions")
-                .child(appointment.appointmentId)
-
-            if (newState) {
-                sessionRef.setValue(true)
-            } else {
-                sessionRef.removeValue()
-            }
-        }
-    }
-
     override fun getItemCount(): Int = appointmentList.size
+
+
 }
