@@ -111,48 +111,56 @@ class LawyerAppointmentsFragment : Fragment() {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
 
-        // Create pending rating notification
-        val ratingNotification = hashMapOf(
+        // Create more detailed rating notification
+        val ratingNotification = hashMapOf<String, Any>(
             "lawyerId" to lawyerId,
+            "lawyerName" to (currentUser.displayName ?: "Lawyer"),
             "appointmentId" to appointment.appointmentId,
-            "timestamp" to System.currentTimeMillis()
+            "appointmentDate" to appointment.date,
+            "timestamp" to ServerValue.TIMESTAMP,
+            "clientId" to appointment.clientId
         )
 
-        // Remove from active sessions
-        FirebaseDatabase.getInstance().reference
-            .child("pending_ratings")
-            .child(appointment.clientId)
-            .child("lawyers").child(lawyerId).child("active_sessions")
-            .child(appointment.appointmentId)
-            .setValue(ratingNotification)
+        val notificationData = hashMapOf<String, Any>(
+            "type" to "rating_request",
+            "message" to "Please rate your recent consultation",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "isRead" to false
+        )
+
+        // Store under both client's pending ratings and general notifications
+        val updates = hashMapOf<String, Any>(
+            "/pending_ratings/${appointment.clientId}/${appointment.appointmentId}" to ratingNotification,
+            "/notifications/${appointment.clientId}/${appointment.appointmentId}" to notificationData
+        )
+
+        FirebaseDatabase.getInstance().reference.updateChildren(updates)
             .addOnSuccessListener {
-                val updates = HashMap<String, Any?>()
-
-                // Remove from lawyer's appointments
-                updates["/lawyers/$lawyerId/appointments/${appointment.appointmentId}"] = null
-
-                // Remove from accepted_appointment node
-                updates["/accepted_appointment/${appointment.appointmentId}"] = null
-
-                FirebaseDatabase.getInstance().reference.updateChildren(updates)
+                // Proceed with ending the session
+                FirebaseDatabase.getInstance().reference
+                    .child("lawyers").child(lawyerId).child("active_sessions")
+                    .child(appointment.appointmentId)
+                    .removeValue()
                     .addOnSuccessListener {
-                        Toast.makeText(requireContext(),
-                            "Session ended successfully",
-                            Toast.LENGTH_SHORT).show()
+                        val sessionUpdates = hashMapOf<String, Any?>(
+                            "/lawyers/$lawyerId/appointments/${appointment.appointmentId}" to null,
+                            "/accepted_appointment/${appointment.appointmentId}" to null
+                        )
 
-                        // Update both the adapter and local list
-                        appointmentAdapter.removeAppointment(appointment.appointmentId)
-                        appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
-                    }
-                    .addOnFailureListener {
-                        Toast.makeText(requireContext(),
-                            "Failed to update appointment records",
-                            Toast.LENGTH_SHORT).show()
+                        FirebaseDatabase.getInstance().reference.updateChildren(sessionUpdates)
+                            .addOnSuccessListener {
+                                Toast.makeText(requireContext(),
+                                    "Session ended successfully",
+                                    Toast.LENGTH_SHORT).show()
+
+                                appointmentAdapter.removeAppointment(appointment.appointmentId)
+                                appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
+                            }
                     }
             }
             .addOnFailureListener {
                 Toast.makeText(requireContext(),
-                    "Failed to end session",
+                    "Failed to create rating request",
                     Toast.LENGTH_SHORT).show()
             }
     }

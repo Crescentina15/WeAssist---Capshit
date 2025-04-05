@@ -44,6 +44,9 @@ class ClientHomeFragment : Fragment() {
     private var allSpecializations = mutableListOf<String>()
     private var allTopLawyers = mutableListOf<Lawyer>()
 
+    private lateinit var pendingRatingsRef: DatabaseReference
+    private var ratingsListener: ValueEventListener? = null
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -89,7 +92,7 @@ class ClientHomeFragment : Fragment() {
         // Fetch specializations and dynamically create buttons
         fetchSpecializations()
         fetchTopLawyers()
-        checkForPendingRatings()
+
 
         return view
     }
@@ -355,39 +358,52 @@ class ClientHomeFragment : Fragment() {
             container.addView(button)
         }
     }
-    // Add this to your ClientHomeFragment
-    private fun checkForPendingRatings() {
+    private fun setupRealTimeRatingListener() {
         val currentUser = auth.currentUser ?: return
         val clientId = currentUser.uid
 
-        FirebaseDatabase.getInstance().reference
+        pendingRatingsRef = FirebaseDatabase.getInstance().reference
             .child("pending_ratings")
             .child(clientId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        for (ratingSnapshot in snapshot.children) {
-                            val lawyerId = ratingSnapshot.child("lawyerId").getValue(String::class.java) ?: ""
-                            val appointmentId = ratingSnapshot.key ?: ""
 
-                            // Show rating dialog
-                            showRatingDialog(lawyerId, appointmentId)
+        ratingsListener = pendingRatingsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    for (ratingSnapshot in snapshot.children) {
+                        val lawyerId = ratingSnapshot.child("lawyerId").getValue(String::class.java) ?: ""
+                        val appointmentId = ratingSnapshot.key ?: ""
 
-                            // Remove the pending rating
-                            ratingSnapshot.ref.removeValue()
-                            break // Only show one dialog at a time
-                        }
+                        // Show rating dialog
+                        showRatingDialog(lawyerId, appointmentId)
+
+                        // Remove the pending rating
+                        ratingSnapshot.ref.removeValue()
+                        break // Only show one dialog at a time
                     }
                 }
+            }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ClientHomeFragment", "Error checking pending ratings", error.toException())
-                }
-            })
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ClientHomeFragment", "Error listening to pending ratings", error.toException())
+            }
+        })
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Clean up the listener when the fragment is destroyed
+        ratingsListener?.let {
+            pendingRatingsRef.removeEventListener(it)
+        }
     }
 
     private fun showRatingDialog(lawyerId: String, appointmentId: String) {
-        val dialog = ClientRatingDialog.newInstance(lawyerId, appointmentId)
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val dialog = ClientRatingDialog.newInstance(
+            lawyerId = lawyerId,
+            appointmentId = appointmentId,
+            clientId = currentUser.uid
+        )
         dialog.show(parentFragmentManager, "ClientRatingDialog")
     }
 
@@ -398,6 +414,6 @@ class ClientHomeFragment : Fragment() {
     }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        checkForPendingRatings()
+        setupRealTimeRatingListener()
     }
 }
