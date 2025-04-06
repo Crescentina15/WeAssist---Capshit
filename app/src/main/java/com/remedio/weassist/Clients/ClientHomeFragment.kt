@@ -167,36 +167,39 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun fetchTopLawyers() {
-        database.orderByChild("rate").equalTo("500")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val tempList = mutableListOf<Lawyer>()
-                    for (lawyerSnapshot in snapshot.children) {
-                        val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
-                        lawyer?.let {
-                            // Ensure the lawyer ID is set from the snapshot key
-                            it.id = lawyerSnapshot.key ?: ""
-                            if (it.rate == "500") {
-                                tempList.add(it)
-                            }
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val tempList = mutableListOf<Lawyer>()
+                for (lawyerSnapshot in snapshot.children) {
+                    val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
+                    lawyer?.let {
+                        it.id = lawyerSnapshot.key ?: ""
+                        val averageRating = lawyerSnapshot.child("averageRating").getValue(Double::class.java) ?: 0.0
+                        if (averageRating >= 4.0) {
+                            tempList.add(it.copy(averageRating = averageRating))
                         }
                     }
-                    allTopLawyers.clear()
-                    allTopLawyers.addAll(tempList)
-                    topLawyersList.clear()
-                    topLawyersList.addAll(allTopLawyers)
-                    topLawyerAdapter.notifyDataSetChanged()
-
-                    if (topLawyersList.isEmpty()) {
-                        view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
-                            "No Top Rated Lawyers Available"
-                    }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(context, "Failed to load top lawyers", Toast.LENGTH_SHORT).show()
+                // Sort by rating (highest first)
+                tempList.sortByDescending { it.averageRating }
+
+                allTopLawyers.clear()
+                allTopLawyers.addAll(tempList)
+                topLawyersList.clear()
+                topLawyersList.addAll(allTopLawyers)
+                topLawyerAdapter.notifyDataSetChanged()
+
+                if (topLawyersList.isEmpty()) {
+                    view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
+                        "No Top Rated Lawyers Available"
                 }
-            })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(context, "Failed to load top lawyers", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun fetchUserData(userId: String) {

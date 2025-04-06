@@ -36,12 +36,17 @@ class LawyerAdapter(
     }
 
     override fun onBindViewHolder(holder: LawyerViewHolder, position: Int) {
+
+
         val lawyer = lawyersList[position]
         holder.nameTextView.text = lawyer.name
         holder.specializationTextView.text = lawyer.specialization
 
+
         if (isTopLawyer) {
-            holder.ratingsTextView?.text = "500" // Show perfect rating
+            // Format average rating to 1 decimal place
+            val averageRating = lawyer.averageRating ?: 0.0
+            holder.ratingsTextView?.text = "%.1f".format(averageRating)
         } else {
             holder.locationTextView?.text = "Location: ${lawyer.location}"
             holder.firmTextView?.text = "Law Firm: ${lawyer.lawFirm}"
