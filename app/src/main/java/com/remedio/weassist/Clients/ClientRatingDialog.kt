@@ -18,6 +18,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.remedio.weassist.R
+import java.util.UUID
 
 class ClientRatingDialog : DialogFragment() {
     private lateinit var ratingBar: RatingBar
@@ -135,6 +136,9 @@ class ClientRatingDialog : DialogFragment() {
             return
         }
 
+        // Generate a unique ID for this rating
+        val ratingId = UUID.randomUUID().toString()
+
         val ratingData = hashMapOf(
             "rating" to rating,
             "comment" to comment,
@@ -144,14 +148,14 @@ class ClientRatingDialog : DialogFragment() {
             "timestamp" to System.currentTimeMillis()
         )
 
-        // Save rating under lawyer's ratings
+        // Save rating under lawyer's ratings with a unique ID
         FirebaseDatabase.getInstance().reference
             .child("ratings")
             .child(lawyerId)
-            .child(appointmentId)
+            .child(ratingId)  // Use unique ID instead of appointmentId
             .setValue(ratingData)
             .addOnSuccessListener {
-                // Remove from pending ratings
+                // Remove from pending ratings (if this is the first rating for this appointment)
                 FirebaseDatabase.getInstance().reference
                     .child("pending_ratings")
                     .child(clientId)
