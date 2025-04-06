@@ -31,6 +31,8 @@ class ClientRatingDialog : DialogFragment() {
     private lateinit var lawyerNameText: TextView
     private lateinit var sessionDateText: TextView
 
+    private val database = FirebaseDatabase.getInstance().reference
+
     companion object {
         private const val ARG_LAWYER_ID = "lawyer_id"
         private const val ARG_APPOINTMENT_ID = "appointment_id"
@@ -69,11 +71,9 @@ class ClientRatingDialog : DialogFragment() {
             lawyerNameText = view.findViewById(R.id.lawyerNameText)
             sessionDateText = view.findViewById(R.id.sessionDateText)
 
-            // Set up the dialog
             builder.setView(view)
                 .setCancelable(false)
 
-            // Load appointment details
             loadAppointmentDetails()
 
             submitButton.setOnClickListener {
@@ -83,7 +83,6 @@ class ClientRatingDialog : DialogFragment() {
             builder.create().apply {
                 window?.setBackgroundDrawableResource(R.drawable.dialog_background)
                 setCanceledOnTouchOutside(false)
-                // Add custom title
                 setCustomTitle(createCustomTitle())
             }
         } ?: throw IllegalStateException("Activity cannot be null")
@@ -100,8 +99,7 @@ class ClientRatingDialog : DialogFragment() {
     }
 
     private fun loadAppointmentDetails() {
-        FirebaseDatabase.getInstance().reference
-            .child("accepted_appointment")
+        database.child("accepted_appointment")
             .child(appointmentId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -113,7 +111,6 @@ class ClientRatingDialog : DialogFragment() {
                         lawyerNameText.text = "With $lawyerName"
                         sessionDateText.text = "Session on $date at $time"
                     } else {
-                        // Fallback if appointment data isn't available
                         lawyerNameText.text = "With your lawyer"
                         sessionDateText.text = "Your recent consultation"
                     }
@@ -136,8 +133,8 @@ class ClientRatingDialog : DialogFragment() {
             return
         }
 
-        // Generate a unique ID for this rating
         val ratingId = UUID.randomUUID().toString()
+        val timestamp = System.currentTimeMillis()
 
         val ratingData = hashMapOf(
             "rating" to rating,
@@ -145,29 +142,81 @@ class ClientRatingDialog : DialogFragment() {
             "clientId" to clientId,
             "lawyerId" to lawyerId,
             "appointmentId" to appointmentId,
-            "timestamp" to System.currentTimeMillis()
+            "timestamp" to timestamp
         )
 
-        // Save rating under lawyer's ratings with a unique ID
-        FirebaseDatabase.getInstance().reference
-            .child("ratings")
+        // First save the new rating
+        database.child("ratings")
             .child(lawyerId)
-            .child(ratingId)  // Use unique ID instead of appointmentId
+            .child(ratingId)
             .setValue(ratingData)
             .addOnSuccessListener {
-                // Remove from pending ratings (if this is the first rating for this appointment)
-                FirebaseDatabase.getInstance().reference
-                    .child("pending_ratings")
-                    .child(clientId)
-                    .child(appointmentId)
-                    .removeValue()
-                    .addOnCompleteListener {
-                        Toast.makeText(context, "Thank you for your feedback!", Toast.LENGTH_SHORT).show()
-                        dismiss()
-                    }
+                // After saving the rating, update the average
+                updateLawyerAverageRating(rating)
             }
             .addOnFailureListener {
                 Toast.makeText(context, "Failed to submit rating. Please try again.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    private fun updateLawyerAverageRating(newRating: Float) {
+        database.child("ratings")
+            .child(lawyerId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        var totalRatings = 0f
+                        var ratingCount = 0
+
+                        // Calculate total ratings and count
+                        for (ratingSnapshot in snapshot.children) {
+                            val rating = ratingSnapshot.child("rating").getValue(Float::class.java) ?: 0f
+                            totalRatings += rating
+                            ratingCount++
+                        }
+
+                        // Calculate new average and round to 1 decimal place
+                        val averageRating = (totalRatings / ratingCount).toBigDecimal()
+                            .setScale(1, java.math.RoundingMode.HALF_UP)
+                            .toFloat()
+
+                        // Update lawyer's average rating
+                        database.child("lawyers")
+                            .child(lawyerId)
+                            .child("averageRating")
+                            .setValue(averageRating)
+                            .addOnSuccessListener {
+                                // Remove from pending ratings after everything is done
+                                removePendingRating()
+                            }
+                            .addOnFailureListener {
+                                Toast.makeText(context, "Rating submitted but failed to update average", Toast.LENGTH_SHORT).show()
+                                removePendingRating()
+                            }
+                    } else {
+                        // This shouldn't happen since we just added a rating
+                        removePendingRating()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Toast.makeText(context, "Failed to calculate average rating", Toast.LENGTH_SHORT).show()
+                    removePendingRating()
+                }
+            })
+    }
+    private fun removePendingRating() {
+        database.child("pending_ratings")
+            .child(clientId)
+            .child(appointmentId)
+            .removeValue()
+            .addOnCompleteListener {
+                Toast.makeText(context, "Thank you for your feedback!", Toast.LENGTH_SHORT).show()
+                dismiss()
+            }
+            .addOnFailureListener {
+                Toast.makeText(context, "Feedback submitted but failed to clear pending", Toast.LENGTH_SHORT).show()
+                dismiss()
             }
     }
 }
