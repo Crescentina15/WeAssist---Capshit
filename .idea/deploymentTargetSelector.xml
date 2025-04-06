@@ -8,7 +8,7 @@
           <targets>
             <Target type="DEFAULT_BOOT">
               <handle>
-                <DeviceId pluginId="PhysicalDevice" identifier="serial=125312545H001808" />
+                <DeviceId pluginId="LocalEmulator" identifier="path=C:\Users\Admin\.android\avd\Pixel_8.avd" />
               </handle>
             </Target>
             <Target type="DEFAULT_BOOT">
