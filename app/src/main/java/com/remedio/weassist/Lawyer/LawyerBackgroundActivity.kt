@@ -564,25 +564,35 @@ class LawyerBackgroundActivity : AppCompatActivity() {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    val lawyer = snapshot.getValue(Lawyer::class.java)
-                    lawyer?.let {
-                        // Ensure ID is set
-                        it.id = lawyerId
+                    try {
+                        // Get all values directly from snapshot
+                        val name = snapshot.child("name").getValue(String::class.java) ?: "Name not available"
+                        val specialization = snapshot.child("specialization").getValue(String::class.java) ?: "Not specified"
+                        val lawFirm = snapshot.child("lawFirm").getValue(String::class.java) ?: "Not specified"
+                        val averageRating = snapshot.child("averageRating").getValue(Double::class.java)
+                        val experience = snapshot.child("experience").getValue(String::class.java) ?: "Not specified"
+                        val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
 
-                        binding.lawyerName.text = it.name
-                        binding.lawyerSpecialization.text = "Specialization: ${it.specialization}"
-                        binding.lawyerBio.text = "Bio: ${it.bio}"
-                        binding.lawyerExperience.text = "Experience: ${it.experience} years"
-                        binding.lawyerLawSchool.text = "Law School: ${it.lawSchool}"
-                        binding.lawyerGraduationYear.text = "Graduation Year: ${it.graduationYear}"
-                        binding.lawyerCertifications.text = "Certifications: ${it.certifications}"
-                        binding.lawyerJurisdiction.text = "Jurisdiction: ${it.jurisdiction}"
-                        binding.lawyerRate.text = "Rate: ${it.rate}"
+                        // Set basic information
+                        binding.lawyerName.text = name
+                        binding.lawyerSpecialization.text = "Specialization: $specialization"
+                        binding.lawyerFirm.text = "Law Firm: $lawFirm"
 
-                        // Load image with better error handling
-                        if (!it.profileImageUrl.isNullOrEmpty()) {
+                        // Format and set rating (limit to 1 decimal place)
+                        val formattedRating = if (averageRating != null) {
+                            "⭐ Rating: %.1f".format(averageRating)
+                        } else {
+                            "⭐ Rating: Not rated"
+                        }
+                        binding.lawyerRating.text = formattedRating
+
+                        // Set experience
+                        binding.lawyerExperience.text = "Experience: $experience years"
+
+                        // Load profile image
+                        if (!profileImageUrl.isNullOrEmpty()) {
                             Glide.with(this@LawyerBackgroundActivity)
-                                .load(it.profileImageUrl)
+                                .load(profileImageUrl)
                                 .placeholder(R.drawable.profile)
                                 .error(R.drawable.profile)
                                 .into(binding.profileImage)
@@ -590,14 +600,32 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                             binding.profileImage.setImageResource(R.drawable.profile)
                         }
 
-                        // Check for null or empty values and handle them
-                        if (it.name.isEmpty()) binding.lawyerName.text = "Name not available"
-                        if (it.specialization.isEmpty()) binding.lawyerSpecialization.text = "Specialization: Not specified"
-                        // Add similar checks for other fields as needed
+                        // Get optional fields
+                        val bio = snapshot.child("bio").getValue(String::class.java)
+                        val lawSchool = snapshot.child("lawSchool").getValue(String::class.java)
+                        val graduationYear = snapshot.child("graduationYear").getValue(String::class.java)
+                        val certifications = snapshot.child("certifications").getValue(String::class.java)
+                        val jurisdiction = snapshot.child("jurisdiction").getValue(String::class.java)
+                        val rate = snapshot.child("rate").getValue(String::class.java)
+
+                        // Set optional fields if they exist
+                        bio?.let { binding.lawyerBio.text = "Bio: $it" }
+                        lawSchool?.let { binding.lawyerLawSchool.text = "Law School: $it" }
+                        graduationYear?.let { binding.lawyerGraduationYear.text = "Graduation Year: $it" }
+                        certifications?.let { binding.lawyerCertifications.text = "Certifications: $it" }
+                        jurisdiction?.let { binding.lawyerJurisdiction.text = "Jurisdiction: $it" }
+                        rate?.let { binding.lawyerRate.text = "Rate: $it" }
+
+                        // Get secretary ID if available
+                        secretaryId = snapshot.child("secretaryId").getValue(String::class.java)
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing lawyer data", e)
+                        Toast.makeText(applicationContext, "Error loading lawyer data", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     Toast.makeText(applicationContext, "Lawyer data not found", Toast.LENGTH_SHORT).show()
-                    finish() // Close the activity if no data found
+                    finish()
                 }
             }
 
