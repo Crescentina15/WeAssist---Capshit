@@ -565,26 +565,25 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
                     try {
-                        // Get all values directly from snapshot
+                        // Get basic lawyer info
                         val name = snapshot.child("name").getValue(String::class.java) ?: "Name not available"
                         val specialization = snapshot.child("specialization").getValue(String::class.java) ?: "Not specified"
-                        val lawFirm = snapshot.child("lawFirm").getValue(String::class.java) ?: "Not specified"
+                        val lawFirm = snapshot.child("lawFirm").getValue(String::class.java)
                         val averageRating = snapshot.child("averageRating").getValue(Double::class.java)
                         val experience = snapshot.child("experience").getValue(String::class.java) ?: "Not specified"
                         val profileImageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+                        val adminUID = snapshot.child("adminUID").getValue(String::class.java)
 
                         // Set basic information
                         binding.lawyerName.text = name
                         binding.lawyerSpecialization.text = "Specialization: $specialization"
-                        binding.lawyerFirm.text = "Law Firm: $lawFirm"
 
-                        // Format and set rating (limit to 1 decimal place)
-                        val formattedRating = if (averageRating != null) {
+                        // Format and set rating
+                        binding.lawyerRating.text = if (averageRating != null) {
                             "⭐ Rating: %.1f".format(averageRating)
                         } else {
                             "⭐ Rating: Not rated"
                         }
-                        binding.lawyerRating.text = formattedRating
 
                         // Set experience
                         binding.lawyerExperience.text = "Experience: $experience years"
@@ -598,6 +597,20 @@ class LawyerBackgroundActivity : AppCompatActivity() {
                                 .into(binding.profileImage)
                         } else {
                             binding.profileImage.setImageResource(R.drawable.profile)
+                        }
+
+                        // Get law firm and office address
+                        if (lawFirm != null) {
+                            binding.lawyerFirm.text = "Law Firm: $lawFirm"
+                            // Fetch office address from law_firm_admin
+                            if (adminUID != null) {
+                                fetchOfficeAddress(adminUID)
+                            } else {
+                                binding.lawyerLocation.text = "📍 Location: Not specified"
+                            }
+                        } else {
+                            binding.lawyerFirm.text = "Law Firm: Not specified"
+                            binding.lawyerLocation.text = "📍 Location: Not specified"
                         }
 
                         // Get optional fields
@@ -632,6 +645,21 @@ class LawyerBackgroundActivity : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {
                 Toast.makeText(applicationContext, "Failed to load lawyer data", Toast.LENGTH_SHORT).show()
                 finish()
+            }
+        })
+    }
+
+    private fun fetchOfficeAddress(adminUID: String) {
+        val adminRef = FirebaseDatabase.getInstance().getReference("law_firm_admin").child(adminUID)
+        adminRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(adminSnapshot: DataSnapshot) {
+                val officeAddress = adminSnapshot.child("officeAddress").getValue(String::class.java)
+                binding.lawyerLocation.text = "📍 Location: ${officeAddress ?: "Not specified"}"
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                binding.lawyerLocation.text = "📍 Location: Not specified"
+                Log.e(TAG, "Failed to load office address", error.toException())
             }
         })
     }
