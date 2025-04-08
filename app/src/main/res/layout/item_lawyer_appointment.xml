@@ -3,88 +3,139 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardCornerRadius="8dp"
-    app:cardElevation="4dp">
+    android:layout_margin="12dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="20dp"
+        android:background="@android:color/white">
 
+        <!-- Header section with client name -->
         <TextView
             android:id="@+id/client_name_text_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:textColor="@android:color/black" />
+            android:textColor="#3F51B5"
+            android:paddingBottom="16dp" />
 
+        <!-- Consultation details section with subtle divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#EEEEEE" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <!-- Date section -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Date"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#757575" />
+
+                <TextView
+                    android:id="@+id/consultation_date_text_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textColor="#212121"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+
+            <!-- Time section -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Time"
+                    android:textStyle="bold"
+                    android:textSize="16sp"
+                    android:textColor="#757575" />
+
+                <TextView
+                    android:id="@+id/consultation_time_text_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:textColor="#212121"
+                    android:layout_marginTop="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Problem section -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Date:"
+            android:text="Problem"
             android:textStyle="bold"
-            android:layout_marginTop="8dp"
-            android:textSize="16sp" />
-        <TextView
-            android:id="@+id/consultation_date_text_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
             android:textSize="16sp"
-            android:layout_marginTop="4dp"
-            />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Time:"
-            android:textStyle="bold"
-            android:layout_marginTop="8dp"
-            android:textSize="16sp" />
-        <TextView
-            android:id="@+id/consultation_time_text_view"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:layout_marginTop="4dp"
-            />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Problem:"
-            android:textStyle="bold"
-            android:layout_marginTop="8dp"
-            android:textSize="16sp" />
+            android:textColor="#757575" />
 
         <TextView
             android:id="@+id/problem_text_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="14sp"
+            android:textSize="15sp"
+            android:textColor="#212121"
             android:layout_marginTop="4dp"
             android:maxLines="3"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:lineSpacingExtra="2dp"
+            android:paddingBottom="8dp" />
 
-        <Button
-            android:id="@+id/end_session_button"
-            android:layout_width="wrap_content"
+        <!-- Status section with visual indicators -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="End Session"
-            android:visibility="gone"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#FF5252" />
+            android:orientation="horizontal"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/session_status_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="No active session"
-            android:visibility="gone" />
+            <TextView
+                android:id="@+id/session_status_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="No active session"
+                android:textColor="#9E9E9E"
+                android:textStyle="italic"
+                android:visibility="gone" />
 
-
-
+            <Button
+                android:id="@+id/end_session_button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:text="End Session"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#F44336"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:visibility="gone"
+                android:elevation="2dp" />
+        </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>
