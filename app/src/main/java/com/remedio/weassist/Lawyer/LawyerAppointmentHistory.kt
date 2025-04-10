@@ -17,6 +17,9 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.Models.ConsultationAdapter
 import com.remedio.weassist.R
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 class LawyerAppointmentHistory : Fragment() {
 
@@ -144,15 +147,26 @@ class LawyerAppointmentHistory : Fragment() {
         database.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 consultationList.clear()
+                val tempList = ArrayList<Consultation>()
 
                 for (clientSnapshot in snapshot.children) {
                     for (consultation in clientSnapshot.children) {
                         val consultationData = consultation.getValue(Consultation::class.java)
                         if (consultationData != null && consultationData.lawyerId == currentLawyerId) {
-                            consultationList.add(consultationData)
+                            tempList.add(consultationData)
                         }
                     }
                 }
+
+                // Sort consultations by date and time (newest first)
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                consultationList.addAll(tempList.sortedWith(compareByDescending { consult ->
+                    try {
+                        dateFormat.parse("${consult.consultationDate} ${consult.consultationTime}")
+                    } catch (e: Exception) {
+                        Date(0) // Default to oldest date if parsing fails
+                    }
+                }))
 
                 // Update UI based on data
                 if (consultationList.isEmpty()) {
