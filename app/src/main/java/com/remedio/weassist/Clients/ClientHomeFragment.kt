@@ -44,6 +44,9 @@ class ClientHomeFragment : Fragment() {
     private var allSpecializations = mutableListOf<String>()
     private var allTopLawyers = mutableListOf<Lawyer>()
 
+    private lateinit var pendingRatingsRef: DatabaseReference
+    private var ratingsListener: ValueEventListener? = null
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -89,6 +92,7 @@ class ClientHomeFragment : Fragment() {
         // Fetch specializations and dynamically create buttons
         fetchSpecializations()
         fetchTopLawyers()
+
 
         return view
     }
@@ -163,36 +167,39 @@ class ClientHomeFragment : Fragment() {
     }
 
     private fun fetchTopLawyers() {
-        database.orderByChild("rate").equalTo("500")
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    val tempList = mutableListOf<Lawyer>()
-                    for (lawyerSnapshot in snapshot.children) {
-                        val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
-                        lawyer?.let {
-                            // Ensure the lawyer ID is set from the snapshot key
-                            it.id = lawyerSnapshot.key ?: ""
-                            if (it.rate == "500") {
-                                tempList.add(it)
-                            }
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val tempList = mutableListOf<Lawyer>()
+                for (lawyerSnapshot in snapshot.children) {
+                    val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
+                    lawyer?.let {
+                        it.id = lawyerSnapshot.key ?: ""
+                        val averageRating = lawyerSnapshot.child("averageRating").getValue(Double::class.java) ?: 0.0
+                        if (averageRating >= 4.0) {
+                            tempList.add(it.copy(averageRating = averageRating))
                         }
                     }
-                    allTopLawyers.clear()
-                    allTopLawyers.addAll(tempList)
-                    topLawyersList.clear()
-                    topLawyersList.addAll(allTopLawyers)
-                    topLawyerAdapter.notifyDataSetChanged()
-
-                    if (topLawyersList.isEmpty()) {
-                        view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
-                            "No Top Rated Lawyers Available"
-                    }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Toast.makeText(context, "Failed to load top lawyers", Toast.LENGTH_SHORT).show()
+                // Sort by rating (highest first)
+                tempList.sortByDescending { it.averageRating }
+
+                allTopLawyers.clear()
+                allTopLawyers.addAll(tempList)
+                topLawyersList.clear()
+                topLawyersList.addAll(allTopLawyers)
+                topLawyerAdapter.notifyDataSetChanged()
+
+                if (topLawyersList.isEmpty()) {
+                    view?.findViewById<TextView>(R.id.top_lawyer_title)?.text =
+                        "No Top Rated Lawyers Available"
                 }
-            })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Toast.makeText(context, "Failed to load top lawyers", Toast.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun fetchUserData(userId: String) {
@@ -354,10 +361,62 @@ class ClientHomeFragment : Fragment() {
             container.addView(button)
         }
     }
+    private fun setupRealTimeRatingListener() {
+        val currentUser = auth.currentUser ?: return
+        val clientId = currentUser.uid
+
+        pendingRatingsRef = FirebaseDatabase.getInstance().reference
+            .child("pending_ratings")
+            .child(clientId)
+
+        ratingsListener = pendingRatingsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    for (ratingSnapshot in snapshot.children) {
+                        val lawyerId = ratingSnapshot.child("lawyerId").getValue(String::class.java) ?: ""
+                        val appointmentId = ratingSnapshot.key ?: ""
+
+                        // Show rating dialog
+                        showRatingDialog(lawyerId, appointmentId)
+
+                        // Remove the pending rating
+                        ratingSnapshot.ref.removeValue()
+                        break // Only show one dialog at a time
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ClientHomeFragment", "Error listening to pending ratings", error.toException())
+            }
+        })
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Clean up the listener when the fragment is destroyed
+        ratingsListener?.let {
+            pendingRatingsRef.removeEventListener(it)
+        }
+    }
+
+    private fun showRatingDialog(lawyerId: String, appointmentId: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser ?: return
+        val dialog = ClientRatingDialog.newInstance(
+            lawyerId = lawyerId,
+            appointmentId = appointmentId,
+            clientId = currentUser.uid
+        )
+        dialog.show(parentFragmentManager, "ClientRatingDialog")
+    }
 
     private fun openLawyersList(specialization: String) {
         val intent = Intent(requireContext(), LawyersListActivity::class.java)
         intent.putExtra("SPECIALIZATION", specialization)
         startActivity(intent)
+    }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupRealTimeRatingListener()
     }
 }

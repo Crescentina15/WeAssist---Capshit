@@ -21,7 +21,8 @@ data class Lawyer(
     val profileImageUrl: String? = null,
     var location: String = "",
     val contact: Contact? = null,
-    val lawFirmAdminId: String = ""
+    val lawFirmAdminId: String = "",
+    val averageRating: Double? = null
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",

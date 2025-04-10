@@ -102,9 +102,8 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
         appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                progressBar.visibility = View.GONE
-
                 if (snapshot.exists()) {
+                    progressBar.visibility = View.GONE
                     // Parse appointment data
                     val appointment = snapshot.getValue(Appointment::class.java)
                     appointment?.let { displayAppointmentDetails(it) }
@@ -116,20 +115,21 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
                     acceptedAppointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(acceptedSnapshot: DataSnapshot) {
+                            progressBar.visibility = View.GONE
                             if (acceptedSnapshot.exists()) {
                                 val appointment = acceptedSnapshot.getValue(Appointment::class.java)
                                 appointment?.let { displayAppointmentDetails(it) }
                             } else {
-                                Toast.makeText(this@ClientAppointmentDetailsActivity,
-                                    "Appointment not found", Toast.LENGTH_SHORT).show()
-                                finish()
+                                Log.w("AppointmentDetails", "Appointment not found in either location. Using intent data only.")
+                                // Don't finish the activity - we can still show the intent data
+                                // Just hide the progress bar and use whatever data we have from intent
                             }
                         }
 
                         override fun onCancelled(error: DatabaseError) {
                             progressBar.visibility = View.GONE
                             Toast.makeText(this@ClientAppointmentDetailsActivity,
-                                "Error loading appointment: ${error.message}", Toast.LENGTH_SHORT).show()
+                                "Error loading appointment details: ${error.message}", Toast.LENGTH_SHORT).show()
                             Log.e("AppointmentDetails", "Database error: ${error.message}")
                         }
                     })
@@ -139,7 +139,7 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
             override fun onCancelled(error: DatabaseError) {
                 progressBar.visibility = View.GONE
                 Toast.makeText(this@ClientAppointmentDetailsActivity,
-                    "Error loading appointment: ${error.message}", Toast.LENGTH_SHORT).show()
+                    "Error loading appointment details: ${error.message}", Toast.LENGTH_SHORT).show()
                 Log.e("AppointmentDetails", "Database error: ${error.message}")
             }
         })

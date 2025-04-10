@@ -1,151 +1,238 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/light_gray">
+    android:background="#F5F5F5">
 
     <LinearLayout
-        android:id="@+id/add_backgroundview"
+        android:id="@+id/profile_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="24dp">
+
+        <!-- Header Section with Profile Image -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:elevation="4dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="24dp"
+                android:background="#3F51B5">
+
+                <ImageView
+                    android:id="@+id/lawyersProfile"
+                    android:layout_width="120dp"
+                    android:layout_height="120dp"
+                    android:src="@android:drawable/ic_menu_camera"
+                    android:background="@android:drawable/dialog_holo_light_frame"
+                    android:padding="4dp"
+                    android:scaleType="centerCrop"/>
+
+                <TextView
+                    android:id="@+id/lawyerName"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Atty. Josh Gonzalez"
+                    android:textSize="24sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginTop="16dp"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Attorney Profile"
+                    android:textSize="16sp"
+                    android:textColor="#E0E0E0"
+                    android:layout_marginTop="4dp"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- Education Section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Education"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/lawSchool"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Law School Attended"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center">
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
 
-            <ImageView
-                android:id="@+id/lawyersProfile"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:src="@drawable/account_circle_24"
-                android:scaleType="centerCrop"
-                android:background="@drawable/baseline_circle_24"/>
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/graduationYear"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Graduation Year"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/certifications"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Certifications"/>
+            </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/lawyerName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:text="Atty. Josh Gonzalez"
-            android:fontFamily="@font/inria_serif_bold"
-            android:textSize="20sp"
-            android:textColor="@color/black"
-            android:layout_marginTop="16dp"/>
-        <!-- Kaning Name kay sa Lawyer na giclicks sa secretary ha  -->
-        <EditText
-            android:id="@+id/lawSchool"
-            android:layout_width="match_parent"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:padding="8dp"
-            android:layout_marginTop="15dp"
-            android:layout_height="wrap_content"
-            android:hint="Law School Attended"/>
-
-        <EditText
-            android:id="@+id/graduationYear"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
-            android:hint="Graduation Year"
-            android:inputType="number"/>
-
-        <EditText
-            android:id="@+id/certifications"
-            android:layout_width="match_parent"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
-            android:layout_height="wrap_content"
-            android:hint="Additional Certifications"/>
-
+        <!-- Professional Information Section -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Professional Information"
             android:textSize="20sp"
-            android:fontFamily="@font/inria_serif_bold"
-            android:textColor="@color/black"
-            android:layout_marginTop="8dp"/>
+            android:textStyle="bold"
+            android:textColor="#333333"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="12dp"/>
 
-        <EditText
-            android:id="@+id/licenseNumber"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:padding="8dp"
-            android:layout_marginTop="10dp"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="License Number"/>
+            android:layout_marginBottom="12dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-        <EditText
-            android:id="@+id/jurisdiction"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/licenseNumber"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="License Number"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Jurisdiction"/>
+            android:layout_marginBottom="12dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-        <EditText
-            android:id="@+id/experience"
-            android:layout_width="match_parent"
-            android:fontFamily="@font/inria_serif_bold"
-            android:layout_marginTop="5dp"
-            android:background="@drawable/edittext_container"
-            android:padding="8dp"
-            android:layout_height="wrap_content"
-            android:hint="Years of Experience"
-            android:inputType="number"/>
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/jurisdiction"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Jurisdiction"/>
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <EditText
-            android:id="@+id/employer"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Current Employer or Law Firm"/>
+            android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
 
-        <EditText
-            android:id="@+id/bio"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/experience"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Years of Experience"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/rate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Hourly Rate ($)"
+                    android:inputType="number"/>
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Professional Biography"/>
+            android:layout_marginBottom="12dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-        <EditText
-            android:id="@+id/rate"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/employer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Current Law Firm"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
-            android:fontFamily="@font/inria_serif_bold"
-            android:background="@drawable/edittext_container"
-            android:layout_marginTop="5dp"
-            android:padding="8dp"
             android:layout_height="wrap_content"
-            android:hint="Starting Professional Rate"
-            android:inputType="number"/>
+            android:layout_marginBottom="16dp"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
-        <Button
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/bio"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="Professional Biography"
+                android:minLines="3"
+                android:gravity="top"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Submit Button -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/submitButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Submit"
-            android:layout_marginTop="16dp"/>
+            android:text="SAVE PROFILE"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:padding="12dp"
+            android:backgroundTint="#3F51B5"
+            app:cornerRadius="8dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="24dp"/>
 
     </LinearLayout>
 </ScrollView>

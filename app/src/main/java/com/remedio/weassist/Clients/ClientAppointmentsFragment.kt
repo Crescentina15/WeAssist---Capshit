@@ -8,6 +8,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.progressindicator.CircularProgressIndicator
@@ -21,9 +23,11 @@ class ClientAppointmentsFragment : Fragment() {
 
     private lateinit var database: DatabaseReference
     private lateinit var appointmentRecyclerView: RecyclerView
-    private lateinit var appointmentList: ArrayList<Appointment>
+
     private lateinit var emptyAppointmentsLayout: LinearLayout
     private lateinit var progressIndicator: CircularProgressIndicator
+    private lateinit var adapter: AppointmentAdapter
+    private var appointmentList = mutableListOf<Appointment>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -169,15 +173,48 @@ class ClientAppointmentsFragment : Fragment() {
             })
     }
 
-    // Helper method to update the adapter
     private fun updateAdapter() {
-        val sortedList = appointmentList.sortedWith(compareBy { it.status != "Accepted" })
+        if (!::adapter.isInitialized) {
+            adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
+                showAppointmentDetails(selectedAppointment)
+            }
+            appointmentRecyclerView.adapter = adapter
 
-        val adapter = AppointmentAdapter(ArrayList(sortedList), true, true) { selectedAppointment ->
-            showAppointmentDetails(selectedAppointment)
+            val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.LEFT) {
+                override fun onMove(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    target: RecyclerView.ViewHolder
+                ): Boolean = false
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                    val position = viewHolder.adapterPosition
+                    val appointmentToDelete = appointmentList[position]
+                    val appointmentId = appointmentToDelete.appointmentId
+
+                    if (appointmentId.isNotEmpty()) {
+                        database.child("appointments").child(appointmentId).removeValue()
+                            .addOnSuccessListener {
+                                appointmentList.removeAt(position)
+                                adapter.notifyItemRemoved(position)
+                                updateUiState()
+                                Toast.makeText(requireContext(), "Appointment has been removed", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener {
+                                Log.e("SwipeDelete", "Failed to delete appointment: ${it.message}")
+                                adapter.notifyItemChanged(position)
+                                Toast.makeText(requireContext(), "Failed to delete appointment", Toast.LENGTH_SHORT).show()
+                            }
+                    }
+                }
+            }
+
+            ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(appointmentRecyclerView)
+        } else {
+            adapter.notifyDataSetChanged()
         }
-        appointmentRecyclerView.adapter = adapter
     }
+
 
     private fun showAppointmentDetails(appointment: Appointment) {
         // Start the ClientAppointmentDetailsActivity
