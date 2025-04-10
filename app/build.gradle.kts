@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.firebase.functions.ktx)
     implementation(libs.androidx.ui.text.android)
     implementation(libs.protolite.well.known.types)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
 
     // Navigation Component dependencies
@@ -79,6 +80,13 @@ dependencies {
     implementation("com.cloudinary:cloudinary-android:2.0.0")
     implementation("com.github.bumptech.glide:glide:4.12.0")
     implementation("de.hdodenhof:circleimageview:3.1.0")
+
+    // Location services
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+
+    // Kotlin coroutines
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
 
 
 }

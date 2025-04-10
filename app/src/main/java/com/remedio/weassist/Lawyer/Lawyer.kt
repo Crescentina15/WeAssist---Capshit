@@ -19,7 +19,7 @@ data class Lawyer(
     val rate: String? = null, // Changed from ratings to rate
     val profileImage: String? = null,
     val profileImageUrl: String? = null,
-    val location: String = "",
+    var location: String = "",
     val contact: Contact? = null,
     val lawFirmAdminId: String = ""
 ) : Parcelable {

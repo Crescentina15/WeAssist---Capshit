@@ -18,7 +18,7 @@
         app:layout_constraintEnd_toEndOf="parent">
 
         <ImageButton
-            android:id="@+id/back_button"
+            android:id="@+id/backButton"
             android:layout_width="24dp"
             android:layout_height="30dp"
             android:src="@drawable/arrow_back"
@@ -37,49 +37,68 @@
             android:fontFamily="@font/vesper_libre_bold" />
     </LinearLayout>
 
-
-
-    <TextView
-        android:id="@+id/chatTextView"
+    <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="16dp"
-        android:layout_marginTop="60dp"
-        android:text="Welcome to WeAssist Chatbot!"
-        android:textSize="16sp"
-        app:layout_constraintBottom_toBottomOf="@+id/header"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toTopOf="@id/userInputEditText"
+        android:scrollbars="vertical"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintBottom_toTopOf="@id/inputContainer"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/chatTextView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp"
+            android:text="Welcome to WeAssist Chatbot!"
+            android:textSize="16sp" />
+    </ScrollView>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_margin="16dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/inputContainer"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-
-    <EditText
-        android:id="@+id/userInputEditText"
+    <LinearLayout
+        android:id="@+id/inputContainer"
         android:layout_width="0dp"
-        android:layout_height="45dp"
-        android:hint="Enter your Problem Here"
-        android:padding="12dp"
-        android:layout_margin="10dp"
-        android:background="@drawable/bg_inputfields"
-        android:textColor="@android:color/black"
-        android:textColorHint="@android:color/darker_gray"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="#FFFFFF"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/sendButton"
-        app:layout_constraintTop_toBottomOf="@id/chatTextView" />
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <Button
-        android:id="@+id/sendButton"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:layout_margin="5dp"
-        android:background="@drawable/baseline_send_24"
-        android:contentDescription="Send button"
-        android:tint="@android:color/black"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/chatTextView"
-        app:layout_constraintStart_toEndOf="@id/userInputEditText"/>
+        <EditText
+            android:id="@+id/userInputEditText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:hint="Enter your Problem Here"
+            android:padding="12dp"
+            android:minHeight="45dp"
+            android:background="@drawable/bg_inputfields"
+            android:textColor="@android:color/black"
+            android:textColorHint="@android:color/darker_gray"
+            android:inputType="textMultiLine"
+            android:maxLines="4" />
+
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/baseline_send_24"
+            android:contentDescription="Send button" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
