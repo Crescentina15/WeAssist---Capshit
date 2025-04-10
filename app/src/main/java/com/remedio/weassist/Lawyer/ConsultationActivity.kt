@@ -1,8 +1,10 @@
 package com.remedio.weassist.Lawyer
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,13 +25,20 @@ class ConsultationActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         val clientName = intent.getStringExtra("client_name") ?: "Unknown Client"
         val consultationTime = intent.getStringExtra("consultation_time") ?: "Unknown Time"
-        val consultationDate = intent.getStringExtra("date") ?: "Unknown Date" // Add this line
+        val consultationDate = intent.getStringExtra("date") ?: "Unknown Date"
 
         findViewById<TextView>(R.id.client_name_title).text = "Consultation with $clientName"
-        findViewById<TextView>(R.id.consultation_time).text = "$consultationTime, $consultationDate" // Update this line
+        findViewById<TextView>(R.id.consultation_time).text = "$consultationTime, $consultationDate"
 
         val consultationNotes = findViewById<EditText>(R.id.consultation_notes)
         val btnSave = findViewById<Button>(R.id.btn_save_consultation)
+
+        val imageButton: ImageButton = findViewById(R.id.btn_back)
+
+        imageButton.setOnClickListener {
+            // Finish the activity to go back to the previous fragment
+            finish()
+        }
 
         database = FirebaseDatabase.getInstance().reference.child("consultations")
 
@@ -46,7 +55,7 @@ class ConsultationActivity : AppCompatActivity() {
             val consultationData = mapOf(
                 "clientName" to clientName,
                 "consultationTime" to consultationTime,
-                "consultationDate" to consultationDate, // Add this line
+                "consultationDate" to consultationDate,
                 "notes" to notes,
                 "lawyerId" to lawyerId
             )
@@ -60,5 +69,11 @@ class ConsultationActivity : AppCompatActivity() {
                     Toast.makeText(this, "Failed to save consultation", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    override fun onBackPressed() {
+        super.onBackPressed()
+        // Handle the back button press the same way as the back ImageButton
+        finish()
     }
 }
