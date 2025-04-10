@@ -7,13 +7,12 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.remedio.weassist.R
 
-
 class ConsultationAdapter(private val consultationList: ArrayList<Consultation>) :
     RecyclerView.Adapter<ConsultationAdapter.ViewHolder>() {
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val clientName: TextView = itemView.findViewById(R.id.tvClientName)
-        val consultationTime: TextView = itemView.findViewById(R.id.tvConsultationTime)
+        val consultationDateTime: TextView = itemView.findViewById(R.id.tvConsultationTime) // Rename this in layout
         val notes: TextView = itemView.findViewById(R.id.tvNotes)
     }
 
@@ -26,11 +25,19 @@ class ConsultationAdapter(private val consultationList: ArrayList<Consultation>)
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val consultation = consultationList[position]
         holder.clientName.text = "Client: ${consultation.clientName}"
-        holder.consultationTime.text = "Time: ${consultation.consultationTime}"
+        // Combine date and time in the display
+        holder.consultationDateTime.text = "Date: ${consultation.consultationDate} • Time: ${consultation.consultationTime}"
         holder.notes.text = "Notes: ${consultation.notes}"
     }
 
     override fun getItemCount(): Int {
         return consultationList.size
+    }
+
+    // Add this function to update the list
+    fun updateConsultations(newList: ArrayList<Consultation>) {
+        consultationList.clear()
+        consultationList.addAll(newList)
+        notifyDataSetChanged()
     }
 }

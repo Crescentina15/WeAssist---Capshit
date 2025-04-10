@@ -23,9 +23,10 @@ class ConsultationActivity : AppCompatActivity() {
         auth = FirebaseAuth.getInstance()
         val clientName = intent.getStringExtra("client_name") ?: "Unknown Client"
         val consultationTime = intent.getStringExtra("consultation_time") ?: "Unknown Time"
+        val consultationDate = intent.getStringExtra("date") ?: "Unknown Date" // Add this line
 
         findViewById<TextView>(R.id.client_name_title).text = "Consultation with $clientName"
-        findViewById<TextView>(R.id.consultation_time).text = consultationTime
+        findViewById<TextView>(R.id.consultation_time).text = "$consultationTime, $consultationDate" // Update this line
 
         val consultationNotes = findViewById<EditText>(R.id.consultation_notes)
         val btnSave = findViewById<Button>(R.id.btn_save_consultation)
@@ -45,6 +46,7 @@ class ConsultationActivity : AppCompatActivity() {
             val consultationData = mapOf(
                 "clientName" to clientName,
                 "consultationTime" to consultationTime,
+                "consultationDate" to consultationDate, // Add this line
                 "notes" to notes,
                 "lawyerId" to lawyerId
             )
