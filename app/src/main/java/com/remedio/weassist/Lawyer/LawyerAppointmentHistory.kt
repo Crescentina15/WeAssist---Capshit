@@ -19,7 +19,6 @@ import com.remedio.weassist.Models.ConsultationAdapter
 import com.remedio.weassist.R
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 class LawyerAppointmentHistory : Fragment() {
 
@@ -54,6 +53,11 @@ class LawyerAppointmentHistory : Fragment() {
 
         // Set up swipe to delete
         setupSwipeToDelete()
+
+        // Set up edit functionality
+        adapter.onItemEdit = { consultation, newNotes, position ->
+            updateConsultationNotes(consultation, newNotes, position)
+        }
 
         // Show loading state initially
         showLoading()
@@ -118,6 +122,37 @@ class LawyerAppointmentHistory : Fragment() {
             override fun onCancelled(error: DatabaseError) {
                 // Handle error
                 Snackbar.make(recyclerView, "Failed to delete consultation", Snackbar.LENGTH_SHORT).show()
+            }
+        })
+    }
+
+    private fun updateConsultationNotes(consultation: Consultation, newNotes: String, position: Int) {
+        database = FirebaseDatabase.getInstance().reference.child("consultations")
+
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultationData = consultationSnapshot.getValue(Consultation::class.java)
+                        if (consultationData == consultation) {
+                            // Update the notes in Firebase
+                            consultationSnapshot.ref.child("notes").setValue(newNotes)
+                                .addOnSuccessListener {
+                                    // Update local list and UI
+                                    adapter.updateItem(position, newNotes)
+                                    Snackbar.make(recyclerView, "Notes updated successfully", Snackbar.LENGTH_SHORT).show()
+                                }
+                                .addOnFailureListener {
+                                    Snackbar.make(recyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
+                                }
+                            return
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Snackbar.make(recyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
             }
         })
     }
