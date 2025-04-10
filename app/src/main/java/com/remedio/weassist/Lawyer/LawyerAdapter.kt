@@ -20,9 +20,7 @@ class LawyerAdapter(
         val nameTextView: TextView = itemView.findViewById(R.id.lawyer_name)
         val specializationTextView: TextView = itemView.findViewById(R.id.lawyer_specialization)
         val profileImageView: ImageView = itemView.findViewById(R.id.lawyer_image)
-
-        // Only for top lawyers
-        val ratingsTextView: TextView? = if (isTopLawyer) itemView.findViewById(R.id.lawyer_ratings) else null
+        val ratingsTextView: TextView? = itemView.findViewById(R.id.lawyer_ratings) // Changed this line
 
         // Only for regular list
         val locationTextView: TextView? = if (!isTopLawyer) itemView.findViewById(R.id.lawyer_location) else null
@@ -36,23 +34,9 @@ class LawyerAdapter(
     }
 
     override fun onBindViewHolder(holder: LawyerViewHolder, position: Int) {
-
-
         val lawyer = lawyersList[position]
         holder.nameTextView.text = lawyer.name
         holder.specializationTextView.text = lawyer.specialization
-
-
-        if (isTopLawyer) {
-            // Format average rating to 1 decimal place
-            val averageRating = lawyer.averageRating ?: 0.0
-            holder.ratingsTextView?.text = "%.1f".format(averageRating)
-        } else {
-            holder.locationTextView?.text = "Location: ${lawyer.location}"
-            holder.firmTextView?.text = "Law Firm: ${lawyer.lawFirm}"
-            // Show actual rate if available
-            holder.ratingsTextView?.text = "Rate: ${lawyer.rate ?: "Not rated"}"
-        }
 
         // Load profile image
         if (!lawyer.profileImageUrl.isNullOrEmpty()) {
@@ -63,6 +47,23 @@ class LawyerAdapter(
                 .into(holder.profileImageView)
         } else {
             holder.profileImageView.setImageResource(R.drawable.profile)
+        }
+
+        if (isTopLawyer) {
+            // For top lawyers, show just the rating number
+            val averageRating = lawyer.averageRating ?: 0.0
+            holder.ratingsTextView?.text = "%.1f".format(averageRating)
+        } else {
+            // For regular list items
+            holder.locationTextView?.text = "📍 ${lawyer.location}"
+            holder.firmTextView?.text = "🏢 ${lawyer.lawFirm}"
+
+            // Show star rating with averageRating if available, otherwise show "Not rated"
+            holder.ratingsTextView?.text = when {
+                lawyer.averageRating != null -> "⭐ ${"%.1f".format(lawyer.averageRating)}"
+                !lawyer.rate.isNullOrEmpty() -> "Rate: ${lawyer.rate}" // Fallback to rate if averageRating is null
+                else -> "⭐ Not rated"
+            }
         }
 
         holder.itemView.setOnClickListener {

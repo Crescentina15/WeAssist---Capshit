@@ -72,7 +72,7 @@
             android:id="@+id/firm_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-            android:src="@android:drawable/ic_menu_mylocation"
+
             app:tint="#757575"
             android:layout_marginTop="12dp"
             app:layout_constraintStart_toStartOf="parent"
@@ -90,7 +90,7 @@
             app:layout_constraintStart_toEndOf="@id/firm_icon"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/firm_icon"
-            app:layout_constraintBottom_toBottomOf="@id/firm_icon"
+            app:layout_constraintTop_toBottomOf="@id/separator"
             tools:text="Law Firm: WeAssist" />
 
         <!-- Location with Icon -->
@@ -98,7 +98,7 @@
             android:id="@+id/location_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-            android:src="@android:drawable/ic_menu_compass"
+
             app:tint="#757575"
             android:layout_marginTop="8dp"
             app:layout_constraintStart_toStartOf="parent"
@@ -124,7 +124,7 @@
             android:id="@+id/ratings_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-            android:src="@android:drawable/btn_star"
+
             app:tint="#FFC107"
             android:layout_marginTop="8dp"
             app:layout_constraintStart_toStartOf="parent"

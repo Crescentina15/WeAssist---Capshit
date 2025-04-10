@@ -71,12 +71,17 @@ class LawyersListActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(applicationContext, "Failed to load firm data.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, "Failed to load firm data.", Toast.LENGTH_SHORT)
+                    .show()
             }
         })
     }
 
-    private fun loadLawyersWithFirmLocations(specialization: String?, lawFirm: String?, firmLocationMap: Map<String, String>) {
+    private fun loadLawyersWithFirmLocations(
+        specialization: String?,
+        lawFirm: String?,
+        firmLocationMap: Map<String, String>
+    ) {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val tempLawyerList = ArrayList<Lawyer>()
@@ -92,6 +97,7 @@ class LawyersListActivity : AppCompatActivity() {
                             email = contactData["email"]?.toString() ?: "",
                             address = contactData["address"]?.toString() ?: ""
                         )
+
                         is String -> Contact(phone = contactData)
                         else -> Contact()
                     }
@@ -106,6 +112,16 @@ class LawyersListActivity : AppCompatActivity() {
                         0
                     }
 
+                    val averageRating = lawyerData["averageRating"]?.let {
+                        when (it) {
+                            is Double -> it
+                            is Long -> it.toDouble()
+                            is Float -> it.toDouble()
+                            is String -> it.toDoubleOrNull()
+                            else -> null
+                        }
+                    }
+
                     val lawyer = Lawyer(
                         id = lawyerId,
                         name = lawyerData["name"]?.toString() ?: "",
@@ -116,6 +132,7 @@ class LawyersListActivity : AppCompatActivity() {
                         profileImageUrl = lawyerData["profileImageUrl"]?.toString(),
                         location = firmLocation,
                         rate = ratings.toString(), // Store as string but sort numerically
+                        averageRating = averageRating, // Add averageRating here
                         contact = contact
                     )
 
@@ -126,10 +143,11 @@ class LawyersListActivity : AppCompatActivity() {
                     }
                 }
 
-                // Sort lawyers by ratings in descending order (highest first)
+                // Sort lawyers by averageRating in descending order (highest first)
+                // If averageRating is null, treat it as 0.0
                 lawyerList.clear()
                 lawyerList.addAll(tempLawyerList.sortedByDescending {
-                    it.rate?.toIntOrNull() ?: 0
+                    it.averageRating ?: 0.0
                 })
 
                 lawyerAdapter = LawyerAdapter(
@@ -142,9 +160,21 @@ class LawyersListActivity : AppCompatActivity() {
                             startActivity(intent)
                         } else {
                             val intent = when {
-                                fromManageAvailability -> Intent(context, AddAvailabilityActivity::class.java)
-                                fromAddBackgroundActivity -> Intent(context, AddBackgroundActivity::class.java)
-                                fromAddBalanceActivity -> Intent(context, AddBalanceActivity::class.java)
+                                fromManageAvailability -> Intent(
+                                    context,
+                                    AddAvailabilityActivity::class.java
+                                )
+
+                                fromAddBackgroundActivity -> Intent(
+                                    context,
+                                    AddBackgroundActivity::class.java
+                                )
+
+                                fromAddBalanceActivity -> Intent(
+                                    context,
+                                    AddBalanceActivity::class.java
+                                )
+
                                 else -> Intent(context, SetAppointmentActivity::class.java)
                             }
                             intent.putExtra("LAWYER_ID", selectedLawyer.id)
@@ -161,7 +191,8 @@ class LawyersListActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT)
+                    .show()
             }
         })
     }
