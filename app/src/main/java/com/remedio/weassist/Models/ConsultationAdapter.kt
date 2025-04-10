@@ -15,6 +15,7 @@ class ConsultationAdapter(private val consultationList: ArrayList<Consultation>)
 
     var onItemDelete: ((Consultation, Int) -> Unit)? = null
     var onItemEdit: ((Consultation, String, Int) -> Unit)? = null
+    var onItemDetailsClick: ((Consultation) -> Unit)? = null
 
     class ViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val clientName: TextView = itemView.findViewById(R.id.tvClientName)
@@ -40,9 +41,8 @@ class ConsultationAdapter(private val consultationList: ArrayList<Consultation>)
             showEditDialog(holder.itemView.context, consultation, position)
         }
 
-        // Keep your existing details button functionality
         holder.detailsButton.setOnClickListener {
-            // Add your details button logic here
+            onItemDetailsClick?.invoke(consultation)
         }
     }
 

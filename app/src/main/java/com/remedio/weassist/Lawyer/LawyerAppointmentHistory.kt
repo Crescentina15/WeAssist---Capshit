@@ -6,6 +6,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -59,12 +61,37 @@ class LawyerAppointmentHistory : Fragment() {
             updateConsultationNotes(consultation, newNotes, position)
         }
 
+
+        // Set up details button click listener
+        adapter.onItemDetailsClick = { consultation ->
+            showConsultationDetails(consultation)
+        }
+
         // Show loading state initially
         showLoading()
 
         loadConsultations()
 
         return view
+    }
+
+    private fun showConsultationDetails(consultation: Consultation) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_consultation_details, null)
+
+        // Set the consultation details to the dialog views
+        dialogView.findViewById<TextView>(R.id.tvClientName).text = "Client: ${consultation.clientName}"
+        dialogView.findViewById<TextView>(R.id.tvConsultationDate).text = "Date: ${consultation.consultationDate}"
+        dialogView.findViewById<TextView>(R.id.tvConsultationTime).text = "Time: ${consultation.consultationTime}"
+        dialogView.findViewById<TextView>(R.id.tvNotes).text = "Notes: ${consultation.notes}"
+
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Consultation Details")
+            .setView(dialogView)
+            .setPositiveButton("Close") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     private fun setupSwipeToDelete() {
