@@ -7,9 +7,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.progressindicator.CircularProgressIndicator
+import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Consultation
@@ -47,12 +49,74 @@ class LawyerAppointmentHistory : Fragment() {
         adapter = ConsultationAdapter(consultationList)
         recyclerView.adapter = adapter
 
+        // Set up swipe to delete
+        setupSwipeToDelete()
+
         // Show loading state initially
         showLoading()
 
         loadConsultations()
 
         return view
+    }
+
+    private fun setupSwipeToDelete() {
+        val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT
+        ) {
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                adapter.deleteItem(position)
+
+                // Show undo snackbar
+                Snackbar.make(recyclerView, "Consultation deleted", Snackbar.LENGTH_LONG)
+                    .setAction("UNDO") {
+                        // Undo the deletion by reloading the data from Firebase
+                        loadConsultations()
+                    }
+                    .show()
+            }
+        }
+
+        val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
+        itemTouchHelper.attachToRecyclerView(recyclerView)
+
+        // Handle the actual deletion from Firebase when confirmed
+        adapter.onItemDelete = { consultation, position ->
+            deleteConsultationFromFirebase(consultation)
+        }
+    }
+
+    private fun deleteConsultationFromFirebase(consultation: Consultation) {
+        database = FirebaseDatabase.getInstance().reference.child("consultations")
+
+        // Find and remove the consultation from Firebase
+        database.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultationData = consultationSnapshot.getValue(Consultation::class.java)
+                        if (consultationData == consultation) {
+                            consultationSnapshot.ref.removeValue()
+                            break
+                        }
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // Handle error
+                Snackbar.make(recyclerView, "Failed to delete consultation", Snackbar.LENGTH_SHORT).show()
+            }
+        })
     }
 
     private fun showLoading() {
