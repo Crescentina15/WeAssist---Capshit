@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.auth.FirebaseAuth
@@ -78,7 +79,14 @@ class RegisterSelection : AppCompatActivity() {
                     }
                 }
         }
+        val myTextView = findViewById<TextView>(R.id.loginPrompt)
+
+        myTextView.setOnClickListener {
+            val intent = Intent(this, Login::class.java)
+            startActivity(intent)
+        }
     }
+
 
     private fun saveUserData(userId: String, username: String, firstName: String, lastName: String, location: String, email: String, phone: String) {
         val user = User(userId, username, firstName, lastName, location, email, phone)
