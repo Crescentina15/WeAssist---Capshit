@@ -139,11 +139,20 @@ class SecretaryAppointmentFragment : Fragment() {
                     // Restore the appointment in Firebase
                     restoreAppointment(deletedAppointment)
 
-                    // Re-add to list at the same position
-                    appointmentList.add(position, deletedAppointment)
-                    adapter.notifyItemInserted(position)
+                    // Re-add to list at the correct position based on status
+                    val newPosition = when (deletedAppointment.status?.lowercase()) {
+                        "pending" -> 0
+                        "accepted" -> {
+                            val firstNonPending = appointmentList.indexOfFirst {
+                                it.status?.lowercase() != "pending"
+                            }
+                            if (firstNonPending == -1) appointmentList.size else firstNonPending
+                        }
+                        else -> appointmentList.size
+                    }
 
-                    // Update UI state
+                    appointmentList.add(newPosition, deletedAppointment)
+                    adapter.notifyItemInserted(newPosition)
                     updateUiState()
                 }
 
@@ -195,17 +204,13 @@ class SecretaryAppointmentFragment : Fragment() {
     private fun removeAppointment(appointment: Appointment) {
         val appointmentRef = database.child("appointments").child(appointment.appointmentId)
 
-        // Optionally, you can move it to a "deletedAppointments" node instead of deleting completely
-        // For audit purposes and easy restoration
         appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
-                    // First copy to "deletedAppointments"
                     database.child("deletedAppointments")
                         .child(appointment.appointmentId)
                         .setValue(snapshot.value)
                         .addOnSuccessListener {
-                            // Then delete from main appointments
                             appointmentRef.removeValue()
                                 .addOnSuccessListener {
                                     Log.d("AppointmentRemoval", "Appointment successfully removed: ${appointment.appointmentId}")
@@ -224,17 +229,14 @@ class SecretaryAppointmentFragment : Fragment() {
     }
 
     private fun restoreAppointment(appointment: Appointment) {
-        // Get the appointment from deletedAppointments
         database.child("deletedAppointments").child(appointment.appointmentId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
-                        // Restore to appointments
                         database.child("appointments")
                             .child(appointment.appointmentId)
                             .setValue(snapshot.value)
                             .addOnSuccessListener {
-                                // Remove from deletedAppointments
                                 database.child("deletedAppointments")
                                     .child(appointment.appointmentId)
                                     .removeValue()
@@ -254,7 +256,7 @@ class SecretaryAppointmentFragment : Fragment() {
     }
 
     private fun fetchSecretaryLawFirm(secretaryId: String) {
-        showLoading() // Show loading indicator while fetching data
+        showLoading()
         val secretaryRef = database.child("secretaries").child(secretaryId)
         secretaryRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -309,10 +311,8 @@ class SecretaryAppointmentFragment : Fragment() {
         val lawyersRef = database.child("lawyers")
         Log.d("SecretaryCheck", "Fetching appointments for lawyerIds: $lawyerIds")
 
-        // First, fetch all lawyer details to get their names and profile images
         lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(lawyersSnapshot: DataSnapshot) {
-                // Create a map of lawyerId to lawyerName and lawyerProfileImage
                 val lawyerDetails = mutableMapOf<String, Pair<String, String?>>()
                 for (lawyerSnapshot in lawyersSnapshot.children) {
                     val lawyerId = lawyerSnapshot.key ?: continue
@@ -321,17 +321,19 @@ class SecretaryAppointmentFragment : Fragment() {
                     lawyerDetails[lawyerId] = Pair(lawyerName, lawyerProfileImage)
                 }
 
-                // Now fetch appointments
                 appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         appointmentList.clear()
                         if (snapshot.exists()) {
+                            val pendingAppointments = mutableListOf<Appointment>()
+                            val acceptedAppointments = mutableListOf<Appointment>()
+                            val forwardedAppointments = mutableListOf<Appointment>()
+
                             for (child in snapshot.children) {
                                 val appointment = child.getValue(Appointment::class.java)
                                 val clientId = child.child("clientId").getValue(String::class.java) ?: "Unknown"
 
                                 if (appointment != null && appointment.lawyerId in lawyerIds) {
-                                    // Create a new Appointment object with updated values
                                     val updatedAppointment = appointment.copy(
                                         appointmentId = child.key ?: "Unknown",
                                         clientId = clientId,
@@ -339,28 +341,30 @@ class SecretaryAppointmentFragment : Fragment() {
                                         lawyerProfileImage = lawyerDetails[appointment.lawyerId]?.second
                                     )
 
-                                    Log.d("SecretaryCheck",
-                                        "Adding appointment: ${updatedAppointment.fullName}, " +
-                                                "lawyerId=${updatedAppointment.lawyerId}, " +
-                                                "lawyerName=${updatedAppointment.lawyerName}, " +
-                                                "clientId=${updatedAppointment.clientId}")
-
-                                    appointmentList.add(updatedAppointment)
+                                    when (updatedAppointment.status?.lowercase()) {
+                                        "pending" -> pendingAppointments.add(updatedAppointment)
+                                        "accepted" -> acceptedAppointments.add(updatedAppointment)
+                                        else -> forwardedAppointments.add(updatedAppointment)
+                                    }
                                 }
                             }
 
-                            // Update the adapter with the new data
+                            // Combine in order: pending -> accepted -> forwarded
+                            appointmentList.addAll(pendingAppointments)
+                            appointmentList.addAll(acceptedAppointments)
+                            appointmentList.addAll(forwardedAppointments)
+
                             adapter.updateAppointments(appointmentList)
-                            updateUiState() // Update UI based on appointment list
+                            updateUiState()
                         } else {
                             Log.d("SecretaryCheck", "No appointments found in DB.")
-                            showEmptyState() // Show empty state when no appointments are found
+                            showEmptyState()
                         }
                     }
 
                     override fun onCancelled(error: DatabaseError) {
                         Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
-                        showEmptyState() // Show empty state on error
+                        showEmptyState()
                     }
                 })
             }
@@ -376,60 +380,109 @@ class SecretaryAppointmentFragment : Fragment() {
         val appointmentsRef = database.child("appointments")
         appointmentsRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                // Handle new appointments
                 val appointment = snapshot.getValue(Appointment::class.java)
                 if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
-                    appointmentList.add(appointment)
-                    adapter.updateAppointments(appointmentList)
-                    updateUiState() // Update UI state after adding appointment
+                    appointment.appointmentId = snapshot.key ?: "Unknown"
+
+                    val lawyersRef = database.child("lawyers").child(appointment.lawyerId)
+                    lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
+                            val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").getValue(String::class.java)
+
+                            val updatedAppointment = appointment.copy(
+                                lawyerName = lawyerName,
+                                lawyerProfileImage = lawyerProfileImage
+                            )
+
+                            val position = calculatePositionForStatus(updatedAppointment.status)
+                            appointmentList.add(position, updatedAppointment)
+                            adapter.notifyItemInserted(position)
+                            updateUiState()
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("SecretaryCheck", "Error fetching lawyer details: ${error.message}")
+                        }
+                    })
                 }
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                // Handle updated appointments
                 val appointment = snapshot.getValue(Appointment::class.java)
                 if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
-                    val index = appointmentList.indexOfFirst { it.appointmentId == appointment.appointmentId }
-                    if (index != -1) {
-                        appointmentList[index] = appointment
-                        adapter.updateAppointments(appointmentList)
-                        updateUiState() // Update UI state after updating appointment
-                    }
+                    appointment.appointmentId = snapshot.key ?: "Unknown"
+
+                    val lawyersRef = database.child("lawyers").child(appointment.lawyerId)
+                    lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
+                            val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").getValue(String::class.java)
+
+                            val updatedAppointment = appointment.copy(
+                                lawyerName = lawyerName,
+                                lawyerProfileImage = lawyerProfileImage
+                            )
+
+                            val oldPosition = appointmentList.indexOfFirst {
+                                it.appointmentId == updatedAppointment.appointmentId
+                            }
+
+                            if (oldPosition != -1) {
+                                appointmentList.removeAt(oldPosition)
+                                adapter.notifyItemRemoved(oldPosition)
+
+                                val newPosition = calculatePositionForStatus(updatedAppointment.status)
+                                appointmentList.add(newPosition, updatedAppointment)
+                                adapter.notifyItemInserted(newPosition)
+                                updateUiState()
+                            }
+                        }
+
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("SecretaryCheck", "Error fetching lawyer details: ${error.message}")
+                        }
+                    })
                 }
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                // Handle removed appointments
                 val appointment = snapshot.getValue(Appointment::class.java)
                 if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown" // Set the ID
+                    appointment.appointmentId = snapshot.key ?: "Unknown"
                     appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
                     adapter.updateAppointments(appointmentList)
-                    updateUiState() // Update UI state after removing appointment
+                    updateUiState()
                 }
             }
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
-                // Handle moved appointments (if needed)
+                // Not implemented
             }
 
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryCheck", "Error listening for appointment changes: ${error.message}")
-                updateUiState() // Update UI state on error
+                updateUiState()
             }
         })
     }
 
+    private fun calculatePositionForStatus(status: String?): Int {
+        return when (status?.lowercase()) {
+            "pending" -> 0
+            "accepted" -> {
+                val firstNonPending = appointmentList.indexOfFirst {
+                    it.status?.lowercase() != "pending"
+                }
+                if (firstNonPending == -1) appointmentList.size else firstNonPending
+            }
+            else -> appointmentList.size
+        }
+    }
+
     private fun showAppointmentDetails(appointment: Appointment) {
-        // Create an intent to start the SecretaryAppointmentDetailsActivity
         val intent = Intent(requireContext(), SecretaryAppointmentDetailsActivity::class.java)
-
-        // Pass the appointment ID to the activity
         intent.putExtra("APPOINTMENT_ID", appointment.appointmentId)
-
-        // Start the activity
         startActivity(intent)
     }
 }
