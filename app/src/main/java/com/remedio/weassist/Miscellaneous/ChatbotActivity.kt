@@ -307,13 +307,16 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Geocode lawyer addresses to get coordinates
     private suspend fun geocodeLawyerAddresses() {
-        for (lawyerWithDistance in lawyersList) {
+        // Create a list to collect all updates we need to make
+        val updates = mutableListOf<Pair<Int, LawyerWithDistance>>()
+
+        // Iterate using indices to safely handle potential modifications
+        for (index in lawyersList.indices) {
+            val lawyerWithDistance = lawyersList[index]
             val lawyer = lawyerWithDistance.lawyer
 
             // Get the address to geocode
-            // First try the location field, then try to get address from law firm admin
             var address = lawyer.location
 
             if (address.isEmpty()) {
@@ -347,32 +350,63 @@ class ChatbotActivity : AppCompatActivity() {
             // Check cache first
             if (geocodeCache.containsKey(address)) {
                 val (lat, lng) = geocodeCache[address]!!
-                updateLawyerCoordinates(lawyer, lat, lng)
+                updates.add(index to createUpdatedLawyer(lawyerWithDistance, lat, lng))
                 continue
             }
 
             // Geocode the address
-            withContext(Dispatchers.IO) {
-                try {
-                    val results = geocoder.getFromLocationName(address, 1)
-                    if (results != null && results.isNotEmpty()) {
-                        val location = results[0]
-                        val latitude = location.latitude
-                        val longitude = location.longitude
-
-                        // Cache the result
-                        geocodeCache[address] = Pair(latitude, longitude)
-
-                        // Update lawyer coordinates
-                        updateLawyerCoordinates(lawyer, latitude, longitude)
-                    } else {
-                        Log.d("ChatbotActivity", "No geocoding results found for address: $address")
-                    }
-                } catch (e: IOException) {
-                    Log.e("ChatbotActivity", "Error geocoding address: ${e.message}")
+            try {
+                val results = withContext(Dispatchers.IO) {
+                    geocoder.getFromLocationName(address, 1)
                 }
+
+                if (results != null && results.isNotEmpty()) {
+                    val location = results[0]
+                    val latitude = location.latitude
+                    val longitude = location.longitude
+
+                    // Cache the result
+                    geocodeCache[address] = Pair(latitude, longitude)
+
+                    // Collect the update to apply later
+                    updates.add(index to createUpdatedLawyer(lawyerWithDistance, latitude, longitude))
+                } else {
+                    Log.d("ChatbotActivity", "No geocoding results found for address: $address")
+                }
+            } catch (e: IOException) {
+                Log.e("ChatbotActivity", "Error geocoding address: ${e.message}")
+            } catch (e: Exception) {
+                Log.e("ChatbotActivity", "Unexpected error during geocoding: ${e.message}")
             }
         }
+
+        // Apply all collected updates to the original list
+        updates.forEach { (index, updated) ->
+            lawyersList[index] = updated
+        }
+    }
+
+    private fun createUpdatedLawyer(original: LawyerWithDistance, lat: Double, lng: Double): LawyerWithDistance {
+        // Create updated lawyer with coordinates in location field
+        val updatedLawyer = original.lawyer.copy(location = "${original.lawyer.location} [$lat,$lng]")
+
+        // Calculate distance if we have user location
+        val distance = if (userLocation != null) {
+            calculateDistance(
+                userLocation!!.latitude, userLocation!!.longitude,
+                lat, lng
+            )
+        } else {
+            original.distance
+        }
+
+        // Format distance for display
+        val formattedDistance = when {
+            distance < 1.0 -> "${(distance * 1000).toInt()} m"
+            else -> "${String.format("%.1f", distance)} km"
+        }
+
+        return LawyerWithDistance(updatedLawyer, distance, formattedDistance)
     }
 
     // Helper to update lawyer coordinates and update distances
