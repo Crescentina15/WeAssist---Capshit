@@ -28,9 +28,6 @@ class ClientProfileFragment : Fragment() {
     private lateinit var emailTextView: TextView
     private lateinit var profileImageView: ImageView
     private lateinit var editProfileButton: LinearLayout
-    private lateinit var securityButton: LinearLayout
-    private lateinit var privacyButton: LinearLayout
-    private lateinit var reportProblemButton: LinearLayout
     private lateinit var logoutButton: LinearLayout
 
     private val PREFS_NAME = "LoginPrefs"
@@ -51,9 +48,6 @@ class ClientProfileFragment : Fragment() {
         emailTextView = view.findViewById(R.id.headerprofile)
         profileImageView = view.findViewById(R.id.profile_image)
         editProfileButton = view.findViewById(R.id.edit_profile)
-        securityButton = view.findViewById(R.id.security)
-        privacyButton = view.findViewById(R.id.privacy)
-        reportProblemButton = view.findViewById(R.id.report_problem)
         logoutButton = view.findViewById(R.id.log_out)
 
         return view
@@ -70,9 +64,6 @@ class ClientProfileFragment : Fragment() {
         }
 
         editProfileButton.setOnClickListener { openActivity(ClientEditProfileActivity::class.java) }
-        securityButton.setOnClickListener { openActivity(SecurityActivity::class.java) }
-        privacyButton.setOnClickListener { openActivity(PrivacyActivity::class.java) }
-        reportProblemButton.setOnClickListener { openActivity(ReportActivity::class.java) }
         logoutButton.setOnClickListener { logoutUser() }
     }
 

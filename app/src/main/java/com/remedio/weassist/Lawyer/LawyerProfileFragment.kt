@@ -25,8 +25,6 @@ class LawyerProfileFragment : Fragment() {
     private lateinit var auth: FirebaseAuth
     private lateinit var usernameTextView: TextView
     private lateinit var editProfileButton: LinearLayout
-    private lateinit var securityButton: LinearLayout
-    private lateinit var privacyButton: LinearLayout
     private lateinit var logoutButton: LinearLayout
     private lateinit var lawyerProfileImage: ImageView
     private var profileSection: View? = null
@@ -54,8 +52,6 @@ class LawyerProfileFragment : Fragment() {
         usernameTextView = view.findViewById(R.id.lawyer_name)
         lawyerProfileImage = view.findViewById(R.id.profile_image)
         editProfileButton = view.findViewById(R.id.lawyer_edit_profile)
-        securityButton = view.findViewById(R.id.lawyer_security)
-        privacyButton = view.findViewById(R.id.lawyer_privacy)
         logoutButton = view.findViewById(R.id.lawyer_log_out)
 
         return view
@@ -73,8 +69,6 @@ class LawyerProfileFragment : Fragment() {
         }
 
         editProfileButton.setOnClickListener { openActivity(LawyerEditProfileActivity::class.java) }
-        securityButton.setOnClickListener { openActivity(SecurityActivity::class.java) }
-        privacyButton.setOnClickListener { openActivity(PrivacyActivity::class.java) }
         logoutButton.setOnClickListener { logoutUser() }
     }
 
