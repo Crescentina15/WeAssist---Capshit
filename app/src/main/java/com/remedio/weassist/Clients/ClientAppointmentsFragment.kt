@@ -18,6 +18,9 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.Models.AppointmentAdapter
 import com.remedio.weassist.R
+import java.text.SimpleDateFormat
+import java.util.*
+import kotlin.collections.ArrayList
 
 class ClientAppointmentsFragment : Fragment() {
 
@@ -103,7 +106,7 @@ class ClientAppointmentsFragment : Fragment() {
 
                         for (child in snapshot.children) {
                             val appointment = child.getValue(Appointment::class.java)
-                            // Only process if status is "Accepted"
+                            // Only process if status is "Accepted" or "Forwarded"
                             if (appointment != null &&
                                 (appointment.status == "Accepted" || appointment.status == "Forwarded")) {
                                 // Store the appointment ID from Firebase
@@ -129,6 +132,7 @@ class ClientAppointmentsFragment : Fragment() {
                                                 // Check if all appointments are processed
                                                 processedAppointments++
                                                 if (processedAppointments >= totalAppointments) {
+                                                    sortAppointmentsByDateTime()
                                                     updateAdapter()
                                                     updateUiState()
                                                 }
@@ -138,6 +142,7 @@ class ClientAppointmentsFragment : Fragment() {
                                                 Log.e("ClientCheck", "Error fetching lawyer: ${error.message}")
                                                 processedAppointments++
                                                 if (processedAppointments >= totalAppointments) {
+                                                    sortAppointmentsByDateTime()
                                                     updateAdapter()
                                                     updateUiState()
                                                 }
@@ -147,6 +152,7 @@ class ClientAppointmentsFragment : Fragment() {
                                     appointmentList.add(appointment)
                                     processedAppointments++
                                     if (processedAppointments >= totalAppointments) {
+                                        sortAppointmentsByDateTime()
                                         updateAdapter()
                                         updateUiState()
                                     }
@@ -154,6 +160,7 @@ class ClientAppointmentsFragment : Fragment() {
                             } else {
                                 processedAppointments++
                                 if (processedAppointments >= totalAppointments) {
+                                    sortAppointmentsByDateTime()
                                     updateAdapter()
                                     updateUiState()
                                 }
@@ -171,6 +178,21 @@ class ClientAppointmentsFragment : Fragment() {
                     showEmptyState()
                 }
             })
+    }
+
+    private fun sortAppointmentsByDateTime() {
+        val dateTimeFormat = SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.getDefault())
+
+        appointmentList.sortWith(compareByDescending<Appointment> { appointment ->
+            try {
+                // Combine date and time for accurate sorting
+                val dateTimeString = "${appointment.date} ${appointment.time}"
+                dateTimeFormat.parse(dateTimeString)?.time ?: 0L
+            } catch (e: Exception) {
+                Log.e("SortError", "Error parsing date/time: ${e.message}")
+                0L
+            }
+        })
     }
 
     private fun updateAdapter() {
@@ -214,7 +236,6 @@ class ClientAppointmentsFragment : Fragment() {
             adapter.notifyDataSetChanged()
         }
     }
-
 
     private fun showAppointmentDetails(appointment: Appointment) {
         // Start the ClientAppointmentDetailsActivity
