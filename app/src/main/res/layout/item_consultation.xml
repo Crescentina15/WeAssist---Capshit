@@ -76,7 +76,9 @@
                     android:text="Notes"
                     android:textSize="14sp"
                     android:textColor="#212121"
-                    android:minHeight="60dp"/>
+                    android:minHeight="60dp"
+                    android:maxLines="3"
+                    android:ellipsize="end"/>
             </LinearLayout>
 
             <LinearLayout
