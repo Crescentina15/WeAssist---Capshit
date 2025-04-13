@@ -62,6 +62,9 @@ class ChatbotActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var scrollView: ScrollView
 
+    private val recentMessages = mutableListOf<String>()
+    private val MESSAGE_SIMILARITY_THRESHOLD = 0.7  // Adjust this value as needed
+
     private val apiKey = "AIzaSyALy2fnaMCisp6UQUWO-VzcxWggalSWXfk"  // Replace with your Google Gemini API key
     private lateinit var generativeModel: GenerativeModel
 
@@ -179,7 +182,62 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    private fun requestLocationPermission() {
+    private fun isDuplicateOrSimilarMessage(message: String): Boolean {
+        // Only check against the last few messages
+        val messagesToCheck = recentMessages.takeLast(3)
+
+        for (previousMessage in messagesToCheck) {
+            // Calculate similarity ratio using Levenshtein distance
+            val similarity = calculateSimilarity(previousMessage, message)
+            if (similarity > MESSAGE_SIMILARITY_THRESHOLD) {
+                return true
+            }
+        }
+        return false
+    }
+
+    // Add this helper method to calculate string similarity
+    private fun calculateSimilarity(s1: String, s2: String): Double {
+        if (s1.isEmpty() || s2.isEmpty()) return 0.0
+
+        // Calculate Levenshtein distance
+        val distance = levenshteinDistance(s1.lowercase(), s2.lowercase())
+
+        // Convert to similarity ratio (0.0 to 1.0)
+        val maxLength = maxOf(s1.length, s2.length)
+        return 1.0 - (distance.toDouble() / maxLength)
+    }
+
+    private fun levenshteinDistance(s1: String, s2: String): Int {
+        val m = s1.length
+        val n = s2.length
+        val dp = Array(m + 1) { IntArray(n + 1) }
+
+        for (i in 0..m) {
+            dp[i][0] = i
+        }
+
+        for (j in 0..n) {
+            dp[0][j] = j
+        }
+
+        for (i in 1..m) {
+            for (j in 1..n) {
+                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                dp[i][j] = minOf(
+                    dp[i - 1][j] + 1,     // Delete
+                    dp[i][j - 1] + 1,     // Insert
+                    dp[i - 1][j - 1] + cost  // Substitute
+                )
+            }
+        }
+
+        return dp[m][n]
+    }
+
+
+
+        private fun requestLocationPermission() {
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -706,8 +764,6 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun searchForLawyers(specialization: String) {
-        val searchingMessage = "Great! I'll search for $specialization lawyers near your location. One moment please..."
-        addAssistantMessage(searchingMessage)
 
         // Simulate search delay
         CoroutineScope(Dispatchers.IO).launch {
@@ -765,8 +821,7 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun showLawyersList() {
-        val listMessage = "Great! I'll open the full list of ${conversationState.intendedSpecialization} lawyers for you now."
-        addAssistantMessage(listMessage)
+
         progressBar.visibility = View.GONE
 
         // Launch the lawyers list activity
@@ -830,8 +885,25 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun addAssistantMessage(message: String) {
+
+        // Check if this message is too similar to recent messages
+        if (isDuplicateOrSimilarMessage(message)) {
+            Log.d("ChatbotActivity", "Prevented duplicate message: $message")
+            return
+        }
+
+        // Add to recent messages list
+        recentMessages.add(message)
+
+        // Keep only the last 5 messages to save memory
+        if (recentMessages.size > 5) {
+            recentMessages.removeAt(0)
+        }
+
         val fullMessage = "Legal Assistant: $message"
         val spannable = SpannableString(fullMessage)
+
+
 
         // Style the "Legal Assistant:" prefix
         spannable.setSpan(ForegroundColorSpan(ASSISTANT_PREFIX_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
