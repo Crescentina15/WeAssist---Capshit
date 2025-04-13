@@ -3,10 +3,16 @@ package com.remedio.weassist.Miscellaneous
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.location.Address
 import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.style.BackgroundColorSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.util.Log
 import android.view.View
 import android.widget.Button
@@ -17,6 +23,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import android.graphics.Typeface
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.ai.client.generativeai.GenerativeModel
@@ -44,6 +51,8 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+
+
 class ChatbotActivity : AppCompatActivity() {
 
     private lateinit var chatTextView: TextView
@@ -65,6 +74,11 @@ class ChatbotActivity : AppCompatActivity() {
     // Track conversation state
     private var conversationHistory = mutableListOf<Map<String, String>>()
     private var conversationState = ConversationState()
+
+    private val USER_PREFIX_COLOR = Color.parseColor("#2eb4ea")  // or any color you prefer
+    private val USER_BACKGROUND_COLOR = Color.argb(30, 0, 0, 255)
+    private val ASSISTANT_PREFIX_COLOR = Color.parseColor("#008000")
+    private val ASSISTANT_BACKGROUND_COLOR = Color.argb(30, 0, 255, 0)// or any color you prefer
 
     // Lawyer data - fetched from Firebase
     private val lawyersList = ArrayList<LawyerWithDistance>()
@@ -128,8 +142,17 @@ class ChatbotActivity : AppCompatActivity() {
         sendButton.setOnClickListener {
             val userMessage = userInputEditText.text.toString().trim()
             if (userMessage.isNotEmpty()) {
-                // Add user message to chat
-                chatTextView.append("\nYou: $userMessage")
+                val fullMessage = "You: $userMessage"
+                val spannable = SpannableString(fullMessage)
+
+                // Style the "You:" prefix
+                spannable.setSpan(ForegroundColorSpan(USER_PREFIX_COLOR), 0, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                spannable.setSpan(BackgroundColorSpan(USER_BACKGROUND_COLOR), 0, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+                spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, 4, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+                chatTextView.append("\n")
+                chatTextView.append(spannable)
+
 
                 // Add to conversation history
                 conversationHistory.add(mapOf("role" to "user", "content" to userMessage))
@@ -807,7 +830,16 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun addAssistantMessage(message: String) {
-        chatTextView.append("\nLegal Assistant: $message")
+        val fullMessage = "Legal Assistant: $message"
+        val spannable = SpannableString(fullMessage)
+
+        // Style the "Legal Assistant:" prefix
+        spannable.setSpan(ForegroundColorSpan(ASSISTANT_PREFIX_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        spannable.setSpan(BackgroundColorSpan(ASSISTANT_BACKGROUND_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+        chatTextView.append("\n")
+        chatTextView.append(spannable)
 
         // Add to conversation history
         conversationHistory.add(mapOf("role" to "assistant", "content" to message))

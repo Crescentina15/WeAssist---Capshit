@@ -4,101 +4,134 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="#F5F5F5"
     tools:context=".Miscellaneous.ChatbotActivity">
 
+    <!-- Header with solid background -->
     <LinearLayout
         android:id="@+id/header"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:background="#D9D9D9"
-        android:padding="16dp"
+        android:background="@android:color/holo_blue_light"
+        android:elevation="4dp"
         android:orientation="horizontal"
-        app:layout_constraintTop_toTopOf="parent"
+        android:padding="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toTopOf="parent">
 
         <ImageButton
             android:id="@+id/backButton"
             android:layout_width="24dp"
             android:layout_height="30dp"
-            android:src="@drawable/arrow_back"
-            android:background="@null"
+            android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Back button"
-            app:tint="@android:color/black" />
+            android:src="@android:drawable/ic_menu_revert"
+            app:tint="@android:color/white" />
 
         <TextView
             android:id="@+id/header_title"
             android:layout_width="wrap_content"
             android:layout_height="30dp"
             android:layout_marginStart="10dp"
-            android:text="Assistance Aid"
-            android:textColor="@android:color/black"
+            android:gravity="center_vertical"
+            android:text="Legal Assistant"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
-            android:fontFamily="@font/vesper_libre_bold" />
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <ScrollView
-        android:id="@+id/scrollView"
+    <!-- Chat area with styled background -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/chatCard"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:scrollbars="vertical"
-        android:fillViewport="true"
-        app:layout_constraintTop_toBottomOf="@id/header"
+        android:layout_margin="8dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
         app:layout_constraintBottom_toTopOf="@id/inputContainer"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintTop_toBottomOf="@id/header">
 
-        <TextView
-            android:id="@+id/chatTextView"
+        <ScrollView
+            android:id="@+id/scrollView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="16dp"
-            android:text="Welcome to WeAssist Chatbot!"
-            android:textSize="16sp" />
-    </ScrollView>
+            android:layout_height="match_parent"
+            android:background="#F5F5F5"
+            android:fillViewport="true"
+            android:scrollbars="vertical">
 
+            <TextView
+                android:id="@+id/chatTextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingExtra="4dp"
+                android:padding="16dp"
+                android:text="Welcome to WeAssist Chatbot!"
+                android:textColor="#333333"
+                android:textIsSelectable="true"
+                android:textSize="16sp" />
+        </ScrollView>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Progress indicator centered -->
     <ProgressBar
         android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleSmall"
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_margin="16dp"
+        android:indeterminateTint="@android:color/holo_blue_light"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@id/inputContainer"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
-    <LinearLayout
+    <!-- Input area with card appearance -->
+    <androidx.cardview.widget.CardView
         android:id="@+id/inputContainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:background="#FFFFFF"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="4dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
 
-        <EditText
-            android:id="@+id/userInputEditText"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="8dp"
-            android:hint="Enter your Problem Here"
-            android:padding="12dp"
-            android:minHeight="45dp"
-            android:background="@drawable/bg_inputfields"
-            android:textColor="@android:color/black"
-            android:textColorHint="@android:color/darker_gray"
-            android:inputType="textMultiLine"
-            android:maxLines="4" />
+            android:background="@android:color/white"
+            android:orientation="horizontal"
+            android:padding="8dp">
 
-        <Button
-            android:id="@+id/sendButton"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@drawable/baseline_send_24"
-            android:contentDescription="Send button" />
-    </LinearLayout>
+            <EditText
+                android:id="@+id/userInputEditText"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="Enter your Problem Here"
+                android:inputType="textMultiLine"
+                android:maxLines="4"
+                android:minHeight="45dp"
+                android:padding="12dp"
+                android:textColor="@android:color/black"
+                android:textColorHint="@android:color/darker_gray" />
+
+            <Button
+                android:id="@+id/sendButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@android:drawable/ic_menu_send"
+                android:backgroundTint="@android:color/holo_blue_light"
+                android:contentDescription="Send button" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
