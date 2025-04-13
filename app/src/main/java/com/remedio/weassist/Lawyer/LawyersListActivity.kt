@@ -33,6 +33,11 @@ class LawyersListActivity : AppCompatActivity() {
         val specialization = intent.getStringExtra("SPECIALIZATION")
         val lawFirm = intent.getStringExtra("LAW_FIRM")
 
+        // Get user location if available from intent
+        val userLatitude = intent.getDoubleExtra("USER_LATITUDE", 0.0)
+        val userLongitude = intent.getDoubleExtra("USER_LONGITUDE", 0.0)
+        val hasLocation = userLatitude != 0.0 && userLongitude != 0.0
+
         // Retrieve intent flags
         fromManageAvailability = intent.getBooleanExtra("FROM_MANAGE_AVAILABILITY", false)
         fromAddBackgroundActivity = intent.getBooleanExtra("FROM_ADD_BACKGROUND", false)
@@ -41,12 +46,19 @@ class LawyersListActivity : AppCompatActivity() {
         recyclerView = findViewById(R.id.lawyerlist)
         recyclerView.layoutManager = LinearLayoutManager(this)
 
+        // Initialize empty adapter first to show loading state
+        lawyerAdapter = LawyerAdapter(
+            lawyersList = emptyList(),
+            onLawyerClick = { /* Will be replaced */ }
+        )
+        recyclerView.adapter = lawyerAdapter
+
         // Initialize Firebase
         databaseReference = FirebaseDatabase.getInstance().getReference("lawyers")
         lawFirmAdminReference = FirebaseDatabase.getInstance().getReference("law_firm_admin")
 
         // Load lawyers from Firebase with firm locations
-        loadLawyers(specialization, lawFirm)
+        loadLawyers(specialization, lawFirm, userLatitude, userLongitude, hasLocation)
 
         // Handle back button click
         findViewById<ImageButton>(R.id.back_button).setOnClickListener {
@@ -54,7 +66,13 @@ class LawyersListActivity : AppCompatActivity() {
         }
     }
 
-    private fun loadLawyers(specialization: String?, lawFirm: String?) {
+    private fun loadLawyers(
+        specialization: String?,
+        lawFirm: String?,
+        userLatitude: Double = 0.0,
+        userLongitude: Double = 0.0,
+        hasLocation: Boolean = false
+    ) {
         lawFirmAdminReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(adminSnapshot: DataSnapshot) {
                 val firmLocationMap = HashMap<String, String>()
@@ -67,7 +85,7 @@ class LawyersListActivity : AppCompatActivity() {
                     firmLocationMap[firmName] = officeAddress
                 }
 
-                loadLawyersWithFirmLocations(specialization, lawFirm, firmLocationMap)
+                loadLawyersWithFirmLocations(specialization, lawFirm, firmLocationMap, userLatitude, userLongitude, hasLocation)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -80,7 +98,10 @@ class LawyersListActivity : AppCompatActivity() {
     private fun loadLawyersWithFirmLocations(
         specialization: String?,
         lawFirm: String?,
-        firmLocationMap: Map<String, String>
+        firmLocationMap: Map<String, String>,
+        userLatitude: Double = 0.0,
+        userLongitude: Double = 0.0,
+        hasLocation: Boolean = false
     ) {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
@@ -122,6 +143,25 @@ class LawyersListActivity : AppCompatActivity() {
                         }
                     }
 
+                    // Extract coordinates from location if available (format: "address [lat,lng]")
+                    val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
+                    val locationCoords = coordsRegex.find(firmLocation)
+                    var distance: Double? = null
+
+                    // Calculate distance if user location is available and lawyer location has coordinates
+                    if (hasLocation && locationCoords != null) {
+                        val (latStr, lngStr) = locationCoords.destructured
+                        try {
+                            val lat = latStr.toDouble()
+                            val lng = lngStr.toDouble()
+
+                            // Calculate distance using Haversine formula
+                            distance = calculateDistance(userLatitude, userLongitude, lat, lng)
+                        } catch (e: NumberFormatException) {
+                            // Skip distance calculation if conversion fails
+                        }
+                    }
+
                     val lawyer = Lawyer(
                         id = lawyerId,
                         name = lawyerData["name"]?.toString() ?: "",
@@ -131,9 +171,10 @@ class LawyersListActivity : AppCompatActivity() {
                         experience = lawyerData["experience"]?.toString() ?: "",
                         profileImageUrl = lawyerData["profileImageUrl"]?.toString(),
                         location = firmLocation,
-                        rate = ratings.toString(), // Store as string but sort numerically
-                        averageRating = averageRating, // Add averageRating here
-                        contact = contact
+                        rate = ratings.toString(),
+                        averageRating = averageRating,
+                        contact = contact,
+                        distance = distance
                     )
 
                     if ((specialization == null || lawyer.specialization == specialization) &&
@@ -143,12 +184,22 @@ class LawyersListActivity : AppCompatActivity() {
                     }
                 }
 
-                // Sort lawyers by averageRating in descending order (highest first)
-                // If averageRating is null, treat it as 0.0
+                // Sort lawyers based on distance if user location is available, otherwise by rating
                 lawyerList.clear()
-                lawyerList.addAll(tempLawyerList.sortedByDescending {
-                    it.averageRating ?: 0.0
-                })
+                if (hasLocation) {
+                    // Sort by distance first, then by rating for lawyers without distance
+                    lawyerList.addAll(tempLawyerList.sortedWith(compareBy(
+                        // Sort by distance (null distances come last)
+                        { it.distance ?: Double.MAX_VALUE },
+                        // Then by rating (higher rating first)
+                        { -(it.averageRating ?: 0.0) }
+                    )))
+                } else {
+                    // Sort by rating only (if no location available)
+                    lawyerList.addAll(tempLawyerList.sortedByDescending {
+                        it.averageRating ?: 0.0
+                    })
+                }
 
                 lawyerAdapter = LawyerAdapter(
                     lawyersList = lawyerList,
@@ -184,10 +235,18 @@ class LawyersListActivity : AppCompatActivity() {
                             startActivity(intent)
                         }
                     }
-                    // isTopLawyer is not passed here (defaults to false)
                 )
 
                 recyclerView.adapter = lawyerAdapter
+
+                // Check if list is empty
+                if (lawyerList.isEmpty()) {
+                    Toast.makeText(
+                        applicationContext,
+                        "No ${specialization ?: "matching"} lawyers found",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -195,5 +254,24 @@ class LawyersListActivity : AppCompatActivity() {
                     .show()
             }
         })
+    }
+
+    // Calculate distance using Haversine formula
+    private fun calculateDistance(
+        lat1: Double, lon1: Double,
+        lat2: Double, lon2: Double
+    ): Double {
+        val radius = 6371.0 // Earth radius in kilometers
+
+        val latDistance = Math.toRadians(lat2 - lat1)
+        val lonDistance = Math.toRadians(lon2 - lon1)
+
+        val a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2)
+
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+        return radius * c
     }
 }

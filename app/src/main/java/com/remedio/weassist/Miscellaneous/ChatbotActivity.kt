@@ -62,7 +62,7 @@ class ChatbotActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var scrollView: ScrollView
 
-    private val apiKey = "AIzaSyBowtsZuE65SZU-S_kxShCLjcYLa1OueTw"  // Replace with your Google Gemini API key
+    private val apiKey = "AIzaSyALy2fnaMCisp6UQUWO-VzcxWggalSWXfk"  // Replace with your Google Gemini API key
     private lateinit var generativeModel: GenerativeModel
 
     // Location-related fields

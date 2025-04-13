@@ -22,7 +22,8 @@ data class Lawyer(
     var location: String = "",
     val contact: Contact? = null,
     val lawFirmAdminId: String = "",
-    val averageRating: Double? = null
+    val averageRating: Double? = null,
+    val distance: Double? = null
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",

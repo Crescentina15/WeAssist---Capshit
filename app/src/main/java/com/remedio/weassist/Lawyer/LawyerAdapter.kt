@@ -20,7 +20,7 @@ class LawyerAdapter(
         val nameTextView: TextView = itemView.findViewById(R.id.lawyer_name)
         val specializationTextView: TextView = itemView.findViewById(R.id.lawyer_specialization)
         val profileImageView: ImageView = itemView.findViewById(R.id.lawyer_image)
-        val ratingsTextView: TextView? = itemView.findViewById(R.id.lawyer_ratings) // Changed this line
+        val ratingsTextView: TextView? = itemView.findViewById(R.id.lawyer_ratings)
 
         // Only for regular list
         val locationTextView: TextView? = if (!isTopLawyer) itemView.findViewById(R.id.lawyer_location) else null
@@ -55,13 +55,23 @@ class LawyerAdapter(
             holder.ratingsTextView?.text = "%.1f".format(averageRating)
         } else {
             // For regular list items
-            holder.locationTextView?.text = "📍 ${lawyer.location}"
+            // Show location with distance if available
+            if (lawyer.distance != null) {
+                val distanceStr = when {
+                    lawyer.distance < 1.0 -> "${(lawyer.distance * 1000).toInt()} m"
+                    else -> String.format("%.1f km", lawyer.distance)
+                }
+                holder.locationTextView?.text = "📍 ${lawyer.location.split("[")[0]} ($distanceStr)"
+            } else {
+                holder.locationTextView?.text = "📍 ${lawyer.location.split("[")[0]}"
+            }
+
             holder.firmTextView?.text = "🏢 ${lawyer.lawFirm}"
 
             // Show star rating with averageRating if available, otherwise show "Not rated"
             holder.ratingsTextView?.text = when {
                 lawyer.averageRating != null -> "⭐ ${"%.1f".format(lawyer.averageRating)}"
-                !lawyer.rate.isNullOrEmpty() -> "Rate: ${lawyer.rate}" // Fallback to rate if averageRating is null
+                !lawyer.rate.isNullOrEmpty() -> "⭐ ${lawyer.rate}" // Fallback to rate if averageRating is null
                 else -> "⭐ Not rated"
             }
         }
