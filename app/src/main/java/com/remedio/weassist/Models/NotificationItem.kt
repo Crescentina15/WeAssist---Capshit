@@ -11,5 +11,6 @@ data class NotificationItem(
     val isRead: Boolean = false,
     val conversationId: String? = null,
     val appointmentId: String? = null,
-    val forwardingMessage: String? = null
+    val forwardingMessage: String? = null,
+    val clientId: String? = null  // Add this line
 )

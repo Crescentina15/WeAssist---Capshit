@@ -19,8 +19,8 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.MessageConversation.ChatActivity
-import com.remedio.weassist.Models.NotificationAdapter
 import com.remedio.weassist.Models.NotificationItem
+import com.remedio.weassist.Models.NotificationAdapter
 import com.remedio.weassist.R
 
 class LawyerNotification : AppCompatActivity() {
@@ -36,6 +36,10 @@ class LawyerNotification : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_lawyer_notification)
 
+        // Initialize Firebase
+        auth = FirebaseAuth.getInstance()
+        database = FirebaseDatabase.getInstance().reference
+
         // Initialize UI components
         recyclerView = findViewById(R.id.rvNotifications1)
         emptyView = findViewById(R.id.tvNoNotifications1)
@@ -49,12 +53,19 @@ class LawyerNotification : AppCompatActivity() {
         // Initialize RecyclerView
         recyclerView.layoutManager = LinearLayoutManager(this)
 
-        // Initialize Firebase Auth and Database
-        auth = FirebaseAuth.getInstance()
-        val lawyerId = auth.currentUser?.uid
+        // Initialize adapter with the notification click handler
+        notificationAdapter = NotificationAdapter(notifications) { notification ->
+            handleNotificationClick(notification)
+        }
+        recyclerView.adapter = notificationAdapter
 
-        if (lawyerId != null) {
-            fetchNotifications(lawyerId)
+        // Setup swipe-to-delete functionality
+        setupSwipeToDelete()
+
+        // Fetch notifications
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId != null) {
+            fetchNotifications(currentUserId)
         } else {
             Log.e("LawyerNotification", "Lawyer ID is null")
             Toast.makeText(this, "Lawyer not logged in", Toast.LENGTH_SHORT).show()
@@ -63,185 +74,52 @@ class LawyerNotification : AppCompatActivity() {
         }
     }
 
-    private fun fetchNotifications(lawyerId: String) {
-        database = FirebaseDatabase.getInstance().getReference("notifications").child(lawyerId)
-
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                val notificationsList = mutableListOf<NotificationItem>()
-
-                for (notificationSnapshot in snapshot.children) {
-                    try {
-                        val id = notificationSnapshot.key ?: ""
-                        val senderId = notificationSnapshot.child("senderId").getValue(String::class.java) ?: ""
-                        val senderName = notificationSnapshot.child("senderName").getValue(String::class.java) ?: "Unknown"
-                        val message = notificationSnapshot.child("message").getValue(String::class.java) ?: ""
-                        val timestamp = notificationSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
-                        val type = notificationSnapshot.child("type").getValue(String::class.java) ?: ""
-                        val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
-                        val appointmentId = notificationSnapshot.child("appointmentId").getValue(String::class.java)
-
-                        // Add the new fields for forwarded conversations
-                        val conversationId = notificationSnapshot.child("conversationId").getValue(String::class.java)
-                        val forwardingMessage = notificationSnapshot.child("forwardingMessage").getValue(String::class.java)
-
-                        val notification = NotificationItem(
-                            id = id,
-                            senderId = senderId,
-                            senderName = senderName,
-                            message = message,
-                            timestamp = timestamp,
-                            type = type,
-                            isRead = isRead,
-                            appointmentId = appointmentId,
-                            conversationId = conversationId,
-                            forwardingMessage = forwardingMessage
-                        )
-
-                        notificationsList.add(notification)
-                    } catch (e: Exception) {
-                        Log.e("LawyerNotification", "Error parsing notification: ${e.message}")
-                    }
-                }
-
-                // Sort notifications by timestamp (newest first)
-                notificationsList.sortByDescending { it.timestamp }
-
-                // Update the notifications list
-                notifications.clear()
-                notifications.addAll(notificationsList)
-
-                // Update UI based on notifications
-                checkForEmptyList()
-
-                // Update your NotificationAdapter click handler in the fetchNotifications method:
-                if (notifications.isNotEmpty()) {
-                    // Initialize adapter with the notification click handler
-                    // In LawyerNotification.kt, update your click handler to navigate to LawyerFrontPage instead
-
-                    notificationAdapter = NotificationAdapter(notifications) { notification ->
-                        // Mark notification as read when clicked
-                        markNotificationAsRead(lawyerId, notification.id)
-
-                        when (notification.type) {
-                            "NEW_CASE_ASSIGNED" -> {
-                                notification.conversationId?.let { convId ->
-                                    // Navigate to LawyerFrontPage and show the message fragment
-                                    val intent = Intent(this@LawyerNotification, LawyersDashboardActivity::class.java)
-
-                                    // Pass the conversation ID to be used by the fragment
-                                    intent.putExtra("CONVERSATION_ID", convId)
-
-                                    // Add a flag to indicate we want to show the message fragment specifically
-                                    intent.putExtra("SHOW_MESSAGE_FRAGMENT", true)
-
-                                    // If you need to extract client ID from conversation ID
-                                    val parts = convId.split("_")
-                                    if (parts.size >= 3) {
-                                        // Assuming format is "conversation_userId1_userId2"
-                                        val userId1 = parts[1]
-                                        val userId2 = parts[2]
-                                        // Figure out which is the client ID (not the lawyer ID)
-                                        val clientId = if (userId1 == lawyerId) userId2 else userId1
-                                        intent.putExtra("CLIENT_ID", clientId)
-                                    }
-
-                                    // Start the activity
-                                    startActivity(intent)
-
-                                    // Optionally finish the current activity
-                                    finish()
-                                } ?: run {
-                                    Toast.makeText(this@LawyerNotification,
-                                        "Cannot open conversation, missing ID", Toast.LENGTH_SHORT).show()
-                                }
-                            }
-                            "appointment_accepted" -> {
-                                // Handle appointment acceptance notification
-                                Toast.makeText(this@LawyerNotification,
-                                    "Appointment accepted", Toast.LENGTH_SHORT).show()
-                            }
-                            else -> {
-                                // Default handling for other notification types
-                                Toast.makeText(this@LawyerNotification,
-                                    "Notification clicked", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    }
-
-                    recyclerView.adapter = notificationAdapter
-                    // Setup swipe-to-delete functionality
-                    setupSwipeToDelete(lawyerId)
-                }
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("LawyerNotification", "Failed to fetch notifications: ${error.message}")
-                Toast.makeText(this@LawyerNotification, "Failed to load notifications", Toast.LENGTH_SHORT).show()
-                emptyView.visibility = View.VISIBLE
-                recyclerView.visibility = View.GONE
-            }
-        })
-    }
-
-    private fun checkForEmptyList() {
-        if (notifications.isEmpty()) {
-            emptyView.visibility = View.VISIBLE
-            recyclerView.visibility = View.GONE
-        } else {
-            emptyView.visibility = View.GONE
-            recyclerView.visibility = View.VISIBLE
-        }
-    }
-
-    private fun setupSwipeToDelete(userId: String) {
-        // Create a callback for swipe actions - only LEFT swipe allowed
+    private fun setupSwipeToDelete() {
         val swipeToDeleteCallback = object : ItemTouchHelper.SimpleCallback(
             0, ItemTouchHelper.LEFT
         ) {
+            private val deleteBackground = ColorDrawable(Color.RED)
+            private val deleteIcon = ContextCompat.getDrawable(
+                this@LawyerNotification,
+                android.R.drawable.ic_menu_delete
+            )
+
             override fun onMove(
                 recyclerView: RecyclerView,
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                // We're not using drag & drop functionality
-                return false
+                return false // We don't want drag & drop
             }
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
+                val deletedItem = notifications[position]
 
-                // Make sure the position is valid
-                if (position >= 0 && position < notifications.size) {
-                    val deletedItem = notifications[position]
+                // Remove from UI
+                notifications.removeAt(position)
+                notificationAdapter.notifyItemRemoved(position)
 
-                    // Remove from database
-                    removeNotification(userId, deletedItem.id)
+                // Remove from Firebase
+                removeNotificationFromDatabase(deletedItem.id)
 
-                    // Remove from UI list
-                    notifications.removeAt(position)
-                    notificationAdapter.notifyItemRemoved(position)
+                // Show undo option
+                Snackbar.make(
+                    recyclerView,
+                    "Notification removed",
+                    Snackbar.LENGTH_LONG
+                ).setAction("UNDO") {
+                    // Restore notification if user clicks UNDO
+                    notifications.add(position, deletedItem)
+                    notificationAdapter.notifyItemInserted(position)
+                    restoreNotificationToDatabase(deletedItem)
 
-                    // Show empty view if needed
-                    checkForEmptyList()
+                    // Show empty state if needed
+                    updateEmptyState()
+                }.show()
 
-                    // Show a snackbar with undo option
-                    Snackbar.make(
-                        recyclerView,
-                        "Notification removed",
-                        Snackbar.LENGTH_LONG
-                    ).setAction("UNDO") {
-                        // Restore the item in the database
-                        restoreNotification(userId, deletedItem)
-
-                        // Restore the item in the UI
-                        notifications.add(position, deletedItem)
-                        notificationAdapter.notifyItemInserted(position)
-
-                        // Update empty view visibility
-                        checkForEmptyList()
-                    }.show()
-                }
+                // Show empty state if needed
+                updateEmptyState()
             }
 
             override fun onChildDraw(
@@ -254,79 +132,229 @@ class LawyerNotification : AppCompatActivity() {
                 isCurrentlyActive: Boolean
             ) {
                 val itemView = viewHolder.itemView
-                val background = ColorDrawable(Color.RED)
+                val iconMargin = (itemView.height - (deleteIcon?.intrinsicHeight ?: 0)) / 2
 
-                // Draw the red background
-                background.setBounds(
+                // Draw red background
+                deleteBackground.setBounds(
                     itemView.right + dX.toInt(),
                     itemView.top,
                     itemView.right,
                     itemView.bottom
                 )
-                background.draw(c)
+                deleteBackground.draw(c)
 
-                // Draw a delete icon
-                val deleteIcon = ContextCompat.getDrawable(
-                    this@LawyerNotification,
-                    android.R.drawable.ic_menu_delete
-                )
-
+                // Draw delete icon
                 deleteIcon?.let {
-                    val iconMargin = (itemView.height - it.intrinsicHeight) / 2
+                    val iconLeft = itemView.right - iconMargin - it.intrinsicWidth
                     val iconTop = itemView.top + iconMargin
-                    val iconBottom = iconTop + it.intrinsicHeight
                     val iconRight = itemView.right - iconMargin
-                    val iconLeft = iconRight - it.intrinsicWidth
+                    val iconBottom = iconTop + it.intrinsicHeight
 
                     it.setBounds(iconLeft, iconTop, iconRight, iconBottom)
                     it.draw(c)
                 }
 
-                super.onChildDraw(
-                    c,
-                    recyclerView,
-                    viewHolder,
-                    dX,
-                    dY,
-                    actionState,
-                    isCurrentlyActive
-                )
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
             }
         }
 
-        // Attach the swipe callback to the RecyclerView
-        ItemTouchHelper(swipeToDeleteCallback).attachToRecyclerView(recyclerView)
+        val itemTouchHelper = ItemTouchHelper(swipeToDeleteCallback)
+        itemTouchHelper.attachToRecyclerView(recyclerView)
     }
 
-    private fun removeNotification(userId: String, notificationId: String) {
-        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
-            .child(userId).child(notificationId)
+    private fun updateEmptyState() {
+        if (notifications.isEmpty()) {
+            emptyView.visibility = View.VISIBLE
+            recyclerView.visibility = View.GONE
+        } else {
+            emptyView.visibility = View.GONE
+            recyclerView.visibility = View.VISIBLE
+        }
+    }
 
-        // Save the notification data temporarily (for potential restoration)
-        notificationRef.addListenerForSingleValueEvent(object : ValueEventListener {
+    private fun fetchNotifications(lawyerId: String) {
+        val notificationsRef = database.child("notifications").child(lawyerId)
+        notificationsRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                // Store the notification data for potential restoration
-                val notificationData = snapshot.value
+                notifications.clear()
 
-                // Remove the notification from the database
-                notificationRef.removeValue()
-                    .addOnFailureListener { e ->
-                        Log.e("Notification", "Failed to delete notification: ${e.message}")
-                        Toast.makeText(this@LawyerNotification, "Failed to remove notification", Toast.LENGTH_SHORT).show()
+                if (!snapshot.exists() || snapshot.childrenCount == 0L) {
+                    emptyView.visibility = View.VISIBLE
+                    recyclerView.visibility = View.GONE
+                    return
+                }
+
+                emptyView.visibility = View.GONE
+                recyclerView.visibility = View.VISIBLE
+
+                for (notificationSnapshot in snapshot.children) {
+                    try {
+                        val notificationId = notificationSnapshot.key ?: continue
+                        val senderId = notificationSnapshot.child("senderId").getValue(String::class.java) ?: continue
+                        val message = notificationSnapshot.child("message").getValue(String::class.java) ?: "New message"
+                        val timestamp = notificationSnapshot.child("timestamp").getValue(Long::class.java) ?: System.currentTimeMillis()
+                        val type = notificationSnapshot.child("type").getValue(String::class.java) ?: "message"
+                        val isRead = notificationSnapshot.child("isRead").getValue(Boolean::class.java) ?: false
+                        val conversationId = notificationSnapshot.child("conversationId").getValue(String::class.java)
+                        val appointmentId = notificationSnapshot.child("appointmentId").getValue(String::class.java)
+                        val forwardingMessage = notificationSnapshot.child("forwardingMessage").getValue(String::class.java)
+                        val clientId = notificationSnapshot.child("clientId").getValue(String::class.java)
+
+                        // Get sender name for display
+                        fetchSenderName(senderId) { senderName ->
+                            val notification = NotificationItem(
+                                id = notificationId,
+                                senderId = senderId,
+                                senderName = senderName,
+                                message = message,
+                                timestamp = timestamp,
+                                type = type,
+                                isRead = isRead,
+                                conversationId = conversationId,
+                                appointmentId = appointmentId,
+                                forwardingMessage = forwardingMessage,
+                                clientId = clientId
+                            )
+
+                            // Add to the list and sort by timestamp (newest first)
+                            notifications.add(notification)
+                            notifications.sortByDescending { it.timestamp }
+                            notificationAdapter.notifyDataSetChanged()
+                        }
+                    } catch (e: Exception) {
+                        Log.e("LawyerNotification", "Error parsing notification: ${e.message}")
                     }
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("Notification", "Failed to get notification data: ${error.message}")
+                Log.e("LawyerNotification", "Failed to fetch notifications: ${error.message}")
+                Toast.makeText(this@LawyerNotification, "Failed to load notifications", Toast.LENGTH_SHORT).show()
+                emptyView.visibility = View.VISIBLE
+                recyclerView.visibility = View.GONE
             }
         })
     }
 
-    private fun restoreNotification(userId: String, notification: NotificationItem) {
-        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
-            .child(userId).child(notification.id)
+    private fun fetchSenderName(senderId: String, callback: (String) -> Unit) {
+        // First check in secretaries
+        database.child("secretaries").child(senderId).get().addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val name = snapshot.child("name").getValue(String::class.java) ?: "Unknown"
+                callback("Secretary $name".trim().ifEmpty { "Unknown Secretary" })
+            } else {
+                // If not a secretary, check in users (clients)
+                database.child("Users").child(senderId).get().addOnSuccessListener { userSnapshot ->
+                    if (userSnapshot.exists()) {
+                        val firstName = userSnapshot.child("firstName").getValue(String::class.java) ?: ""
+                        val lastName = userSnapshot.child("lastName").getValue(String::class.java) ?: ""
+                        callback("$firstName $lastName".trim().ifEmpty { "Unknown Client" })
+                    } else {
+                        // If not a client, just use the sender ID
+                        callback("Unknown Sender")
+                    }
+                }.addOnFailureListener {
+                    callback("Unknown Sender")
+                }
+            }
+        }.addOnFailureListener {
+            callback("Unknown Sender")
+        }
+    }
 
-        // Create a map of notification data
+    private fun handleNotificationClick(notification: NotificationItem) {
+        // Mark notification as read
+        markNotificationAsRead(notification.id)
+
+        when (notification.type) {
+            "NEW_CASE_ASSIGNED" -> {
+                if (notification.conversationId != null) {
+                    // Extract client ID if needed
+                    val clientId = notification.clientId ?: extractClientIdFromConversationId(notification.conversationId)
+
+                    // Navigate to LawyersDashboardActivity and show message fragment
+                    val intent = Intent(this@LawyerNotification, LawyersDashboardActivity::class.java)
+                    intent.putExtra("CONVERSATION_ID", notification.conversationId)
+                    intent.putExtra("CLIENT_ID", clientId)
+                    intent.putExtra("SHOW_MESSAGE_FRAGMENT", true)
+
+                    startActivity(intent)
+                    finish()
+                } else {
+                    Toast.makeText(this@LawyerNotification,
+                        "Cannot open conversation: Missing conversation ID",
+                        Toast.LENGTH_SHORT).show()
+                }
+            }
+            "message" -> {
+                // Regular message notification
+                if (notification.conversationId != null) {
+                    val intent = Intent(this, ChatActivity::class.java)
+
+                    // Extract client ID if needed
+                    val clientId = notification.clientId ?: extractClientIdFromConversationId(notification.conversationId)
+
+                    intent.putExtra("CONVERSATION_ID", notification.conversationId)
+                    intent.putExtra("CLIENT_ID", clientId)
+                    intent.putExtra("USER_TYPE", "lawyer")
+
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(this, "Cannot open conversation: Missing ID", Toast.LENGTH_SHORT).show()
+                }
+            }
+            "appointment_accepted", "appointment_forwarded" -> {
+                // Handle appointment notifications
+                if (notification.appointmentId != null) {
+                    // Navigate to appointment details - implement this part
+                    // based on your appointment detail activity
+                    Toast.makeText(this, "Opening appointment details", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Cannot open appointment: Missing ID", Toast.LENGTH_SHORT).show()
+                }
+            }
+            else -> {
+                // Default handling
+                Toast.makeText(this, "Notification acknowledged", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun extractClientIdFromConversationId(conversationId: String): String? {
+        // Assuming conversation ID format: "conversation_user1_user2"
+        val parts = conversationId.split("_")
+        if (parts.size >= 3) {
+            val userId1 = parts[1]
+            val userId2 = parts[2]
+            val currentUserId = auth.currentUser?.uid
+
+            // Return the ID that isn't the current user
+            return if (userId1 == currentUserId) userId2 else userId1
+        }
+        return null
+    }
+
+    private fun markNotificationAsRead(notificationId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child("notifications").child(userId)
+            .child(notificationId).child("isRead").setValue(true)
+            .addOnFailureListener { e ->
+                Log.e("LawyerNotification", "Failed to mark notification as read: ${e.message}")
+            }
+    }
+
+    private fun removeNotificationFromDatabase(notificationId: String) {
+        val userId = auth.currentUser?.uid ?: return
+        database.child("notifications").child(userId).child(notificationId).removeValue()
+            .addOnFailureListener { e ->
+                Log.e("LawyerNotification", "Error deleting notification: ${e.message}")
+            }
+    }
+
+    private fun restoreNotificationToDatabase(notification: NotificationItem) {
+        val userId = auth.currentUser?.uid ?: return
+        val notificationRef = database.child("notifications").child(userId).child(notification.id)
+
         val notificationMap = HashMap<String, Any?>()
         notificationMap["senderId"] = notification.senderId
         notificationMap["senderName"] = notification.senderName
@@ -334,26 +362,14 @@ class LawyerNotification : AppCompatActivity() {
         notificationMap["timestamp"] = notification.timestamp
         notificationMap["type"] = notification.type
         notificationMap["isRead"] = notification.isRead
-        notification.appointmentId?.let { notificationMap["appointmentId"] = it }
         notification.conversationId?.let { notificationMap["conversationId"] = it }
+        notification.appointmentId?.let { notificationMap["appointmentId"] = it }
         notification.forwardingMessage?.let { notificationMap["forwardingMessage"] = it }
+        notification.clientId?.let { notificationMap["clientId"] = it }
 
-        // Restore the notification in the database
         notificationRef.setValue(notificationMap)
             .addOnFailureListener { e ->
-                Log.e("Notification", "Failed to restore notification: ${e.message}")
-                Toast.makeText(this@LawyerNotification, "Failed to restore notification", Toast.LENGTH_SHORT).show()
-            }
-    }
-
-    private fun markNotificationAsRead(userId: String, notificationId: String) {
-        val notificationRef = FirebaseDatabase.getInstance().getReference("notifications")
-            .child(userId).child(notificationId)
-
-        // Update the isRead field to true
-        notificationRef.child("isRead").setValue(true)
-            .addOnFailureListener { e ->
-                Log.e("Notification", "Failed to mark notification as read: ${e.message}")
+                Log.e("LawyerNotification", "Failed to restore notification: ${e.message}")
             }
     }
 }

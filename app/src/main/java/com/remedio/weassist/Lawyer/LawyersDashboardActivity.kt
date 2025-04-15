@@ -47,16 +47,18 @@ class LawyersDashboardActivity : AppCompatActivity() {
         if (intent.getBooleanExtra("SHOW_MESSAGE_FRAGMENT", false)) {
             val messageFragment = LawyerMessageFragment()
             val bundle = Bundle()
+
+            // Pass conversation details to the fragment
             intent.getStringExtra("CONVERSATION_ID")?.let {
                 bundle.putString("CONVERSATION_ID", it)
             }
             intent.getStringExtra("CLIENT_ID")?.let {
                 bundle.putString("CLIENT_ID", it)
             }
+
             messageFragment.arguments = bundle
             loadFragment(messageFragment)
             bottomNavigationView.selectedItemId = R.id.nav_message_lawyer
-            profileSection.visibility = View.VISIBLE
         } else {
             loadFragment(LawyerAppointmentsFragment())
         }

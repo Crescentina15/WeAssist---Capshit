@@ -1,0 +1,520 @@
+lawsuit
+litigation
+court
+judge
+jury
+plaintiff
+defendant
+complaint
+answer
+motion
+hearing
+trial
+appeal
+verdict
+settlement
+negotiation
+mediation
+arbitration
+deposition
+subpoena
+discovery
+evidence
+testimony
+witness
+affidavit
+statute
+regulation
+ordinance
+law
+legal
+attorney
+lawyer
+counsel
+client
+representation
+advocate
+paralegal
+legal assistant
+legal secretary
+law clerk
+bar association
+legal aid
+pro bono
+contingency fee
+retainer
+billing
+legal fees
+hourly rate
+flat fee
+consultation
+contract
+agreement
+breach
+damages
+liability
+negligence
+tort
+fraud
+malpractice
+injury
+compensation
+insurance
+claim
+defense
+prosecution
+criminal
+civil
+administrative
+federal
+state
+local
+jurisdiction
+venue
+standing
+precedent
+case law
+constitutional
+rights
+obligations
+liability
+immunity
+privilege
+confidentiality
+attorney-client privilege
+legal ethics
+conflict of interest
+statute of limitations
+deadline
+filing
+service of process
+summons
+complaint
+answer
+counterclaim
+cross-claim
+third-party claim
+class action
+joinder
+intervention
+dismissal
+default judgment
+summary judgment
+directed verdict
+bench trial
+jury trial
+jury selection
+voir dire
+opening statement
+closing argument
+burden of proof
+preponderance of evidence
+beyond reasonable doubt
+clear and convincing evidence
+circumstantial evidence
+direct evidence
+hearsay
+admissible
+inadmissible
+objection
+sustained
+overruled
+testimony
+cross-examination
+direct examination
+redirect examination
+expert witness
+fact witness
+character witness
+hostile witness
+impeachment
+credibility
+rebuttal
+surrebuttal
+deliberation
+hung jury
+verdict
+judgment
+decree
+injunction
+temporary restraining order
+preliminary injunction
+permanent injunction
+declaratory judgment
+damages
+compensatory damages
+punitive damages
+liquidated damages
+nominal damages
+actual damages
+special damages
+general damages
+consequential damages
+mitigation of damages
+prejudgment interest
+post-judgment interest
+costs
+attorney fees
+sanctions
+contempt of court
+perjury
+fraud upon the court
+appeal
+writ
+certiorari
+mandamus
+prohibition
+habeas corpus
+supersedeas
+stay
+remand
+affirm
+reverse
+vacate
+modify
+de novo
+abuse of discretion
+clearly erroneous
+harmless error
+plain error
+moot
+ripeness
+exhaustion
+finality
+collateral estoppel
+res judicata
+law of the case
+choice of law
+conflicts of law
+full faith and credit
+comity
+legal capacity
+competency
+minor
+incompetent
+guardian ad litem
+next friend
+probate
+intestate
+testate
+will
+trust
+estate
+executor
+administrator
+beneficiary
+heir
+legatee
+devisee
+power of attorney
+living will
+advance directive
+healthcare proxy
+guardianship
+conservatorship
+fiduciary
+fiduciary duty
+duty of care
+duty of loyalty
+self-dealing
+conflict of interest
+corporate veil
+limited liability
+sole proprietorship
+partnership
+corporation
+limited liability company
+professional corporation
+nonprofit
+tax-exempt
+articles of incorporation
+bylaws
+operating agreement
+partnership agreement
+shareholder
+member
+manager
+director
+officer
+quorum
+voting rights
+proxy
+dividend
+distribution
+capital contribution
+dissolution
+winding up
+bankruptcy
+Chapter 7
+Chapter 11
+Chapter 13
+creditor
+debtor
+trustee
+automatic stay
+discharge
+exemption
+preference
+fraudulent transfer
+foreclosure
+repossession
+lien
+security interest
+mortgage
+deed of trust
+promissory note
+assignment
+novation
+delegation
+third-party beneficiary
+consideration
+offer
+acceptance
+revocation
+rejection
+counteroffer
+unilateral contract
+bilateral contract
+quasi-contract
+implied contract
+express contract
+void
+voidable
+unconscionable
+duress
+undue influence
+misrepresentation
+mutual mistake
+unilateral mistake
+reformation
+rescission
+specific performance
+liquidated damages
+penalty
+time is of the essence
+force majeure
+act of God
+impossibility
+impracticability
+frustration of purpose
+accord and satisfaction
+novation
+release
+covenant not to sue
+waiver
+estoppel
+laches
+unclean hands
+trademark
+copyright
+patent
+trade secret
+fair use
+infringement
+work for hire
+license
+assignment
+public domain
+invention
+originality
+novelty
+non-obviousness
+utility
+design
+plant
+business method
+composition of matter
+process
+machine
+registration
+application
+examination
+opposition
+cancellation
+renewal
+term
+expiration
+abandonment
+landlord
+tenant
+lease
+rent
+eviction
+habitability
+security deposit
+quiet enjoyment
+constructive eviction
+actual eviction
+notice to quit
+holdover tenant
+sublease
+assignment of lease
+zoning
+variance
+non-conforming use
+easement
+right of way
+covenant
+restriction
+nuisance
+trespass
+adverse possession
+eminent domain
+condemnation
+taking
+just compensation
+deed
+title
+encumbrance
+lien
+mortgage
+deed of trust
+warranty deed
+quitclaim deed
+special warranty deed
+trust deed
+abstract of title
+title insurance
+escrow
+closing
+settlement
+recording
+chain of title
+grantor
+grantee
+metes and bounds
+plat
+survey
+riparian rights
+water rights
+mineral rights
+air rights
+subsurface rights
+community property
+separate property
+marital property
+equitable distribution
+divorce
+legal separation
+annulment
+alimony
+spousal support
+maintenance
+child support
+custody
+visitation
+parenting time
+parenting plan
+best interests of the child
+paternity
+legitimation
+adoption
+termination of parental rights
+guardian ad litem
+family court
+domestic relations
+victim
+perpetrator
+assault
+battery
+false imprisonment
+intentional infliction of emotional distress
+negligent infliction of emotional distress
+defamation
+libel
+slander
+invasion of privacy
+misappropriation of likeness
+false light
+intrusion upon seclusion
+public disclosure of private facts
+conversion
+trespass to chattels
+replevin
+detinue
+trover
+wrongful death
+survival action
+loss of consortium
+loss of society
+loss of companionship
+derivative claim
+direct claim
+respondeat superior
+vicarious liability
+agency
+principal
+agent
+scope of employment
+frolic and detour
+independent contractor
+joint and several liability
+contribution
+indemnification
+comparative negligence
+contributory negligence
+assumption of risk
+last clear chance
+rescue doctrine
+good samaritan
+sovereign immunity
+qualified immunity
+absolute immunity
+prosecutorial immunity
+judicial immunity
+legislative immunity
+diplomatic immunity
+immunity from execution
+immunity from jurisdiction
+sovereign
+diplomat
+consul
+ambassador
+international law
+treaty
+convention
+protocol
+declaration
+custom
+state practice
+opinio juris
+jus cogens
+erga omnes
+pacta sunt servanda
+comity
+reciprocity
+most favored nation
+national treatment
+extraterritoriality
+extradition
+asylum
+refugee
+migrant
+immigrant
+non-immigrant
+visa
+passport
+naturalization
+citizenship
+nationality
+stateless person
+undocumented
+illegal
+deportation
+removal
+exclusion
+denial of entry
+adjustment of status
+change of status
+extension of stay
+labor certification
+priority date
+preference category
+quota
+non-quota
+immediate relative
+derivative beneficiary
+sponsor
+petitioner
+beneficiary
+qualifying relative
