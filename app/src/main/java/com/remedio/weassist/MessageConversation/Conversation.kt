@@ -9,7 +9,9 @@
         val unreadCount: Int = 0, // 🔹 This is INT
         val clientId: String = "", // 🔹 This is STRING
         val clientName: String = "",
-        val clientImageUrl: String = ""
+        val clientImageUrl: String = "",
+        val isForwarded: Boolean = false,  // Add this property
+        val isActive: Boolean = true       // Add this property
     )
 
 

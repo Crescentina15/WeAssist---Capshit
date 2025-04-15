@@ -1451,7 +1451,7 @@ class ChatActivity : AppCompatActivity() {
                     val handledByLawyer = snapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
                     val secretaryActive = snapshot.child("secretaryActive").getValue(Boolean::class.java) ?: true
 
-                    if (isForwarded || (!secretaryActive && userType == "secretary")) {
+                    if ((isForwarded || !secretaryActive) && userType == "secretary") {
                         // This conversation has been forwarded, disable input for secretary
                         disableChatInput("This conversation has been forwarded to a lawyer.")
 
@@ -1461,31 +1461,23 @@ class ChatActivity : AppCompatActivity() {
                             "This conversation has been forwarded to the lawyer and is now read-only.",
                             Toast.LENGTH_LONG
                         ).show()
+                    } else if (isForwarded && userType == "client" && !forwardedFromSecretary) {
+                        // Client in original secretary conversation - also read-only
+                        disableChatInput("Please use the lawyer conversation instead.")
+
+                        Toast.makeText(
+                            this@ChatActivity,
+                            "This conversation has been forwarded to a lawyer. Please check your messages for the new conversation.",
+                            Toast.LENGTH_LONG
+                        ).show()
                     } else if (forwardedFromSecretary && handledByLawyer) {
                         // This is a lawyer-client conversation that was forwarded
-
                         if (userType == "lawyer") {
                             // Lawyer view - normal messaging
                             enableChatInput()
                         } else if (userType == "client") {
-                            // Client view - check if they should still be talking to secretary
-                            database.child("conversations").child(snapshot.child("originalConversationId").getValue(String::class.java) ?: "")
-                                .child("secretaryActive").get()
-                                .addOnSuccessListener { secretaryActiveSnapshot ->
-                                    val isSecretaryStillActive = secretaryActiveSnapshot.getValue(Boolean::class.java) ?: false
-
-                                    if (!isSecretaryStillActive) {
-                                        enableChatInput()
-                                    } else {
-                                        // The secretary is still active in the original conversation
-                                        // Unusual state, but allow messaging anyway
-                                        enableChatInput()
-                                    }
-                                }
-                                .addOnFailureListener {
-                                    // Can't determine, enable anyway
-                                    enableChatInput()
-                                }
+                            // Client view in lawyer conversation - normal messaging
+                            enableChatInput()
                         }
                     } else {
                         // Normal conversation

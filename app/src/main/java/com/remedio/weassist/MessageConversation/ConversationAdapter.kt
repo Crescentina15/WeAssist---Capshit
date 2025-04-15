@@ -51,48 +51,32 @@ class ConversationAdapter(
         holder.unreadCountTextView.text = conversation.unreadCount.toString()
         holder.unreadCountTextView.visibility = if (conversation.unreadCount > 0) View.VISIBLE else View.GONE
 
+        // Apply visual treatment for forwarded/inactive conversations
+        if (conversation.isForwarded || !conversation.isActive) {
+            // This conversation has been forwarded
+            holder.itemView.alpha = 0.6f
 
-        // You can set timestamp if available in your Conversation model
-        // holder.timestampTextView.text = formatTimestamp(conversation.timestamp)
-
-        // Check for forwarded conversation status
-        checkIfConversationIsActive(conversation.conversationId) { isActive, isHandledByLawyer ->
-            if (!isActive && isStaffView) {
-                // This conversation has been forwarded and staff is inactive
-                holder.itemView.alpha = 0.5f
+            // If not already showing forwarded message prefix, show it
+            if (!holder.lastMessageTextView.text.toString().startsWith("[Forwarded to lawyer]")) {
                 holder.lastMessageTextView.text = "[Forwarded to lawyer] " + holder.lastMessageTextView.text
-            } else {
-                holder.itemView.alpha = 1.0f
             }
-
-            // Set click listener
-            holder.itemView.setOnClickListener {
-                if (!isActive && isStaffView) {
-                    val context = holder.itemView.context
-                    Toast.makeText(
-                        context,
-                        "This conversation has been forwarded to a lawyer and is now read-only.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                    onItemClick(conversation)
-                } else {
-                    onItemClick(conversation)
-                }
-            }
+        } else {
+            holder.itemView.alpha = 1.0f
         }
 
-        // Only add long press listener if it's provided AND this is a staff view
-        if (onLongClickListener != null && isStaffView) {
-            checkIfConversationIsActive(conversation.conversationId) { isActive, _ ->
-                if (isActive) {
-                    holder.itemView.setOnLongClickListener { view ->
-                        onLongClickListener.invoke(view, position)
-                    }
-                } else {
-                    // No long press for forwarded conversations
-                    holder.itemView.setOnLongClickListener(null)
-                }
+        // Set click listener
+        holder.itemView.setOnClickListener {
+            if (conversation.isForwarded || !conversation.isActive) {
+                // For forwarded conversations, show a toast explaining the status
+                val context = holder.itemView.context
+                Toast.makeText(
+                    context,
+                    "This conversation has been forwarded to a lawyer and is now read-only.",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
+            // Always invoke the click handler - the ChatActivity will handle the read-only state
+            onItemClick(conversation)
         }
     }
 

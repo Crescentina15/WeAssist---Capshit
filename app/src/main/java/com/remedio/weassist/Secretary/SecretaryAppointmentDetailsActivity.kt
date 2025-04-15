@@ -255,10 +255,11 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Update status flags
         val updates = mapOf(
             "forwarded" to true,
-            "secretaryActive" to false,
+            "secretaryActive" to false,  // Set to false, but don't change participation
             "forwardedToLawyerId" to appointment.lawyerId,
             "forwardedAt" to ServerValue.TIMESTAMP,
             "appointmentId" to appointment.appointmentId
+            // Remove the line that would change participantIds
         )
 
         secretaryConversationRef.updateChildren(updates).addOnSuccessListener {

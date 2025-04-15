@@ -293,14 +293,9 @@ class SecretaryMessageFragment : Fragment() {
                             continue
                         }
 
-                        // Check if conversation has been forwarded (skip if it has)
+                        // CHANGE: Don't skip forwarded conversations, but check the flag to mark them as inactive
                         val isForwarded = conversationSnapshot.child("forwarded").getValue(Boolean::class.java) ?: false
-                        val secretaryActive = conversationSnapshot.child("secretaryActive").getValue(Boolean::class.java)
-
-                        // Skip conversations that have been forwarded or explicitly marked as inactive for secretary
-                        if (isForwarded || secretaryActive == false) {
-                            continue
-                        }
+                        val secretaryActive = conversationSnapshot.child("secretaryActive").getValue(Boolean::class.java) ?: true
 
                         val lastMessage = conversationSnapshot.child("messages").children.lastOrNull()
                             ?.child("message")?.getValue(String::class.java) ?: "No messages yet"
@@ -310,7 +305,7 @@ class SecretaryMessageFragment : Fragment() {
 
                         fetchCount++
                         // Fetch both client and secretary details
-                        fetchConversationDetails(clientId, conversationId, lastMessage, unreadCount) { conversation ->
+                        fetchConversationDetails(clientId, conversationId, lastMessage, unreadCount, isForwarded, !secretaryActive) { conversation ->
                             tempConversationList.add(conversation)
                             fetchCount--
 
@@ -337,12 +332,15 @@ class SecretaryMessageFragment : Fragment() {
             })
     }
 
-    // New method to fetch all conversation details
+// 3. Update the fetchConversationDetails method to pass the forwarded status:
+
     private fun fetchConversationDetails(
         clientId: String,
         conversationId: String,
         lastMessage: String,
         unreadCount: Int,
+        isForwarded: Boolean,
+        isInactive: Boolean,
         callback: (Conversation) -> Unit
     ) {
         // Fetch client details
@@ -361,11 +359,13 @@ class SecretaryMessageFragment : Fragment() {
                     secretaryId = secretaryId,
                     secretaryName = secretaryName,
                     secretaryImageUrl = secretaryImageUrl,
-                    lastMessage = lastMessage,
+                    lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
                     unreadCount = unreadCount,
                     clientId = clientId,
                     clientName = clientName,
-                    clientImageUrl = clientImageUrl
+                    clientImageUrl = clientImageUrl,
+                    isForwarded = isForwarded,  // Add this property
+                    isActive = !isInactive      // Add this property
                 )
 
                 callback(conversation)
@@ -376,11 +376,13 @@ class SecretaryMessageFragment : Fragment() {
                     secretaryId = secretaryId,
                     secretaryName = "",
                     secretaryImageUrl = "",
-                    lastMessage = lastMessage,
+                    lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
                     unreadCount = unreadCount,
                     clientId = clientId,
                     clientName = clientName,
-                    clientImageUrl = clientImageUrl
+                    clientImageUrl = clientImageUrl,
+                    isForwarded = isForwarded,  // Add this property
+                    isActive = !isInactive      // Add this property
                 )
                 callback(conversation)
             }
@@ -391,11 +393,13 @@ class SecretaryMessageFragment : Fragment() {
                 secretaryId = currentUserId ?: "",
                 secretaryName = "",
                 secretaryImageUrl = "",
-                lastMessage = lastMessage,
+                lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
                 unreadCount = unreadCount,
                 clientId = clientId,
                 clientName = "Unknown",
-                clientImageUrl = ""
+                clientImageUrl = "",
+                isForwarded = isForwarded,  // Add this property
+                isActive = !isInactive      // Add this property
             )
             callback(conversation)
         }
