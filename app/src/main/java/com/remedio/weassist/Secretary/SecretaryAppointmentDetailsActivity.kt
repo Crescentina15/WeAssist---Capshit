@@ -244,6 +244,8 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             })
     }
 
+    // Update the closeSecretaryClientConversation method in SecretaryAppointmentDetailsActivity
+
     private fun closeSecretaryClientConversation(
         conversationId: String,
         appointment: Appointment,
@@ -252,36 +254,73 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     ) {
         val secretaryConversationRef = database.child("conversations").child(conversationId)
 
-        // Update status flags
-        val updates = mapOf(
-            "forwarded" to true,
-            "secretaryActive" to false,  // Set to false, but don't change participation
-            "forwardedToLawyerId" to appointment.lawyerId,
-            "forwardedAt" to ServerValue.TIMESTAMP,
-            "appointmentId" to appointment.appointmentId
-            // Remove the line that would change participantIds
-        )
+        // Get the lawyer's name first
+        database.child("lawyers").child(appointment.lawyerId).get().addOnSuccessListener { lawyerSnapshot ->
+            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
 
-        secretaryConversationRef.updateChildren(updates).addOnSuccessListener {
-            // Add a system message
-            val systemMessage = mapOf(
-                "senderId" to "system",
-                "message" to "This conversation has been forwarded to Atty. ${appointment.lawyerName}. " +
-                        "The client can now communicate directly with the lawyer.",
-                "timestamp" to ServerValue.TIMESTAMP
+            // Update status flags
+            val updates = mapOf(
+                "forwarded" to true,
+                "secretaryActive" to false,  // Set to false, but don't change participation
+                "forwardedToLawyerId" to appointment.lawyerId,
+                "forwardedAt" to ServerValue.TIMESTAMP,
+                "appointmentId" to appointment.appointmentId
+                // Remove the line that would change participantIds
             )
 
-            secretaryConversationRef.child("messages").push().setValue(systemMessage)
-                .addOnSuccessListener {
-                    callback()
-                }
-                .addOnFailureListener { e ->
-                    Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
-                    callback() // Still proceed with the rest
-                }
+            secretaryConversationRef.updateChildren(updates).addOnSuccessListener {
+                // Add a system message with lawyer name
+                val systemMessage = mapOf(
+                    "senderId" to "system",
+                    "message" to "This conversation has been forwarded to Atty. $lawyerName. The client can now communicate directly with the lawyer.",
+                    "timestamp" to ServerValue.TIMESTAMP
+                )
+
+                secretaryConversationRef.child("messages").push().setValue(systemMessage)
+                    .addOnSuccessListener {
+                        callback()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
+                        callback() // Still proceed with the rest
+                    }
+            }.addOnFailureListener { e ->
+                Log.e("SecretaryAppointment", "Error closing secretary conversation: ${e.message}")
+                callback() // Still proceed with the rest
+            }
         }.addOnFailureListener { e ->
-            Log.e("SecretaryAppointment", "Error closing secretary conversation: ${e.message}")
-            callback() // Still proceed with the rest
+            // Fallback if we can't get the lawyer name
+            Log.e("SecretaryAppointment", "Error getting lawyer name: ${e.message}")
+
+            // Update status flags
+            val updates = mapOf(
+                "forwarded" to true,
+                "secretaryActive" to false,
+                "forwardedToLawyerId" to appointment.lawyerId,
+                "forwardedAt" to ServerValue.TIMESTAMP,
+                "appointmentId" to appointment.appointmentId
+            )
+
+            secretaryConversationRef.updateChildren(updates).addOnSuccessListener {
+                // Add a generic system message without lawyer name
+                val systemMessage = mapOf(
+                    "senderId" to "system",
+                    "message" to "This conversation has been forwarded to a lawyer. The client can now communicate directly with the lawyer.",
+                    "timestamp" to ServerValue.TIMESTAMP
+                )
+
+                secretaryConversationRef.child("messages").push().setValue(systemMessage)
+                    .addOnSuccessListener {
+                        callback()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
+                        callback() // Still proceed with the rest
+                    }
+            }.addOnFailureListener { e ->
+                Log.e("SecretaryAppointment", "Error closing secretary conversation: ${e.message}")
+                callback() // Still proceed with the rest
+            }
         }
     }
 
