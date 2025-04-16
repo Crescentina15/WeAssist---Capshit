@@ -1029,21 +1029,27 @@ class ChatActivity : AppCompatActivity() {
                     messagesAdapter.notifyDataSetChanged()
                 } else {
                     // Existing conversation - load messages
-
                     // Reset unread counter for current user
                     database.child("conversations").child(actualConversationId)
                         .child("unreadMessages")
                         .child(currentUserId!!)
                         .setValue(0)
 
+                    // Use a set to track message IDs and prevent duplicates
+                    val messageIdSet = mutableSetOf<String>()
+
                     messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
                             val tempMessages = mutableListOf<Message>()
-
                             Log.d("ChatActivity", "Loaded ${snapshot.childrenCount} messages")
 
                             for (messageSnapshot in snapshot.children) {
                                 try {
+                                    val messageId = messageSnapshot.key ?: ""
+                                    // Skip if we've already processed this message
+                                    if (messageId in messageIdSet) continue
+                                    messageIdSet.add(messageId)
+
                                     val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
                                     val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java)
                                     val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
@@ -1073,7 +1079,7 @@ class ChatActivity : AppCompatActivity() {
                                                 tempMessages.add(message)
 
                                                 // When all messages are processed, update UI
-                                                if (tempMessages.size == snapshot.childrenCount.toInt()) {
+                                                if (tempMessages.size == messageIdSet.size) {
                                                     val sortedMessages = tempMessages.sortedBy { it.timestamp }
 
                                                     runOnUiThread {
@@ -1118,20 +1124,30 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
+
     private fun setupRealTimeMessageListener(messagesRef: DatabaseReference) {
+        // Keep track of messages we've already processed
+        val processedMessageIds = mutableSetOf<String>()
+
         messagesRef.orderByChild("timestamp").addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                // Skip messages we already have (from initial load)
+                // Get message ID and skip if already processed
                 val messageId = snapshot.key ?: ""
-                if (messagesList.any { it.timestamp.toString() == messageId }) {
+                if (messageId in processedMessageIds || pendingMessageId == messageId) {
                     return
                 }
+                processedMessageIds.add(messageId)
 
                 try {
                     val senderId = snapshot.child("senderId").getValue(String::class.java)
                     val receiverId = snapshot.child("receiverId").getValue(String::class.java)
                     val messageText = snapshot.child("message").getValue(String::class.java) ?: ""
                     val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                    // Skip if we already have a message with this exact timestamp
+                    if (messagesList.any { it.timestamp == timestamp }) {
+                        return
+                    }
 
                     if (senderId == "system") {
                         // System message
@@ -1197,6 +1213,39 @@ class ChatActivity : AppCompatActivity() {
             return
         }
 
+        // For system messages
+        if (senderId == "system") {
+            callback("System", null)
+            return
+        }
+
+        // Check if this is a conversation with a lawyer handling a forwarded case
+        conversationId?.let { convId ->
+            database.child("conversations").child(convId).get().addOnSuccessListener { snapshot ->
+                val handledByLawyer = snapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                val forwardedFromSecretary = snapshot.child("forwardedFromSecretary").getValue(Boolean::class.java) ?: false
+                val appointedLawyerId = snapshot.child("appointedLawyerId").getValue(String::class.java)
+
+                // Check if this is a forwarded conversation and the sender matches the appointed lawyer
+                if (handledByLawyer && forwardedFromSecretary && senderId == appointedLawyerId) {
+                    // This is definitely a lawyer in a forwarded conversation
+                    fetchLawyerDetails(senderId) { name, imageUrl ->
+                        senderDetailsCache[senderId] = Pair(name, imageUrl)
+                        callback(name, imageUrl)
+                    }
+                    return@addOnSuccessListener
+                }
+
+                // Continue with normal sender checks
+                proceedWithNormalSenderChecks(senderId, callback)
+            }.addOnFailureListener {
+                // On error, proceed with normal checks
+                proceedWithNormalSenderChecks(senderId, callback)
+            }
+        } ?: proceedWithNormalSenderChecks(senderId, callback)
+    }
+
+    private fun proceedWithNormalSenderChecks(senderId: String, callback: (String?, String?) -> Unit) {
         when {
             senderId == currentUserId -> {
                 // Current user
@@ -1217,10 +1266,25 @@ class ChatActivity : AppCompatActivity() {
                 }
             }
             senderId == secretaryId -> {
-                // Secretary
-                fetchSecretaryDetails(senderId) { name, imageUrl ->
-                    senderDetailsCache[senderId] = Pair(name, imageUrl)
-                    callback(name, imageUrl)
+                // Check if this is actually a lawyer ID (for forwarded conversations)
+                database.child("lawyers").child(senderId).get().addOnSuccessListener { snapshot ->
+                    if (snapshot.exists()) {
+                        fetchLawyerDetails(senderId) { name, imageUrl ->
+                            senderDetailsCache[senderId] = Pair(name, imageUrl)
+                            callback(name, imageUrl)
+                        }
+                    } else {
+                        fetchSecretaryDetails(senderId) { name, imageUrl ->
+                            senderDetailsCache[senderId] = Pair(name, imageUrl)
+                            callback(name, imageUrl)
+                        }
+                    }
+                }.addOnFailureListener {
+                    // On error, assume it's a secretary
+                    fetchSecretaryDetails(senderId) { name, imageUrl ->
+                        senderDetailsCache[senderId] = Pair(name, imageUrl)
+                        callback(name, imageUrl)
+                    }
                 }
             }
             senderId == lawyerId -> {
@@ -1285,7 +1349,20 @@ class ChatActivity : AppCompatActivity() {
         database.child("lawyers").child(userId).get()
             .addOnSuccessListener { snapshot ->
                 if (snapshot.exists()) {
-                    val name = snapshot.child("name").getValue(String::class.java) ?: "Lawyer"
+                    // First try the "name" field
+                    var name = snapshot.child("name").getValue(String::class.java)
+
+                    // If name is null or empty, try constructing from firstName and lastName
+                    if (name.isNullOrEmpty()) {
+                        val firstName = snapshot.child("firstName").getValue(String::class.java) ?: ""
+                        val lastName = snapshot.child("lastName").getValue(String::class.java) ?: ""
+                        name = "$firstName $lastName".trim()
+                    }
+
+                    // Don't add any prefix to lawyer names
+                    if (name.isNullOrEmpty()) {
+                        name = "Lawyer"
+                    }
 
                     // Try multiple image fields to handle inconsistencies
                     val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
