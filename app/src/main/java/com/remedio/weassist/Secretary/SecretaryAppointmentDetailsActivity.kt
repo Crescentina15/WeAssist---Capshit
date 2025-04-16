@@ -378,17 +378,58 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         problemDescription: String,
         callback: () -> Unit
     ) {
-        // Add system message
-        val systemMessage = mapOf(
-            "senderId" to "system",
-            "message" to "This is a forwarded conversation from a secretary. Original problem: $problemDescription",
-            "timestamp" to ServerValue.TIMESTAMP
-        )
+        // First get the secretary's name
+        val currentSecretaryId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
 
-        conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
-            // Add welcome message from lawyer
+        database.child("secretaries").child(currentSecretaryId).get().addOnSuccessListener { secretarySnapshot ->
+            val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: "a secretary"
+
+            // Add system message with secretary name
+            val systemMessage = mapOf(
+                "senderId" to "system",
+                "message" to "This is a forwarded conversation from secretary $secretaryName. Original problem: $problemDescription",
+                "timestamp" to ServerValue.TIMESTAMP
+            )
+
+            conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
+                // Now fetch the lawyer name and add welcome message
+                fetchLawyerNameAndAddWelcomeMessage(conversationRef, lawyerId, clientId, appointment, callback)
+            }.addOnFailureListener { e ->
+                Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
+                callback()
+            }
+        }.addOnFailureListener { e ->
+            // If we can't get the secretary name, fall back to generic system message
+            val systemMessage = mapOf(
+                "senderId" to "system",
+                "message" to "This is a forwarded conversation from a secretary. Original problem: $problemDescription",
+                "timestamp" to ServerValue.TIMESTAMP
+            )
+
+            conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
+                // Continue with lawyer name fetch and welcome message
+                fetchLawyerNameAndAddWelcomeMessage(conversationRef, lawyerId, clientId, appointment, callback)
+            }.addOnFailureListener { err ->
+                Log.e("SecretaryAppointment", "Error adding fallback system message: ${err.message}")
+                callback()
+            }
+        }
+    }
+
+    private fun fetchLawyerNameAndAddWelcomeMessage(
+        conversationRef: DatabaseReference,
+        lawyerId: String,
+        clientId: String,
+        appointment: Appointment,
+        callback: () -> Unit
+    ) {
+        // Get the lawyer's name for the welcome message
+        database.child("lawyers").child(lawyerId).get().addOnSuccessListener { lawyerSnapshot ->
+            val lawyerName = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Unknown"
+
+            // Add welcome message with the actual lawyer name
             val welcomeMessage = mapOf(
-                "message" to "Hello ${appointment.fullName}, I'm Atty. ${appointment.lawyerName}. I've been assigned to provide you with legal assistance.",
+                "message" to "Hello ${appointment.fullName}, I'm Atty. ${lawyerName}. I've been assigned to provide you with legal assistance.",
                 "senderId" to lawyerId,
                 "receiverId" to clientId,
                 "timestamp" to (System.currentTimeMillis() + 1) // Ensure this comes after system message
@@ -403,8 +444,21 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 callback()
             }
         }.addOnFailureListener { e ->
-            Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
-            callback()
+            // If we can't get the lawyer name, fall back to a generic welcome message
+            val welcomeMessage = mapOf(
+                "message" to "Hello ${appointment.fullName}, I've been assigned to provide you with legal assistance.",
+                "senderId" to lawyerId,
+                "receiverId" to clientId,
+                "timestamp" to (System.currentTimeMillis() + 1) // Ensure this comes after system message
+            )
+
+            conversationRef.child("messages").push().setValue(welcomeMessage).addOnSuccessListener {
+                incrementUnreadCounter(conversationRef.key ?: "", clientId)
+                callback()
+            }.addOnFailureListener { e ->
+                Log.e("SecretaryAppointment", "Error adding welcome message: ${e.message}")
+                callback()
+            }
         }
     }
 
