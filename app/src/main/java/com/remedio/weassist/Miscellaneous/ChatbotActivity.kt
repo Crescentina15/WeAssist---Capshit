@@ -531,6 +531,7 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun analyzeWithGemini(userMessage: String) {
+        showTypingIndicator()
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Create structured context about the conversation
@@ -619,6 +620,7 @@ class ChatbotActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         // Add the assistant's response to the UI
+                        hideTypingIndicator()
                         addAssistantMessage(message)
 
                         // Execute commands if present
@@ -657,6 +659,7 @@ class ChatbotActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e("ChatbotActivity", "Gemini API error: ${e.message}")
                 withContext(Dispatchers.Main) {
+                    hideTypingIndicator()
                     handleError("I'm having trouble connecting right now. Would you like me to help you find a specific type of lawyer?")
                 }
             }
@@ -764,6 +767,7 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private fun searchForLawyers(specialization: String) {
+        showTypingIndicator("Searching for $specialization lawyers...")
 
         // Simulate search delay
         CoroutineScope(Dispatchers.IO).launch {
@@ -780,6 +784,7 @@ class ChatbotActivity : AppCompatActivity() {
                 }
 
                 withContext(Dispatchers.Main) {
+                    hideTypingIndicator()
                     // Display search results
                     if (lawyersList.isNotEmpty()) {
                         val filteredLawyers = lawyersList.filter {
@@ -814,6 +819,7 @@ class ChatbotActivity : AppCompatActivity() {
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    hideTypingIndicator()
                     handleError("Sorry, I encountered an error while searching for lawyers. Please try again later.")
                 }
             }
@@ -884,42 +890,82 @@ class ChatbotActivity : AppCompatActivity() {
         })
     }
 
-    private fun addAssistantMessage(message: String) {
+    private fun showTypingIndicator(message: String = "Typing...") {
+        progressBar.visibility = View.VISIBLE
+        chatTextView.append("\nLegal Assistant: ")
 
-        // Check if this message is too similar to recent messages
-        if (isDuplicateOrSimilarMessage(message)) {
-            Log.d("ChatbotActivity", "Prevented duplicate message: $message")
-            return
-        }
+        val typingText = SpannableString(message)
+        // Apply the same styling as regular assistant messages
+        typingText.setSpan(ForegroundColorSpan(ASSISTANT_PREFIX_COLOR), 0, message.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        typingText.setSpan(BackgroundColorSpan(ASSISTANT_BACKGROUND_COLOR), 0, message.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        typingText.setSpan(StyleSpan(Typeface.BOLD), 0, message.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
 
-        // Add to recent messages list
-        recentMessages.add(message)
+        chatTextView.append(typingText)
 
-        // Keep only the last 5 messages to save memory
-        if (recentMessages.size > 5) {
-            recentMessages.removeAt(0)
-        }
-
-        val fullMessage = "Legal Assistant: $message"
-        val spannable = SpannableString(fullMessage)
-
-
-
-        // Style the "Legal Assistant:" prefix
-        spannable.setSpan(ForegroundColorSpan(ASSISTANT_PREFIX_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        spannable.setSpan(BackgroundColorSpan(ASSISTANT_BACKGROUND_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-        spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
-
-        chatTextView.append("\n")
-        chatTextView.append(spannable)
-
-        // Add to conversation history
-        conversationHistory.add(mapOf("role" to "assistant", "content" to message))
-
-        // Scroll to the bottom of the conversation
+        // Scroll to bottom
         scrollView.post {
             scrollView.fullScroll(View.FOCUS_DOWN)
         }
+    }
+
+    private fun hideTypingIndicator() {
+        // Remove any typing/searching indicator
+        val text = chatTextView.text.toString()
+        if (text.endsWith("Legal Assistant: Typing...") ||
+            text.endsWith("Legal Assistant: Searching for") ||
+            text.contains("Legal Assistant: Searching for")) {
+            // Find the last occurrence of "Legal Assistant:"
+            val lastIndex = text.lastIndexOf("Legal Assistant:")
+            if (lastIndex >= 0) {
+                chatTextView.text = text.substring(0, lastIndex)
+            }
+        }
+        progressBar.visibility = View.GONE
+    }
+
+    private fun addAssistantMessage(message: String) {
+        // First show typing indicator
+        showTypingIndicator()
+
+        // Post delayed to simulate typing
+        chatTextView.postDelayed({
+            // Check if this message is too similar to recent messages
+            if (isDuplicateOrSimilarMessage(message)) {
+                Log.d("ChatbotActivity", "Prevented duplicate message: $message")
+                hideTypingIndicator()
+                return@postDelayed
+            }
+
+            // Remove typing indicator
+            hideTypingIndicator()
+
+            // Add to recent messages list
+            recentMessages.add(message)
+
+            // Keep only the last 5 messages to save memory
+            if (recentMessages.size > 5) {
+                recentMessages.removeAt(0)
+            }
+
+            val fullMessage = "Legal Assistant: $message"
+            val spannable = SpannableString(fullMessage)
+
+            // Style the "Legal Assistant:" prefix
+            spannable.setSpan(ForegroundColorSpan(ASSISTANT_PREFIX_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(BackgroundColorSpan(ASSISTANT_BACKGROUND_COLOR), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+            spannable.setSpan(StyleSpan(android.graphics.Typeface.BOLD), 0, 16, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+
+            chatTextView.append("\n")
+            chatTextView.append(spannable)
+
+            // Add to conversation history
+            conversationHistory.add(mapOf("role" to "assistant", "content" to message))
+
+            // Scroll to the bottom of the conversation
+            scrollView.post {
+                scrollView.fullScroll(View.FOCUS_DOWN)
+            }
+        }, 1500) // 1.5 second delay to simulate typing
     }
 
     private fun handleError(errorMessage: String) {
