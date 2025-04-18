@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <!-- Profile Image (using standard ImageView) -->
+        <!-- Profile Image -->
         <ImageView
             android:id="@+id/lawyer_image"
             android:layout_width="64dp"
@@ -67,14 +67,13 @@
             android:background="#E0E0E0"
             app:layout_constraintTop_toBottomOf="@id/lawyer_image" />
 
-        <!-- Law Firm with Icon -->
+        <!-- Law Firm Icon -->
         <ImageView
             android:id="@+id/firm_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-
-            app:tint="#757575"
             android:layout_marginTop="12dp"
+            app:tint="#757575"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/separator" />
 
@@ -93,14 +92,13 @@
             app:layout_constraintTop_toBottomOf="@id/separator"
             tools:text="Law Firm: WeAssist" />
 
-        <!-- Location with Icon -->
+        <!-- Location -->
         <ImageView
             android:id="@+id/location_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-
-            app:tint="#757575"
             android:layout_marginTop="8dp"
+            app:tint="#757575"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/firm_icon" />
 
@@ -119,14 +117,13 @@
             app:layout_constraintBottom_toBottomOf="@id/location_icon"
             tools:text="Location: Sanchez Compound, J. Panis St, Cebu City, 6000 Cebu" />
 
-        <!-- Ratings with Icon -->
+        <!-- Ratings -->
         <ImageView
             android:id="@+id/ratings_icon"
             android:layout_width="18dp"
             android:layout_height="18dp"
-
-            app:tint="#FFC107"
             android:layout_marginTop="8dp"
+            app:tint="#FFC107"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/location_icon" />
 
@@ -143,20 +140,19 @@
             app:layout_constraintBottom_toBottomOf="@id/ratings_icon"
             tools:text="Ratings: 500" />
 
-        <!-- View Profile Button -->
-        <!-- <Button
-            android:id="@+id/view_profile_button"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:text="View Profile"
-            android:textAllCaps="false"
-            android:textSize="12sp"
-            android:background="@drawable/rounded_button"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+        <!-- Directions Button -->
+        <ImageButton
+            android:id="@+id/directionsButton"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:layout_marginTop="12dp"
+            android:layout_marginEnd="8dp"
+            android:src="@drawable/ic_directions"
+            android:contentDescription="Directions"
+            android:background="?attr/selectableItemBackgroundBorderless"
             app:layout_constraintTop_toBottomOf="@id/ratings_icon"
-            app:layout_constraintEnd_toEndOf="parent" /> -->
+            app:layout_constraintEnd_toEndOf="parent"
+            app:tint="@color/purple_500" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.cardview.widget.CardView>

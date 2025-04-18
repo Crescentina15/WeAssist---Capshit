@@ -3,6 +3,7 @@ package com.remedio.weassist.Lawyer
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -13,7 +14,8 @@ import com.remedio.weassist.R
 class LawyerAdapter(
     private val lawyersList: List<Lawyer>,
     private val onLawyerClick: (Lawyer) -> Unit,
-    private val isTopLawyer: Boolean = false
+    private val isTopLawyer: Boolean = false,
+    private val onDirectionsClick: ((Lawyer) -> Unit)? = null // Optional parameter for directions
 ) : RecyclerView.Adapter<LawyerAdapter.LawyerViewHolder>() {
 
     class LawyerViewHolder(itemView: View, isTopLawyer: Boolean) : RecyclerView.ViewHolder(itemView) {
@@ -21,6 +23,7 @@ class LawyerAdapter(
         val specializationTextView: TextView = itemView.findViewById(R.id.lawyer_specialization)
         val profileImageView: ImageView = itemView.findViewById(R.id.lawyer_image)
         val ratingsTextView: TextView? = itemView.findViewById(R.id.lawyer_ratings)
+        val directionsButton: ImageButton? = if (!isTopLawyer) itemView.findViewById(R.id.directionsButton) else null
 
         // Only for regular list
         val locationTextView: TextView? = if (!isTopLawyer) itemView.findViewById(R.id.lawyer_location) else null
@@ -37,6 +40,20 @@ class LawyerAdapter(
         val lawyer = lawyersList[position]
         holder.nameTextView.text = lawyer.name
         holder.specializationTextView.text = lawyer.specialization
+
+        // Handle directions button only if it exists in the layout
+        holder.directionsButton?.let { button ->
+            if (onDirectionsClick != null) {
+                // Make the button visible and set up click listener
+                button.visibility = View.VISIBLE
+                button.setOnClickListener {
+                    onDirectionsClick.invoke(lawyer)
+                }
+            } else {
+                // If no directions click handler provided, hide the button
+                button.visibility = View.GONE
+            }
+        }
 
         // Load profile image
         if (!lawyer.profileImageUrl.isNullOrEmpty()) {

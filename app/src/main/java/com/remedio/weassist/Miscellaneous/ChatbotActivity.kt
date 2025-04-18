@@ -30,6 +30,7 @@ import com.google.ai.client.generativeai.GenerativeModel
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -64,6 +65,9 @@ class ChatbotActivity : AppCompatActivity() {
 
     private val recentMessages = mutableListOf<String>()
     private val MESSAGE_SIMILARITY_THRESHOLD = 0.7  // Adjust this value as needed
+
+    private val mapsApiKey = "AIzaSyBceN-dLuvJXdpGVpgZ1ckhfm4kCzuIjhM"
+
 
     private val apiKey = "AIzaSyALy2fnaMCisp6UQUWO-VzcxWggalSWXfk"  // Replace with your Google Gemini API key
     private lateinit var generativeModel: GenerativeModel
@@ -389,146 +393,51 @@ class ChatbotActivity : AppCompatActivity() {
     }
 
     private suspend fun geocodeLawyerAddresses() {
-        // Create a list to collect all updates we need to make
-        val updates = mutableListOf<Pair<Int, LawyerWithDistance>>()
-
-        // Iterate using indices to safely handle potential modifications
-        for (index in lawyersList.indices) {
-            val lawyerWithDistance = lawyersList[index]
+        for (lawyerWithDistance in lawyersList) {
             val lawyer = lawyerWithDistance.lawyer
+            val address = lawyer.location
 
-            // Get the address to geocode
-            var address = lawyer.location
-
-            if (address.isEmpty()) {
-                // Try to get address from law firm admin reference
-                val lawFirm = lawyer.lawFirm
-                if (lawFirm.isNotEmpty()) {
-                    try {
-                        // Look up the law firm admin database to find the office address
-                        val adminSnapshot = withContext(Dispatchers.IO) {
-                            FirebaseDatabase.getInstance().getReference("law_firm_admin")
-                                .orderByChild("lawFirm")
-                                .equalTo(lawFirm)
-                                .get()
-                                .await()
-                        }
-
-                        if (adminSnapshot.exists() && adminSnapshot.childrenCount > 0) {
-                            // Get the first matching admin entry
-                            val adminEntry = adminSnapshot.children.first()
-                            address = adminEntry.child("officeAddress").getValue(String::class.java) ?: ""
-                        }
-                    } catch (e: Exception) {
-                        Log.e("ChatbotActivity", "Error fetching law firm admin: ${e.message}")
-                    }
-                }
-            }
-
-            // Skip if no valid address
             if (address.isEmpty()) continue
 
             // Check cache first
             if (geocodeCache.containsKey(address)) {
                 val (lat, lng) = geocodeCache[address]!!
-                updates.add(index to createUpdatedLawyer(lawyerWithDistance, lat, lng))
+                lawyer.location = "$address|$lat,$lng" // Store coordinates with address
                 continue
             }
 
-            // Geocode the address
             try {
-                val results = withContext(Dispatchers.IO) {
-                    geocoder.getFromLocationName(address, 1)
+                // Use Google Maps Geocoding API for more reliable results
+                val geocodingUrl = "https://maps.googleapis.com/maps/api/geocode/json?" +
+                        "address=${address.replace(" ", "+")}" +
+                        "&key=$mapsApiKey"
+
+                val response = withContext(Dispatchers.IO) {
+                    java.net.URL(geocodingUrl).readText()
                 }
 
-                if (results != null && results.isNotEmpty()) {
-                    val location = results[0]
-                    val latitude = location.latitude
-                    val longitude = location.longitude
+                val jsonResponse = JSONObject(response)
+                if (jsonResponse.getString("status") == "OK") {
+                    val results = jsonResponse.getJSONArray("results")
+                    if (results.length() > 0) {
+                        val location = results.getJSONObject(0)
+                            .getJSONObject("geometry")
+                            .getJSONObject("location")
+                        val lat = location.getDouble("lat")
+                        val lng = location.getDouble("lng")
 
-                    // Cache the result
-                    geocodeCache[address] = Pair(latitude, longitude)
-
-                    // Collect the update to apply later
-                    updates.add(index to createUpdatedLawyer(lawyerWithDistance, latitude, longitude))
-                } else {
-                    Log.d("ChatbotActivity", "No geocoding results found for address: $address")
+                        // Cache the result
+                        geocodeCache[address] = Pair(lat, lng)
+                        lawyer.location = "$address|$lat,$lng" // Store coordinates with address
+                    }
                 }
-            } catch (e: IOException) {
-                Log.e("ChatbotActivity", "Error geocoding address: ${e.message}")
             } catch (e: Exception) {
-                Log.e("ChatbotActivity", "Unexpected error during geocoding: ${e.message}")
-            }
-        }
-
-        // Apply all collected updates to the original list
-        updates.forEach { (index, updated) ->
-            lawyersList[index] = updated
-        }
-    }
-
-    private fun createUpdatedLawyer(original: LawyerWithDistance, lat: Double, lng: Double): LawyerWithDistance {
-        // Create updated lawyer with coordinates in location field
-        val updatedLawyer = original.lawyer.copy(location = "${original.lawyer.location} [$lat,$lng]")
-
-        // Calculate distance if we have user location
-        val distance = if (userLocation != null) {
-            calculateDistance(
-                userLocation!!.latitude, userLocation!!.longitude,
-                lat, lng
-            )
-        } else {
-            original.distance
-        }
-
-        // Format distance for display
-        val formattedDistance = when {
-            distance < 1.0 -> "${(distance * 1000).toInt()} m"
-            else -> "${String.format("%.1f", distance)} km"
-        }
-
-        return LawyerWithDistance(updatedLawyer, distance, formattedDistance)
-    }
-
-    // Helper to update lawyer coordinates and update distances
-    private fun updateLawyerCoordinates(lawyer: Lawyer, latitude: Double, longitude: Double) {
-        // Store coordinates in temporary variable
-        val locationWithCoords = "${lawyer.location} [${latitude},${longitude}]"
-
-        // Find the LawyerWithDistance for this lawyer and update
-        val lawyerWithDist = lawyersList.find { it.lawyer.id == lawyer.id }
-        lawyerWithDist?.let {
-            // We need to create a new lawyer instance since Lawyer is val in LawyerWithDistance
-            val updatedLawyer = it.lawyer.copy()
-            // Store coordinates in the location field for later use
-            updatedLawyer.location = locationWithCoords
-
-            // Create a new LawyerWithDistance with the updated lawyer
-            val updatedLawyerWithDist = LawyerWithDistance(updatedLawyer, it.distance, it.formattedDistance)
-
-            // Replace the old instance in the list
-            val index = lawyersList.indexOf(it)
-            if (index != -1) {
-                lawyersList[index] = updatedLawyerWithDist
-            }
-
-            if (userLocation != null) {
-                // Calculate distance
-                val distance = calculateDistance(
-                    userLocation!!.latitude, userLocation!!.longitude,
-                    latitude, longitude
-                )
-
-                updatedLawyerWithDist.distance = distance
-
-                // Format distance for display
-                updatedLawyerWithDist.formattedDistance = when {
-                    distance < 1.0 -> "${(distance * 1000).toInt()} m"
-                    else -> "${String.format("%.1f", distance)} km"
-                }
+                Log.e("ChatbotActivity", "Error geocoding with Google Maps API: ${e.message}")
             }
         }
     }
+
+
 
     private fun analyzeWithGemini(userMessage: String) {
         showTypingIndicator()
@@ -707,38 +616,30 @@ class ChatbotActivity : AppCompatActivity() {
 
         for (lawyerWithDistance in lawyersList) {
             val lawyer = lawyerWithDistance.lawyer
+            val locationParts = lawyer.location.split("|")
 
-            // Extract coordinates from the location string if available
-            // Format: "Original Address [latitude,longitude]"
-            val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
-            val matchResult = coordsRegex.find(lawyer.location)
+            if (locationParts.size < 2) {
+                lawyerWithDistance.distance = Double.MAX_VALUE
+                lawyerWithDistance.formattedDistance = "Unknown distance"
+                continue
+            }
 
-            if (matchResult != null) {
-                val (latStr, lngStr) = matchResult.destructured
-                try {
-                    val lat = latStr.toDouble()
-                    val lng = lngStr.toDouble()
+            try {
+                val coords = locationParts[1].split(",")
+                val lat = coords[0].toDouble()
+                val lng = coords[1].toDouble()
 
-                    // Calculate distance
-                    val distance = calculateDistance(
-                        userLocation!!.latitude, userLocation!!.longitude,
-                        lat, lng
-                    )
+                // Calculate distance using Haversine formula
+                val distance = calculateHaversineDistance(
+                    userLocation!!.latitude,
+                    userLocation!!.longitude,
+                    lat,
+                    lng
+                )
 
-                    lawyerWithDistance.distance = distance
-
-                    // Format distance for display
-                    lawyerWithDistance.formattedDistance = when {
-                        distance < 1.0 -> "${(distance * 1000).toInt()} m"
-                        else -> "${String.format("%.1f", distance)} km"
-                    }
-                } catch (e: NumberFormatException) {
-                    // If conversion fails, use default values
-                    lawyerWithDistance.distance = Double.MAX_VALUE
-                    lawyerWithDistance.formattedDistance = "Unknown distance"
-                }
-            } else {
-                // No coordinates available
+                lawyerWithDistance.distance = distance
+                lawyerWithDistance.formattedDistance = formatDistance(distance)
+            } catch (e: Exception) {
                 lawyerWithDistance.distance = Double.MAX_VALUE
                 lawyerWithDistance.formattedDistance = "Unknown distance"
             }
@@ -748,74 +649,67 @@ class ChatbotActivity : AppCompatActivity() {
         lawyersList.sortBy { it.distance }
     }
 
-    private fun calculateDistance(
-        lat1: Double, lon1: Double,
-        lat2: Double, lon2: Double
-    ): Double {
-        val radius = 6371.0 // Earth radius in kilometers
-
-        val latDistance = Math.toRadians(lat2 - lat1)
-        val lonDistance = Math.toRadians(lon2 - lon1)
-
-        val a = sin(latDistance / 2) * sin(latDistance / 2) +
+    private fun calculateHaversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371.0 // Earth radius in kilometers
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2) * sin(dLat / 2) +
                 cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
-                sin(lonDistance / 2) * sin(lonDistance / 2)
-
+                sin(dLon / 2) * sin(dLon / 2)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-        return radius * c
+        return R * c
     }
 
+    private fun formatDistance(distance: Double): String {
+        return when {
+            distance < 1.0 -> "${(distance * 1000).toInt()} m"
+            else -> "%.1f km".format(distance)
+        }
+    }
+
+    // Update the searchForLawyers function
     private fun searchForLawyers(specialization: String) {
         showTypingIndicator("Searching for $specialization lawyers...")
 
-        // Simulate search delay
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Short delay for better UX
-                Thread.sleep(1000)
-
-                // Ensure we've geocoded addresses for distance calculations
+                // Ensure we have updated geocoding and distances
                 geocodeLawyerAddresses()
-
-                // Sort by distance if needed
-                if (userLocation != null) {
-                    updateLawyerDistances()
-                }
+                updateLawyerDistances()
 
                 withContext(Dispatchers.Main) {
                     hideTypingIndicator()
-                    // Display search results
-                    if (lawyersList.isNotEmpty()) {
-                        val filteredLawyers = lawyersList.filter {
-                            it.lawyer.specialization.equals(specialization, ignoreCase = true)
-                        }
 
-                        if (filteredLawyers.isNotEmpty()) {
-                            val count = filteredLawyers.size
-                            val nearestLawyer = filteredLawyers.first()
+                    val filteredLawyers = lawyersList.filter {
+                        it.lawyer.specialization.equals(specialization, ignoreCase = true)
+                    }.sortedBy { it.distance }
 
-                            val distanceText = if (userLocation != null && nearestLawyer.formattedDistance.isNotEmpty() &&
-                                nearestLawyer.formattedDistance != "Unknown distance") {
-                                "who is ${nearestLawyer.formattedDistance} away"
-                            } else {
-                                "in your area"
-                            }
+                    if (filteredLawyers.isNotEmpty()) {
+                        val nearestLawyer = filteredLawyers.first()
 
-                            val resultsMessage = "I found $count $specialization lawyers near your location. The closest is ${nearestLawyer.lawyer.name}, who specializes in $specialization and is $distanceText. Would you like to see the full list?"
-                            addAssistantMessage(resultsMessage)
+                        // Show the nearest lawyer on map
+                        showLawyerOnMap(nearestLawyer)
 
-                            conversationState.currentLawyerId = nearestLawyer.lawyer.id
-                            conversationState.showingLawyerInfo = true
+                        val distanceText = if (nearestLawyer.formattedDistance != "Unknown distance") {
+                            "who is ${nearestLawyer.formattedDistance} away"
                         } else {
-                            addAssistantMessage("I couldn't find any $specialization lawyers in our database. Would you like to try a different specialization?")
+                            "in your area"
                         }
+
+                        val resultsMessage = buildString {
+                            append("I found ${filteredLawyers.size} $specialization lawyers near you. ")
+                            append("The nearest is ${nearestLawyer.lawyer.name} ")
+                            append("(${nearestLawyer.lawyer.lawFirm}). ")
+                            append("I've shown their location on the map. ")
+                            append("Would you like to see the full list or get directions?")
+                        }
+
+                        addAssistantMessage(resultsMessage)
+                        conversationState.currentLawyerId = nearestLawyer.lawyer.id
+                        conversationState.showingLawyerInfo = true
                     } else {
-                        // Fallback if no lawyers found
-                        val distanceText = if (userLocation != null) "1.8 km away" else "in your area"
-                        addAssistantMessage("I found 4 $specialization lawyers near your location. The closest is Michael Garcia, who specializes in $specialization and is $distanceText. Would you like to see the full list?")
+                        addAssistantMessage("I couldn't find any $specialization lawyers in our database. Would you like to try a different specialization?")
                     }
-                    progressBar.visibility = View.GONE
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -823,6 +717,31 @@ class ChatbotActivity : AppCompatActivity() {
                     handleError("Sorry, I encountered an error while searching for lawyers. Please try again later.")
                 }
             }
+        }
+    }
+
+    private fun showLawyerOnMap(lawyerWithDistance: LawyerWithDistance) {
+        val lawyer = lawyerWithDistance.lawyer
+        val locationParts = lawyer.location.split("|")
+
+        if (locationParts.size < 2 || userLocation == null) return
+
+        try {
+            val coords = locationParts[1].split(",")
+            val lawyerLat = coords[0].toDouble()
+            val lawyerLng = coords[1].toDouble()
+
+            val clientLatLng = LatLng(userLocation!!.latitude, userLocation!!.longitude)
+            val lawyerLatLng = LatLng(lawyerLat, lawyerLng)
+
+            val intent = Intent(this, LawyerMapActivity::class.java).apply {
+                putExtra("CLIENT_LOCATION", clientLatLng)
+                putExtra("LAWYER_LOCATION", lawyerLatLng)
+                putExtra("LAWYER", lawyer)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("ChatbotActivity", "Error showing lawyer on map: ${e.message}")
         }
     }
 

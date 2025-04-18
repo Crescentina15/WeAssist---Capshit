@@ -160,7 +160,8 @@ class ClientHomeFragment : Fragment() {
                 intent.putExtra("LAWYER_ID", lawyer.id)
                 startActivity(intent)
             },
-            isTopLawyer = true
+            isTopLawyer = true,
+
         )
 
         topLawyerRecyclerView.adapter = topLawyerAdapter

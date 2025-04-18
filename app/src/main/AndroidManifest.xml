@@ -1,11 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
     <application
+        android:name=".WeAssistApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -14,14 +17,21 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.WeAssist"
-        tools:targetApi="31"
         tools:replace="android:fullBackupContent"
-        android:name=".WeAssistApp"
-        >
+        tools:targetApi="31">
+
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBceN-dLuvJXdpGVpgZ1ckhfm4kCzuIjhM" />
+
+        <activity
+            android:name=".Miscellaneous.LawyerMapActivity"
+            android:exported="false" />
         <activity
             android:name=".Lawyer.LawyerNotification"
             android:exported="false" />
-        <activity android:name=".LoginAndRegister.ChangePasswordActivity"
+        <activity
+            android:name=".LoginAndRegister.ChangePasswordActivity"
             android:exported="false" />
         <activity
             android:name=".Miscellaneous.MyApp"
@@ -80,7 +90,6 @@
         <activity
             android:name=".Clients.ClientEditProfileActivity"
             android:exported="true" />
-
         <activity
             android:name=".Clients.ClientAppointmentDetailsActivity"
             android:exported="false" />
@@ -105,7 +114,6 @@
         <activity
             android:name=".Secretary.SecretaryNotificationActivity"
             android:exported="false" />
-
         <activity
             android:name=".Secretary.SecretaryDashboardActivity"
             android:exported="true" />
