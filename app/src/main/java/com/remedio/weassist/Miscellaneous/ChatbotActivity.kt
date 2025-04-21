@@ -46,6 +46,7 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URL
 import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -69,7 +70,7 @@ class ChatbotActivity : AppCompatActivity() {
     private val mapsApiKey = "AIzaSyBceN-dLuvJXdpGVpgZ1ckhfm4kCzuIjhM"
 
 
-    private val apiKey = "AIzaSyALy2fnaMCisp6UQUWO-VzcxWggalSWXfk"  // Replace with your Google Gemini API key
+    private val apiKey = "AIzaSyCBW1bOCten1GbAoRqcAuhRePWj7O12qtM"  // Replace with your Google Gemini API key
     private lateinit var generativeModel: GenerativeModel
 
     // Location-related fields
@@ -392,28 +393,71 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
+    // Update the geocodeLawyerAddresses function to properly handle office addresses
     private suspend fun geocodeLawyerAddresses() {
         for (lawyerWithDistance in lawyersList) {
             val lawyer = lawyerWithDistance.lawyer
-            val address = lawyer.location
+
+            // Try office address first, then fallback to location
+            val address = lawyer.officeAddress?.takeIf { it.isNotEmpty() } ?: lawyer.location
 
             if (address.isEmpty()) continue
+
+            // Skip if address already has coordinates
+            if (address.contains("[") && address.contains("]")) {
+                // Extract coordinates and update distance
+                val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
+                val locationCoords = coordsRegex.find(address)
+
+                if (locationCoords != null && userLocation != null) {
+                    val (latStr, lngStr) = locationCoords.destructured
+                    try {
+                        val lat = latStr.toDouble()
+                        val lng = lngStr.toDouble()
+
+                        lawyerWithDistance.distance = calculateHaversineDistance(
+                            userLocation!!.latitude,
+                            userLocation!!.longitude,
+                            lat,
+                            lng
+                        )
+                        lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
+                    } catch (e: NumberFormatException) {
+                        // Skip if conversion fails
+                    }
+                }
+                continue
+            }
 
             // Check cache first
             if (geocodeCache.containsKey(address)) {
                 val (lat, lng) = geocodeCache[address]!!
-                lawyer.location = "$address|$lat,$lng" // Store coordinates with address
+
+                // Update lawyer's location with coordinates
+                lawyer.location = "$address|$lat,$lng"
+
+                // Calculate distance if user location is available
+                if (userLocation != null) {
+                    lawyerWithDistance.distance = calculateHaversineDistance(
+                        userLocation!!.latitude,
+                        userLocation!!.longitude,
+                        lat,
+                        lng
+                    )
+                    lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
+                }
                 continue
             }
 
             try {
                 // Use Google Maps Geocoding API for more reliable results
+                val encodedAddress = address.replace(" ", "+")
                 val geocodingUrl = "https://maps.googleapis.com/maps/api/geocode/json?" +
-                        "address=${address.replace(" ", "+")}" +
+                        "address=$encodedAddress" +
                         "&key=$mapsApiKey"
 
                 val response = withContext(Dispatchers.IO) {
-                    java.net.URL(geocodingUrl).readText()
+                    URL(geocodingUrl).readText()
                 }
 
                 val jsonResponse = JSONObject(response)
@@ -428,8 +472,26 @@ class ChatbotActivity : AppCompatActivity() {
 
                         // Cache the result
                         geocodeCache[address] = Pair(lat, lng)
-                        lawyer.location = "$address|$lat,$lng" // Store coordinates with address
+
+                        // Update lawyer's location with coordinates
+                        lawyer.location = "$address|$lat,$lng"
+
+                        // Calculate distance if user location is available
+                        if (userLocation != null) {
+                            lawyerWithDistance.distance = calculateHaversineDistance(
+                                userLocation!!.latitude,
+                                userLocation!!.longitude,
+                                lat,
+                                lng
+                            )
+                            lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
+                        }
+
+                        // Log successful geocoding
+                        Log.d("ChatbotActivity", "Geocoded address for ${lawyer.name}: $lat, $lng")
                     }
+                } else {
+                    Log.e("ChatbotActivity", "Geocoding failed with status: ${jsonResponse.getString("status")}")
                 }
             } catch (e: Exception) {
                 Log.e("ChatbotActivity", "Error geocoding with Google Maps API: ${e.message}")
@@ -611,25 +673,49 @@ class ChatbotActivity : AppCompatActivity() {
         progressBar.visibility = View.GONE
     }
 
+    // Modified method to update lawyer distances
     private fun updateLawyerDistances() {
         if (userLocation == null || lawyersList.isEmpty()) return
 
         for (lawyerWithDistance in lawyersList) {
             val lawyer = lawyerWithDistance.lawyer
-            val locationParts = lawyer.location.split("|")
 
-            if (locationParts.size < 2) {
-                lawyerWithDistance.distance = Double.MAX_VALUE
-                lawyerWithDistance.formattedDistance = "Unknown distance"
-                continue
+            // Handle both formats: address|lat,lng and address [lat,lng]
+            val locationStr = lawyer.location
+            var lat: Double? = null
+            var lng: Double? = null
+
+            // Try to extract coordinates using pipe separator
+            if (locationStr.contains("|")) {
+                val locationParts = locationStr.split("|")
+                if (locationParts.size >= 2) {
+                    try {
+                        val coords = locationParts[1].split(",")
+                        lat = coords[0].toDouble()
+                        lng = coords[1].toDouble()
+                    } catch (e: Exception) {
+                        // Ignore parsing errors
+                    }
+                }
+            }
+            // Try to extract coordinates using bracket format
+            else if (locationStr.contains("[") && locationStr.contains("]")) {
+                val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
+                val locationCoords = coordsRegex.find(locationStr)
+
+                if (locationCoords != null) {
+                    try {
+                        val (latStr, lngStr) = locationCoords.destructured
+                        lat = latStr.toDouble()
+                        lng = lngStr.toDouble()
+                    } catch (e: Exception) {
+                        // Ignore parsing errors
+                    }
+                }
             }
 
-            try {
-                val coords = locationParts[1].split(",")
-                val lat = coords[0].toDouble()
-                val lng = coords[1].toDouble()
-
-                // Calculate distance using Haversine formula
+            // Calculate distance if we have valid coordinates
+            if (lat != null && lng != null) {
                 val distance = calculateHaversineDistance(
                     userLocation!!.latitude,
                     userLocation!!.longitude,
@@ -639,7 +725,7 @@ class ChatbotActivity : AppCompatActivity() {
 
                 lawyerWithDistance.distance = distance
                 lawyerWithDistance.formattedDistance = formatDistance(distance)
-            } catch (e: Exception) {
+            } else {
                 lawyerWithDistance.distance = Double.MAX_VALUE
                 lawyerWithDistance.formattedDistance = "Unknown distance"
             }
@@ -648,6 +734,7 @@ class ChatbotActivity : AppCompatActivity() {
         // Sort lawyers by distance
         lawyersList.sortBy { it.distance }
     }
+
 
     private fun calculateHaversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val R = 6371.0 // Earth radius in kilometers
@@ -667,7 +754,7 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Update the searchForLawyers function
+    // Enhanced method to search for lawyers by specialization
     private fun searchForLawyers(specialization: String) {
         showTypingIndicator("Searching for $specialization lawyers...")
 
@@ -696,10 +783,19 @@ class ChatbotActivity : AppCompatActivity() {
                             "in your area"
                         }
 
+                        // Build a more detailed results message with law firm info
                         val resultsMessage = buildString {
                             append("I found ${filteredLawyers.size} $specialization lawyers near you. ")
-                            append("The nearest is ${nearestLawyer.lawyer.name} ")
-                            append("(${nearestLawyer.lawyer.lawFirm}). ")
+                            append("The nearest lawyer is ${nearestLawyer.lawyer.name} ")
+                            append("at ${nearestLawyer.lawyer.lawFirm} ")
+                            append("($distanceText). ")
+
+                            // Add office address if available
+                            val officeAddress = nearestLawyer.lawyer.officeAddress
+                            if (!officeAddress.isNullOrEmpty()) {
+                                append("Office located at: $officeAddress. ")
+                            }
+
                             append("I've shown their location on the map. ")
                             append("Would you like to see the full list or get directions?")
                         }
@@ -712,6 +808,7 @@ class ChatbotActivity : AppCompatActivity() {
                     }
                 }
             } catch (e: Exception) {
+                Log.e("ChatbotActivity", "Error during lawyer search: ${e.message}")
                 withContext(Dispatchers.Main) {
                     hideTypingIndicator()
                     handleError("Sorry, I encountered an error while searching for lawyers. Please try again later.")
@@ -720,17 +817,45 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
+    // Enhanced method for showing lawyer on map
     private fun showLawyerOnMap(lawyerWithDistance: LawyerWithDistance) {
         val lawyer = lawyerWithDistance.lawyer
-        val locationParts = lawyer.location.split("|")
 
-        if (locationParts.size < 2 || userLocation == null) return
+        // Try to extract coordinates from location field
+        var lawyerLat: Double? = null
+        var lawyerLng: Double? = null
 
-        try {
-            val coords = locationParts[1].split(",")
-            val lawyerLat = coords[0].toDouble()
-            val lawyerLng = coords[1].toDouble()
+        // Check pipe format first (address|lat,lng)
+        if (lawyer.location.contains("|")) {
+            val locationParts = lawyer.location.split("|")
+            if (locationParts.size >= 2) {
+                try {
+                    val coords = locationParts[1].split(",")
+                    lawyerLat = coords[0].toDouble()
+                    lawyerLng = coords[1].toDouble()
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+        // Try bracket format (address [lat,lng])
+        else if (lawyer.location.contains("[") && lawyer.location.contains("]")) {
+            val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
+            val locationCoords = coordsRegex.find(lawyer.location)
 
+            if (locationCoords != null) {
+                try {
+                    val (latStr, lngStr) = locationCoords.destructured
+                    lawyerLat = latStr.toDouble()
+                    lawyerLng = lngStr.toDouble()
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+
+        // If coordinates found and user location available, show map
+        if (lawyerLat != null && lawyerLng != null && userLocation != null) {
             val clientLatLng = LatLng(userLocation!!.latitude, userLocation!!.longitude)
             val lawyerLatLng = LatLng(lawyerLat, lawyerLng)
 
@@ -740,8 +865,18 @@ class ChatbotActivity : AppCompatActivity() {
                 putExtra("LAWYER", lawyer)
             }
             startActivity(intent)
-        } catch (e: Exception) {
-            Log.e("ChatbotActivity", "Error showing lawyer on map: ${e.message}")
+        } else {
+            // If coordinates not found, pass the address to the map activity
+            val intent = Intent(this, LawyerMapActivity::class.java).apply {
+                if (userLocation != null) {
+                    putExtra("CLIENT_LATITUDE", userLocation!!.latitude)
+                    putExtra("CLIENT_LONGITUDE", userLocation!!.longitude)
+                }
+                putExtra("LAWYER", lawyer)
+                putExtra("LAWYER_ADDRESS", lawyer.location.split("|")[0])
+                putExtra("USE_ADDRESS_NOT_COORDS", true)
+            }
+            startActivity(intent)
         }
     }
 
@@ -767,6 +902,7 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
+    // Update the fetchLawyersFromFirebase function to handle the new database structure
     private fun fetchLawyersFromFirebase() {
         val database = FirebaseDatabase.getInstance().getReference("lawyers")
 
@@ -779,6 +915,16 @@ class ChatbotActivity : AppCompatActivity() {
                         val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
                         lawyer?.let {
                             it.id = lawyerSnapshot.key ?: ""
+
+                            // Make sure the specialization is set (could be in a different field in your DB)
+                            if (it.specialization.isNullOrEmpty()) {
+                                it.specialization = lawyerSnapshot.child("firmType").getValue(String::class.java) ?: ""
+                            }
+
+                            // Use officeAddress as location if present
+                            if (it.location.isNullOrEmpty() && !it.officeAddress.isNullOrEmpty()) {
+                                it.location = it.officeAddress
+                            }
 
                             // Add lawyer to list with default distance
                             lawyersList.add(LawyerWithDistance(it))

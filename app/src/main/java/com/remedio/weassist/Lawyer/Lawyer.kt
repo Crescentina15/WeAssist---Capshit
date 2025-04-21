@@ -6,7 +6,7 @@ import android.os.Parcelable
 data class Lawyer(
     var id: String = "",
     val name: String = "",
-    val specialization: String = "",
+    var specialization: String = "",
     val lawFirm: String = "",
     val licenseNumber: String = "",
     val experience: String = "",
@@ -23,7 +23,14 @@ data class Lawyer(
     val contact: Contact? = null,
     val lawFirmAdminId: String = "",
     val averageRating: Double? = null,
-    val distance: Double? = null
+    val distance: Double? = null,
+    var email: String = "",
+    var phoneNumber: String = "",
+    var officeAddress: String = "",
+    var operatingHours: String = "",
+    var firmDescription: String = "",
+    var createdAt: String = "",
+    var isTrial: Boolean = false
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "",
