@@ -94,6 +94,7 @@ class ChatbotActivity : AppCompatActivity() {
     private val geocodeCache = mutableMapOf<String, Pair<Double, Double>>()
 
     // Data class to store conversation state
+    // Add this property to the ConversationState data class
     data class ConversationState(
         var isFirstMessage: Boolean = true,
         var locationRequested: Boolean = false,
@@ -101,7 +102,8 @@ class ChatbotActivity : AppCompatActivity() {
         var showingLawyerInfo: Boolean = false,
         var currentLawyerId: String = "",
         var awaitingConfirmation: Boolean = false,
-        var lastAction: String = ""
+        var lastAction: String = "",
+        var currentNearestLawyer: LawyerWithDistance? = null  // NEW: Store nearest lawyer
     )
 
     // Data class to track lawyer with distance from user
@@ -338,6 +340,23 @@ class ChatbotActivity : AppCompatActivity() {
                     userMessage.contains("list", ignoreCase = true) &&
                     conversationState.intendedSpecialization.isNotEmpty()) -> {
                 showLawyersList()
+                return
+            }
+
+            // NEW: Handle direct map request when lawyer info is shown
+            (conversationState.showingLawyerInfo &&
+                    (userMessage.contains("map", ignoreCase = true) ||
+                            userMessage.contains("location", ignoreCase = true) ||
+                            userMessage.contains("show", ignoreCase = true) && userMessage.contains("location", ignoreCase = true) ||
+                            userMessage.contains("see", ignoreCase = true) && userMessage.contains("map", ignoreCase = true))) -> {
+
+                // Check if we have a stored nearest lawyer
+                conversationState.currentNearestLawyer?.let { nearestLawyer ->
+                    addAssistantMessage("Showing location for ${nearestLawyer.lawyer.name} on the map.")
+                    showLawyerOnMap(nearestLawyer)
+                } ?: run {
+                    addAssistantMessage("I'm sorry, I don't have the lawyer's location information. Would you like to see the full list instead?")
+                }
                 return
             }
 
@@ -618,40 +637,43 @@ class ChatbotActivity : AppCompatActivity() {
 
                 // System prompt with very specific instructions
                 val systemPrompt = """
-                You are a helpful legal assistant chatbot for a legal app called WeAssist. Your goal is to help users find lawyers based on their needs in a conversational manner.
+You are a helpful legal assistant chatbot for a legal app called WeAssist. Your goal is to help users find lawyers based on their needs in a conversational manner.
 
-                CONVERSATION CONTEXT:
-                $contextJson
+CONVERSATION CONTEXT:
+$contextJson
 
-                AVAILABLE COMMANDS (include these in your JSON response):
-                - "suggest_specialization": When you identify what type of lawyer the user needs
-                - "search_lawyers": When confirming a search for a specific lawyer type
-                - "show_lawyers_list": When the user wants to see the full list of lawyers
-                - "request_more_info": When you need more information about the user's legal situation
-                - "provide_info": When explaining legal concepts (but always bring back to lawyer search)
+AVAILABLE COMMANDS (include these in your JSON response):
+- "suggest_specialization": When you identify what type of lawyer the user needs
+- "search_lawyers": When confirming a search for a specific lawyer type
+- "show_lawyers_list": When the user wants to see the full list of lawyers
+- "request_more_info": When you need more information about the user's legal situation
+- "provide_info": When explaining legal concepts (but always bring back to lawyer search)
+- "show_lawyer_map": When the user wants to see the lawyer's location on the map
 
-                RESPONSE RULES:
-                1. Keep responses conversational, friendly, and under 3 sentences.
-                2. Always steer towards helping find a lawyer, not giving legal advice.
-                3. For "I don't know" or vague statements from users, ask about their legal issue.
-                4. Recognize common legal situations and match to lawyer specializations.
-                5. For questions about specific lawyers, suggest viewing the full list.
-                6. Mimic this example flow:
-                   - Initial greeting -> Ask what type of lawyer they need
-                   - Recognize legal issue -> Suggest specialization and offer to search
-                   - Confirm search -> Show results with nearest lawyer
-                   - Handle "tell me more" by encouraging full list view
-                   - For "show list" requests -> Confirm showing list
+RESPONSE RULES:
+1. Keep responses conversational, friendly, and under 3 sentences.
+2. Always steer towards helping find a lawyer, not giving legal advice.
+3. For "I don't know" or vague statements from users, ask about their legal issue.
+4. Recognize common legal situations and match to lawyer specializations.
+5. For questions about specific lawyers, suggest viewing the full list.
+6. When user asks to see the map or location, respond with command "show_lawyer_map".
+7. Mimic this example flow:
+   - Initial greeting -> Ask what type of lawyer they need
+   - Recognize legal issue -> Suggest specialization and offer to search
+   - Confirm search -> Show results with nearest lawyer
+   - User asks to see location -> Show map
+   - Handle "tell me more" by encouraging full list view
+   - For "show list" requests -> Confirm showing list
 
-                REQUIRED RESPONSE FORMAT:
-                Return a JSON object with these fields:
-                {
-                    "message": "Your response text here",
-                    "command": "one_of_the_available_commands",
-                    "specialization": "lawyer_specialization_if_detected",
-                    "requires_confirmation": true/false
-                }
-                """
+REQUIRED RESPONSE FORMAT:
+Return a JSON object with these fields:
+{
+    "message": "Your response text here",
+    "command": "one_of_the_available_commands",
+    "specialization": "lawyer_specialization_if_detected",
+    "requires_confirmation": true/false
+}
+"""
 
                 // Create a conversation history string for Gemini
                 val historyString = conversationHistory.joinToString("\n") {
@@ -908,16 +930,19 @@ class ChatbotActivity : AppCompatActivity() {
                                 append("Hours: ${nearestLawyer.lawyer.operatingHours}. ")
                             }
 
-                            append("I've marked their location on the map. ")
-                            append("Would you like to see the full list or get directions?")
+                            append("Would you like to see their location on the map or see the full list of lawyers?")
                         }
 
                         addAssistantMessage(resultsMessage)
+
+                        // Store nearest lawyer data for when user confirms
                         conversationState.currentLawyerId = nearestLawyer.lawyer.id
                         conversationState.showingLawyerInfo = true
 
-                        // Show the nearest lawyer on map
-                        showLawyerOnMap(nearestLawyer)
+                        // NEW: Add a property to store the current nearest lawyer for later use
+                        conversationState.currentNearestLawyer = nearestLawyer
+
+                        // DO NOT show map immediately - wait for user confirmation
                     } else {
                         addAssistantMessage("I couldn't find any $specialization lawyers in our database. Would you like to try a different specialization?")
                     }
@@ -931,6 +956,8 @@ class ChatbotActivity : AppCompatActivity() {
             }
         }
     }
+
+
 
     private fun showLawyerOnMap(lawyerWithDistance: LawyerWithDistance) {
         val lawyer = lawyerWithDistance.lawyer
