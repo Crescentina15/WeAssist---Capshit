@@ -853,7 +853,6 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Enhanced searchForLawyers function that prioritizes office location
     private fun searchForLawyers(specialization: String) {
         showTypingIndicator("Searching for $specialization lawyers...")
 
@@ -872,9 +871,6 @@ class ChatbotActivity : AppCompatActivity() {
 
                     if (filteredLawyers.isNotEmpty()) {
                         val nearestLawyer = filteredLawyers.first()
-
-                        // Show the nearest lawyer on map
-                        showLawyerOnMap(nearestLawyer)
 
                         // Generate appropriate distance text
                         val distanceText = when {
@@ -912,13 +908,16 @@ class ChatbotActivity : AppCompatActivity() {
                                 append("Hours: ${nearestLawyer.lawyer.operatingHours}. ")
                             }
 
-                            append("I've shown their location on the map. ")
+                            append("I've marked their location on the map. ")
                             append("Would you like to see the full list or get directions?")
                         }
 
                         addAssistantMessage(resultsMessage)
                         conversationState.currentLawyerId = nearestLawyer.lawyer.id
                         conversationState.showingLawyerInfo = true
+
+                        // Show the nearest lawyer on map
+                        showLawyerOnMap(nearestLawyer)
                     } else {
                         addAssistantMessage("I couldn't find any $specialization lawyers in our database. Would you like to try a different specialization?")
                     }
@@ -933,7 +932,6 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Enhanced method for showing lawyer on map
     private fun showLawyerOnMap(lawyerWithDistance: LawyerWithDistance) {
         val lawyer = lawyerWithDistance.lawyer
 
@@ -950,7 +948,7 @@ class ChatbotActivity : AppCompatActivity() {
                     lawyerLat = coords[0].toDouble()
                     lawyerLng = coords[1].toDouble()
                 } catch (e: Exception) {
-                    // Ignore parsing errors
+                    Log.e("ChatbotActivity", "Error parsing pipe coordinates: ${e.message}")
                 }
             }
         }
@@ -965,31 +963,46 @@ class ChatbotActivity : AppCompatActivity() {
                     lawyerLat = latStr.toDouble()
                     lawyerLng = lngStr.toDouble()
                 } catch (e: Exception) {
-                    // Ignore parsing errors
+                    Log.e("ChatbotActivity", "Error parsing bracket coordinates: ${e.message}")
                 }
             }
         }
 
-        // If coordinates found and user location available, show map
-        if (lawyerLat != null && lawyerLng != null && userLocation != null) {
-            val clientLatLng = LatLng(userLocation!!.latitude, userLocation!!.longitude)
-            val lawyerLatLng = LatLng(lawyerLat, lawyerLng)
-
+        // If coordinates found and user location available, show map with both points
+        if (lawyerLat != null && lawyerLng != null) {
             val intent = Intent(this, LawyerMapActivity::class.java).apply {
-                putExtra("CLIENT_LOCATION", clientLatLng)
-                putExtra("LAWYER_LOCATION", lawyerLatLng)
+                putExtra("LAWYER_LATITUDE", lawyerLat)
+                putExtra("LAWYER_LONGITUDE", lawyerLng)
+                putExtra("LAWYER_NAME", lawyer.name)
+                putExtra("LAWYER_FIRM", lawyer.lawFirm)
+
+                // Add user location if available
+                if (userLocation != null) {
+                    putExtra("CLIENT_LATITUDE", userLocation!!.latitude)
+                    putExtra("CLIENT_LONGITUDE", userLocation!!.longitude)
+                }
+
+                // Add additional lawyer info for display
                 putExtra("LAWYER", lawyer)
             }
             startActivity(intent)
         } else {
-            // If coordinates not found, pass the address to the map activity
+            // If coordinates not found, pass the address to the map activity for geocoding
+            val addressToUse = when {
+                !lawyer.officeAddress.isNullOrEmpty() -> lawyer.officeAddress!!
+                lawyer.location.contains("|") -> lawyer.location.split("|")[0]
+                else -> lawyer.location
+            }
+
             val intent = Intent(this, LawyerMapActivity::class.java).apply {
                 if (userLocation != null) {
                     putExtra("CLIENT_LATITUDE", userLocation!!.latitude)
                     putExtra("CLIENT_LONGITUDE", userLocation!!.longitude)
                 }
                 putExtra("LAWYER", lawyer)
-                putExtra("LAWYER_ADDRESS", lawyer.location.split("|")[0])
+                putExtra("LAWYER_NAME", lawyer.name)
+                putExtra("LAWYER_FIRM", lawyer.lawFirm)
+                putExtra("LAWYER_ADDRESS", addressToUse)
                 putExtra("USE_ADDRESS_NOT_COORDS", true)
             }
             startActivity(intent)
