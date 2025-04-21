@@ -26,7 +26,7 @@ data class Lawyer(
     val distance: Double? = null,
     var email: String = "",
     var phoneNumber: String = "",
-    var officeAddress: String = "",
+    var officeAddress: String? = null,
     var operatingHours: String = "",
     var firmDescription: String = "",
     var createdAt: String = "",
@@ -69,6 +69,9 @@ data class Lawyer(
         parcel.writeString(profileImageUrl) // Write profileImageUrl as nullable
         parcel.writeString(location)
         parcel.writeParcelable(contact, flags)
+        parcel.writeDouble(distance ?: Double.MIN_VALUE)
+        parcel.writeDouble(averageRating ?: Double.MIN_VALUE)
+        parcel.writeString(officeAddress)
     }
 
     override fun describeContents(): Int {

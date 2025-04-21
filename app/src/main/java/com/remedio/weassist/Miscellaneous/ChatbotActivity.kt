@@ -393,67 +393,44 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Update the geocodeLawyerAddresses function to properly handle office addresses
     private suspend fun geocodeLawyerAddresses() {
-        for (lawyerWithDistance in lawyersList) {
+        // Make a safe copy to avoid concurrent modification exceptions
+        val lawyersToProcess = ArrayList(lawyersList)
+
+        for (lawyerWithDistance in lawyersToProcess) {
             val lawyer = lawyerWithDistance.lawyer
 
-            // Try office address first, then fallback to location
-            val address = lawyer.officeAddress?.takeIf { it.isNotEmpty() } ?: lawyer.location
+            // First try office address as it's more likely to be accurate for professional locations
+            val addressToGeocode = when {
+                !lawyer.officeAddress.isNullOrEmpty() -> lawyer.officeAddress!!
+                lawyer.location.isNotEmpty() -> lawyer.location
+                else -> continue // Skip if no address available
+            }
 
-            if (address.isEmpty()) continue
+            if (addressToGeocode.isEmpty()) continue
 
             // Skip if address already has coordinates
-            if (address.contains("[") && address.contains("]")) {
-                // Extract coordinates and update distance
-                val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
-                val locationCoords = coordsRegex.find(address)
-
-                if (locationCoords != null && userLocation != null) {
-                    val (latStr, lngStr) = locationCoords.destructured
-                    try {
-                        val lat = latStr.toDouble()
-                        val lng = lngStr.toDouble()
-
-                        lawyerWithDistance.distance = calculateHaversineDistance(
-                            userLocation!!.latitude,
-                            userLocation!!.longitude,
-                            lat,
-                            lng
-                        )
-                        lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
-                    } catch (e: NumberFormatException) {
-                        // Skip if conversion fails
-                    }
-                }
+            if (addressToGeocode.contains("[") && addressToGeocode.contains("]") ||
+                addressToGeocode.contains("|")) {
+                extractAndUpdateCoordinates(lawyerWithDistance, addressToGeocode)
                 continue
             }
 
-            // Check cache first
-            if (geocodeCache.containsKey(address)) {
-                val (lat, lng) = geocodeCache[address]!!
+            // Check cache first to avoid redundant API calls
+            if (geocodeCache.containsKey(addressToGeocode)) {
+                val (lat, lng) = geocodeCache[addressToGeocode]!!
 
-                // Update lawyer's location with coordinates
-                lawyer.location = "$address|$lat,$lng"
-
-                // Calculate distance if user location is available
-                if (userLocation != null) {
-                    lawyerWithDistance.distance = calculateHaversineDistance(
-                        userLocation!!.latitude,
-                        userLocation!!.longitude,
-                        lat,
-                        lng
-                    )
-                    lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
-                }
+                // Update with cached coordinates
+                updateLawyerWithCoordinates(lawyerWithDistance, addressToGeocode, lat, lng)
                 continue
             }
 
             try {
-                // Use Google Maps Geocoding API for more reliable results
-                val encodedAddress = address.replace(" ", "+")
+                // Use Google Maps Geocoding API with specific region bias for Philippines
+                val encodedAddress = addressToGeocode.replace(" ", "+")
                 val geocodingUrl = "https://maps.googleapis.com/maps/api/geocode/json?" +
                         "address=$encodedAddress" +
+                        "&region=ph" + // Philippines region bias
                         "&key=$mapsApiKey"
 
                 val response = withContext(Dispatchers.IO) {
@@ -461,7 +438,9 @@ class ChatbotActivity : AppCompatActivity() {
                 }
 
                 val jsonResponse = JSONObject(response)
-                if (jsonResponse.getString("status") == "OK") {
+                val status = jsonResponse.getString("status")
+
+                if (status == "OK") {
                     val results = jsonResponse.getJSONArray("results")
                     if (results.length() > 0) {
                         val location = results.getJSONObject(0)
@@ -470,33 +449,153 @@ class ChatbotActivity : AppCompatActivity() {
                         val lat = location.getDouble("lat")
                         val lng = location.getDouble("lng")
 
-                        // Cache the result
-                        geocodeCache[address] = Pair(lat, lng)
+                        // Cache the result for future use
+                        geocodeCache[addressToGeocode] = Pair(lat, lng)
 
-                        // Update lawyer's location with coordinates
-                        lawyer.location = "$address|$lat,$lng"
-
-                        // Calculate distance if user location is available
-                        if (userLocation != null) {
-                            lawyerWithDistance.distance = calculateHaversineDistance(
-                                userLocation!!.latitude,
-                                userLocation!!.longitude,
-                                lat,
-                                lng
-                            )
-                            lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
-                        }
+                        // Update lawyer with coordinates
+                        updateLawyerWithCoordinates(lawyerWithDistance, addressToGeocode, lat, lng)
 
                         // Log successful geocoding
                         Log.d("ChatbotActivity", "Geocoded address for ${lawyer.name}: $lat, $lng")
                     }
                 } else {
-                    Log.e("ChatbotActivity", "Geocoding failed with status: ${jsonResponse.getString("status")}")
+                    // Handle geocoding errors with better fallbacks
+                    handleGeocodingError(lawyerWithDistance, addressToGeocode, status, jsonResponse)
                 }
             } catch (e: Exception) {
                 Log.e("ChatbotActivity", "Error geocoding with Google Maps API: ${e.message}")
             }
         }
+    }
+
+    // Helper function to update lawyer with coordinates
+    private fun updateLawyerWithCoordinates(
+        lawyerWithDistance: LawyerWithDistance,
+        address: String,
+        lat: Double,
+        lng: Double
+    ) {
+        val lawyer = lawyerWithDistance.lawyer
+
+        // Store coordinates in a standardized format
+        lawyer.location = "$address|$lat,$lng"
+
+        // Update distance if user location is available
+        if (userLocation != null) {
+            lawyerWithDistance.distance = calculateHaversineDistance(
+                userLocation!!.latitude,
+                userLocation!!.longitude,
+                lat,
+                lng
+            )
+            lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
+        }
+    }
+
+    // Extract coordinates from existing address format and update lawyer
+    private fun extractAndUpdateCoordinates(lawyerWithDistance: LawyerWithDistance, address: String) {
+        val lawyer = lawyerWithDistance.lawyer
+
+        if (address.contains("|")) {
+            // Parse format: "address|lat,lng"
+            val locationParts = address.split("|")
+            if (locationParts.size >= 2) {
+                try {
+                    val coords = locationParts[1].split(",")
+                    val lat = coords[0].toDouble()
+                    val lng = coords[1].toDouble()
+
+                    updateDistanceIfUserLocationAvailable(lawyerWithDistance, lat, lng)
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+        } else if (address.contains("[") && address.contains("]")) {
+            // Parse format: "address [lat,lng]"
+            val coordsRegex = "\\[([-\\d.]+),([-\\d.]+)\\]".toRegex()
+            val locationCoords = coordsRegex.find(address)
+
+            if (locationCoords != null) {
+                try {
+                    val (latStr, lngStr) = locationCoords.destructured
+                    val lat = latStr.toDouble()
+                    val lng = lngStr.toDouble()
+
+                    updateDistanceIfUserLocationAvailable(lawyerWithDistance, lat, lng)
+                } catch (e: Exception) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+    }
+
+    // Update distance if user location is available
+    private fun updateDistanceIfUserLocationAvailable(
+        lawyerWithDistance: LawyerWithDistance,
+        lat: Double,
+        lng: Double
+    ) {
+        if (userLocation != null) {
+            lawyerWithDistance.distance = calculateHaversineDistance(
+                userLocation!!.latitude,
+                userLocation!!.longitude,
+                lat,
+                lng
+            )
+            lawyerWithDistance.formattedDistance = formatDistance(lawyerWithDistance.distance)
+        }
+    }
+
+    // Handle geocoding errors with better fallbacks
+    private fun handleGeocodingError(
+        lawyerWithDistance: LawyerWithDistance,
+        address: String,
+        status: String,
+        jsonResponse: JSONObject
+    ) {
+        val lawyer = lawyerWithDistance.lawyer
+        val errorMessage = if (jsonResponse.has("error_message"))
+            jsonResponse.getString("error_message") else "No error message"
+
+        Log.e("ChatbotActivity", "Geocoding failed with status: $status, message: $errorMessage, address: $address")
+
+        // Apply regional fallbacks for common areas
+        when {
+            // Cebu fallback
+            (status == "ZERO_RESULTS" && address.contains("Cebu", ignoreCase = true)) -> {
+                applyRegionalFallback(lawyerWithDistance, address, 10.3157, 123.8854, "Cebu City")
+            }
+            // Manila fallback
+            (status == "ZERO_RESULTS" && address.contains("Manila", ignoreCase = true)) -> {
+                applyRegionalFallback(lawyerWithDistance, address, 14.5995, 120.9842, "Manila")
+            }
+            // Davao fallback
+            (status == "ZERO_RESULTS" && address.contains("Davao", ignoreCase = true)) -> {
+                applyRegionalFallback(lawyerWithDistance, address, 7.1907, 125.4553, "Davao City")
+            }
+            // Generic Philippines fallback
+            (status == "ZERO_RESULTS") -> {
+                // Central Philippines as fallback
+                applyRegionalFallback(lawyerWithDistance, address, 12.8797, 121.7740, "Philippines")
+            }
+        }
+    }
+
+    // Apply regional fallback coordinates
+    private fun applyRegionalFallback(
+        lawyerWithDistance: LawyerWithDistance,
+        address: String,
+        lat: Double,
+        lng: Double,
+        region: String
+    ) {
+        Log.d("ChatbotActivity", "Using fallback $region coordinates for ${lawyerWithDistance.lawyer.name}")
+
+        // Cache the fallback result
+        geocodeCache[address] = Pair(lat, lng)
+
+        // Update lawyer with fallback coordinates
+        updateLawyerWithCoordinates(lawyerWithDistance, address, lat, lng)
     }
 
 
@@ -754,7 +853,7 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Enhanced method to search for lawyers by specialization
+    // Enhanced searchForLawyers function that prioritizes office location
     private fun searchForLawyers(specialization: String) {
         showTypingIndicator("Searching for $specialization lawyers...")
 
@@ -777,23 +876,40 @@ class ChatbotActivity : AppCompatActivity() {
                         // Show the nearest lawyer on map
                         showLawyerOnMap(nearestLawyer)
 
-                        val distanceText = if (nearestLawyer.formattedDistance != "Unknown distance") {
-                            "who is ${nearestLawyer.formattedDistance} away"
-                        } else {
-                            "in your area"
+                        // Generate appropriate distance text
+                        val distanceText = when {
+                            nearestLawyer.formattedDistance == "Unknown distance" -> "in your area"
+                            else -> "who is ${nearestLawyer.formattedDistance} away"
                         }
 
-                        // Build a more detailed results message with law firm info
+                        // Get firm details for enhanced recommendation
+                        val firmDetails = if (nearestLawyer.lawyer.firmDescription.isNotEmpty()) {
+                            "(${nearestLawyer.lawyer.firmDescription})"
+                        } else {
+                            ""
+                        }
+
+                        // Build a more detailed results message with enhanced information
                         val resultsMessage = buildString {
                             append("I found ${filteredLawyers.size} $specialization lawyers near you. ")
                             append("The nearest lawyer is ${nearestLawyer.lawyer.name} ")
-                            append("at ${nearestLawyer.lawyer.lawFirm} ")
+                            append("at ${nearestLawyer.lawyer.lawFirm} $firmDetails ")
                             append("($distanceText). ")
 
-                            // Add office address if available
+                            // Add comprehensive office address if available
                             val officeAddress = nearestLawyer.lawyer.officeAddress
                             if (!officeAddress.isNullOrEmpty()) {
                                 append("Office located at: $officeAddress. ")
+                            }
+
+                            // Add contact details if available
+                            if (nearestLawyer.lawyer.phoneNumber.isNotEmpty()) {
+                                append("Contact: ${nearestLawyer.lawyer.phoneNumber}. ")
+                            }
+
+                            // Add operating hours if available
+                            if (nearestLawyer.lawyer.operatingHours.isNotEmpty()) {
+                                append("Hours: ${nearestLawyer.lawyer.operatingHours}. ")
                             }
 
                             append("I've shown their location on the map. ")
@@ -902,55 +1018,108 @@ class ChatbotActivity : AppCompatActivity() {
         }
     }
 
-    // Update the fetchLawyersFromFirebase function to handle the new database structure
+    // Enhanced method to fetch lawyers with improved office address handling
     private fun fetchLawyersFromFirebase() {
         val database = FirebaseDatabase.getInstance().getReference("lawyers")
+        val lawFirmAdminRef = FirebaseDatabase.getInstance().getReference("law_firm_admin")
 
-        database.addValueEventListener(object : ValueEventListener {
+        // First, fetch law firm admin data to get office addresses
+        lawFirmAdminRef.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                lawyersList.clear()
+                // Create a map of law firm names to their office addresses and other details
+                val firmDetailsMap = HashMap<String, Map<String, String>>()
 
-                for (lawyerSnapshot in snapshot.children) {
+                for (adminSnapshot in snapshot.children) {
                     try {
-                        val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
-                        lawyer?.let {
-                            it.id = lawyerSnapshot.key ?: ""
+                        val lawFirm = adminSnapshot.child("lawFirm").getValue(String::class.java) ?: ""
+                        val officeAddress = adminSnapshot.child("officeAddress").getValue(String::class.java) ?: ""
+                        val operatingHours = adminSnapshot.child("operatingHours").getValue(String::class.java) ?: ""
+                        val firmDescription = adminSnapshot.child("firmDescription").getValue(String::class.java) ?: ""
 
-                            // Make sure the specialization is set (could be in a different field in your DB)
-                            if (it.specialization.isNullOrEmpty()) {
-                                it.specialization = lawyerSnapshot.child("firmType").getValue(String::class.java) ?: ""
-                            }
-
-                            // Use officeAddress as location if present
-                            if (it.location.isNullOrEmpty() && !it.officeAddress.isNullOrEmpty()) {
-                                it.location = it.officeAddress
-                            }
-
-                            // Add lawyer to list with default distance
-                            lawyersList.add(LawyerWithDistance(it))
+                        if (lawFirm.isNotEmpty()) {
+                            firmDetailsMap[lawFirm] = mapOf(
+                                "officeAddress" to officeAddress,
+                                "operatingHours" to operatingHours,
+                                "firmDescription" to firmDescription
+                            )
                         }
                     } catch (e: Exception) {
-                        Log.e("ChatbotActivity", "Error parsing lawyer data: ${e.message}")
+                        Log.e("ChatbotActivity", "Error parsing law firm admin data: ${e.message}")
                     }
                 }
 
-                Log.d("ChatbotActivity", "Loaded ${lawyersList.size} lawyers from database")
+                // Now fetch lawyers and attach firm details
+                database.addValueEventListener(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        lawyersList.clear()
 
-                // Start geocoding addresses in the background
-                if (lawyersList.isNotEmpty()) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        geocodeLawyerAddresses()
+                        for (lawyerSnapshot in snapshot.children) {
+                            try {
+                                val lawyer = lawyerSnapshot.getValue(Lawyer::class.java)
+                                lawyer?.let {
+                                    it.id = lawyerSnapshot.key ?: ""
 
-                        // Update distances if location is available
-                        if (userLocation != null) {
-                            updateLawyerDistances()
+                                    // Make sure the specialization is set
+                                    if (it.specialization.isNullOrEmpty()) {
+                                        it.specialization = lawyerSnapshot.child("firmType").getValue(String::class.java) ?: ""
+                                    }
+
+                                    // Attach law firm details if available
+                                    if (firmDetailsMap.containsKey(it.lawFirm)) {
+                                        val firmDetails = firmDetailsMap[it.lawFirm]!!
+
+                                        // Set office address if not already set
+                                        if (it.officeAddress.isNullOrEmpty() && firmDetails["officeAddress"]?.isNotEmpty() == true) {
+                                            it.officeAddress = firmDetails["officeAddress"]
+                                        }
+
+                                        // Set operating hours if available
+                                        if (it.operatingHours.isEmpty() && firmDetails["operatingHours"]?.isNotEmpty() == true) {
+                                            it.operatingHours = firmDetails["operatingHours"]!!
+                                        }
+
+                                        // Set firm description if available
+                                        if (it.firmDescription.isEmpty() && firmDetails["firmDescription"]?.isNotEmpty() == true) {
+                                            it.firmDescription = firmDetails["firmDescription"]!!
+                                        }
+                                    }
+
+                                    // Set location based on available address info
+                                    if (it.location.isEmpty()) {
+                                        it.location = it.officeAddress ?: ""
+                                    }
+
+                                    // Add lawyer to list with default distance
+                                    lawyersList.add(LawyerWithDistance(it))
+                                }
+                            } catch (e: Exception) {
+                                Log.e("ChatbotActivity", "Error parsing lawyer data: ${e.message}")
+                            }
+                        }
+
+                        Log.d("ChatbotActivity", "Loaded ${lawyersList.size} lawyers from database")
+
+                        // Start geocoding addresses in the background
+                        if (lawyersList.isNotEmpty()) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                geocodeLawyerAddresses()
+
+                                // Update distances if location is available
+                                if (userLocation != null) {
+                                    updateLawyerDistances()
+                                }
+                            }
                         }
                     }
-                }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("ChatbotActivity", "Failed to load lawyers: ${error.message}")
+                    }
+                })
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("ChatbotActivity", "Failed to load lawyers: ${error.message}")
+                Log.e("ChatbotActivity", "Failed to load law firm admin data: ${error.message}")
             }
         })
     }
