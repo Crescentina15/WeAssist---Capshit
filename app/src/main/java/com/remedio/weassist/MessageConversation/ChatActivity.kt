@@ -34,6 +34,10 @@ class ChatActivity : AppCompatActivity() {
     private var isSending = false // Add this with other class variables
     private var pendingMessageId: String? = null
 
+    private var lastSentMessage: String? = null // Track the last sent message content
+    private var lastSentTimestamp: Long = 0 // Track when the last message was sent
+    private val receivedMessageIds = mutableSetOf<String>()
+
     // Chat participant IDs
     private var clientId: String? = null
     private var secretaryId: String? = null
@@ -154,9 +158,14 @@ class ChatActivity : AppCompatActivity() {
 
         btnSendMessage.setOnClickListener {
             if (!isSending) {
-                isSending = true
-                btnSendMessage.isEnabled = false // Disable button while sending
-                sendMessage()
+                val messageText = etMessageInput.text.toString().trim()
+                // Prevent sending duplicate messages in quick succession
+                if (messageText.isNotEmpty() &&
+                    (messageText != lastSentMessage || System.currentTimeMillis() - lastSentTimestamp > 2000)) {
+                    isSending = true
+                    btnSendMessage.isEnabled = false
+                    sendMessage()
+                }
             }
         }
 
@@ -793,57 +802,65 @@ class ChatActivity : AppCompatActivity() {
         val messageText = etMessageInput.text.toString().trim()
         if (messageText.isEmpty() || currentUserId == null) {
             Toast.makeText(this, "Message cannot be empty", Toast.LENGTH_SHORT).show()
-            isSending = false
-            btnSendMessage.isEnabled = true
+            resetSendButton()
             return
         }
 
         val receiverId = determineReceiverId() ?: run {
             Toast.makeText(this, "Recipient not identified", Toast.LENGTH_SHORT).show()
-            isSending = false
-            btnSendMessage.isEnabled = true
+            resetSendButton()
             return
         }
+
+        // Update last sent message tracking
+        lastSentMessage = messageText
+        lastSentTimestamp = System.currentTimeMillis()
 
         // First get the sender's profile image URL
         getCurrentUserImageUrl { imageUrl ->
             val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
             val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
-            pendingMessageId = messageId
 
             val message = Message(
                 senderId = currentUserId!!,
                 receiverId = receiverId,
                 message = messageText,
-                timestamp = System.currentTimeMillis(),
+                timestamp = lastSentTimestamp,
                 senderImageUrl = imageUrl
             )
 
             // Add to local list immediately for instant UI feedback
-            messagesList.add(message)
-            messagesAdapter.notifyItemInserted(messagesList.size - 1)
-            rvChatMessages.scrollToPosition(messagesList.size - 1)
-            etMessageInput.text.clear()
+            runOnUiThread {
+                messagesList.add(message)
+                messagesAdapter.notifyItemInserted(messagesList.size - 1)
+                rvChatMessages.scrollToPosition(messagesList.size - 1)
+                etMessageInput.text.clear()
+            }
 
             // Send to Firebase
             database.child("conversations").child(conversationId).child("messages").child(messageId)
                 .setValue(message)
                 .addOnSuccessListener {
-                    pendingMessageId = null
                     incrementUnreadCounter(conversationId, receiverId)
                     createNotificationForRecipient(message)
-                    isSending = false
-                    btnSendMessage.isEnabled = true
+                    resetSendButton()
                 }
-                .addOnFailureListener {
+                .addOnFailureListener { e ->
+                    Log.e("ChatActivity", "Failed to send message", e)
                     // Remove from local list if failed
-                    messagesList.removeAll { it.timestamp == message.timestamp }
-                    messagesAdapter.notifyDataSetChanged()
-                    Toast.makeText(this, "Failed to send message", Toast.LENGTH_SHORT).show()
-                    isSending = false
-                    btnSendMessage.isEnabled = true
+                    runOnUiThread {
+                        messagesList.removeAll { it.timestamp == message.timestamp && it.message == message.message }
+                        messagesAdapter.notifyDataSetChanged()
+                        Toast.makeText(this@ChatActivity, "Failed to send message", Toast.LENGTH_SHORT).show()
+                    }
+                    resetSendButton()
                 }
         }
+    }
+
+    private fun resetSendButton() {
+        isSending = false
+        btnSendMessage.isEnabled = true
     }
 
     private fun getCurrentUserImageUrl(callback: (String?) -> Unit) {
@@ -1019,109 +1036,140 @@ class ChatActivity : AppCompatActivity() {
 
         val messagesRef = database.child("conversations").child(actualConversationId).child("messages")
 
-        // First check for conversation existence to handle first-time setup
-        database.child("conversations").child(actualConversationId).get()
-            .addOnSuccessListener { conversationSnapshot ->
-                if (!conversationSnapshot.exists() && createOnFirstMessage) {
-                    // This is a new conversation that will be created on first message
-                    Log.d("ChatActivity", "New conversation will be created on first message")
-                    messagesList.clear()
-                    messagesAdapter.notifyDataSetChanged()
-                } else {
-                    // Existing conversation - load messages
-                    // Reset unread counter for current user
-                    database.child("conversations").child(actualConversationId)
-                        .child("unreadMessages")
-                        .child(currentUserId!!)
-                        .setValue(0)
+        // First load existing messages
+        messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val tempMessages = mutableListOf<Message>()
+                Log.d("ChatActivity", "Loaded ${snapshot.childrenCount} messages")
 
-                    // Use a set to track message IDs and prevent duplicates
-                    val messageIdSet = mutableSetOf<String>()
+                for (messageSnapshot in snapshot.children) {
+                    try {
+                        val messageId = messageSnapshot.key ?: continue
 
-                    messagesRef.orderByChild("timestamp").addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(snapshot: DataSnapshot) {
-                            val tempMessages = mutableListOf<Message>()
-                            Log.d("ChatActivity", "Loaded ${snapshot.childrenCount} messages")
+                        // Skip if we've already processed this message
+                        if (messageId in receivedMessageIds) continue
+                        receivedMessageIds.add(messageId)
 
-                            for (messageSnapshot in snapshot.children) {
-                                try {
-                                    val messageId = messageSnapshot.key ?: ""
-                                    // Skip if we've already processed this message
-                                    if (messageId in messageIdSet) continue
-                                    messageIdSet.add(messageId)
+                        val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
+                        val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java)
+                        val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
+                        val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
 
-                                    val senderId = messageSnapshot.child("senderId").getValue(String::class.java)
-                                    val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java)
-                                    val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
-                                    val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                        if (senderId == "system") {
+                            tempMessages.add(Message(
+                                senderId = "system",
+                                receiverId = "",
+                                message = messageText,
+                                timestamp = timestamp
+                            ))
+                        } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
+                            fetchSenderDetails(senderId) { senderName, imageUrl ->
+                                val message = Message(
+                                    senderId = senderId,
+                                    receiverId = receiverId ?: "",
+                                    message = messageText,
+                                    timestamp = timestamp,
+                                    senderName = senderName,
+                                    senderImageUrl = imageUrl
+                                )
 
-                                    if (senderId == "system") {
-                                        // System message has a simplified structure
-                                        tempMessages.add(Message(
-                                            senderId = "system",
-                                            receiverId = "",
-                                            message = messageText,
-                                            timestamp = timestamp
-                                        ))
-                                    } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
-                                        // For non-system messages, fetch profile images
-                                        fetchSenderDetails(senderId) { senderName, imageUrl ->
-                                            val message = Message(
-                                                senderId = senderId,
-                                                receiverId = receiverId ?: "",
-                                                message = messageText,
-                                                timestamp = timestamp,
-                                                senderName = senderName,
-                                                senderImageUrl = imageUrl
-                                            )
+                                synchronized(tempMessages) {
+                                    tempMessages.add(message)
 
-                                            synchronized(tempMessages) {
-                                                tempMessages.add(message)
-
-                                                // When all messages are processed, update UI
-                                                if (tempMessages.size == messageIdSet.size) {
-                                                    val sortedMessages = tempMessages.sortedBy { it.timestamp }
-
-                                                    runOnUiThread {
-                                                        messagesList.clear()
-                                                        messagesList.addAll(sortedMessages)
-                                                        messagesAdapter.notifyDataSetChanged()
-
-                                                        if (messagesList.isNotEmpty()) {
-                                                            rvChatMessages.scrollToPosition(messagesList.size - 1)
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
+                                    if (tempMessages.size.toLong() == snapshot.childrenCount) {
+                                        updateMessagesList(tempMessages.sortedBy { it.timestamp })
                                     }
-                                } catch (e: Exception) {
-                                    Log.e("ChatActivity", "Error parsing message: ${e.message}")
                                 }
                             }
-
-                            // Handle empty conversations
-                            if (snapshot.childrenCount == 0L) {
-                                messagesList.clear()
-                                messagesAdapter.notifyDataSetChanged()
-                            }
                         }
+                    } catch (e: Exception) {
+                        Log.e("ChatActivity", "Error parsing message: ${e.message}")
+                    }
+                }
 
-                        override fun onCancelled(error: DatabaseError) {
-                            Log.e("ChatActivity", "Error loading messages: ${error.message}")
-                        }
-                    })
-
-                    // Set up listener for new messages
-                    setupRealTimeMessageListener(messagesRef)
+                if (snapshot.childrenCount == 0L) {
+                    updateMessagesList(emptyList())
                 }
             }
-            .addOnFailureListener { error ->
-                Log.e("ChatActivity", "Error checking conversation: ${error.message}")
-                // Assume new conversation
-                messagesList.clear()
-                messagesAdapter.notifyDataSetChanged()
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatActivity", "Error loading messages: ${error.message}")
             }
+        })
+
+        // Set up real-time listener for new messages
+        messagesRef.orderByChild("timestamp").addChildEventListener(object : ChildEventListener {
+            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                val messageId = snapshot.key ?: return
+
+                // Skip if we've already processed this message
+                if (messageId in receivedMessageIds) return
+                receivedMessageIds.add(messageId)
+
+                try {
+                    val senderId = snapshot.child("senderId").getValue(String::class.java)
+                    val receiverId = snapshot.child("receiverId").getValue(String::class.java)
+                    val messageText = snapshot.child("message").getValue(String::class.java) ?: ""
+                    val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+
+                    // Skip if we already have a message with this exact timestamp and content
+                    if (messagesList.any { it.timestamp == timestamp && it.message == messageText }) {
+                        return
+                    }
+
+                    if (senderId == "system") {
+                        val systemMessage = Message(
+                            senderId = "system",
+                            receiverId = "",
+                            message = messageText,
+                            timestamp = timestamp
+                        )
+                        addMessageInOrder(systemMessage)
+                    } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
+                        fetchSenderDetails(senderId) { senderName, imageUrl ->
+                            val message = Message(
+                                senderId = senderId,
+                                receiverId = receiverId ?: "",
+                                message = messageText,
+                                timestamp = timestamp,
+                                senderName = senderName,
+                                senderImageUrl = imageUrl
+                            )
+                            addMessageInOrder(message)
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("ChatActivity", "Error parsing new message: ${e.message}")
+                }
+            }
+
+            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                // Handle message updates if needed
+            }
+
+            override fun onChildRemoved(snapshot: DataSnapshot) {
+                // Handle message removal if needed
+            }
+
+            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {
+                // Not used
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ChatActivity", "Message listener cancelled: ${error.message}")
+            }
+        })
+    }
+    private fun updateMessagesList(newMessages: List<Message>) {
+        runOnUiThread {
+            messagesList.clear()
+            messagesList.addAll(newMessages)
+            messagesAdapter.notifyDataSetChanged()
+
+            if (messagesList.isNotEmpty()) {
+                rvChatMessages.scrollToPosition(messagesList.size - 1)
+            }
+        }
     }
 
 
@@ -1401,18 +1449,24 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    // Helper to add a message in chronological order
     private fun addMessageInOrder(message: Message) {
-        // Find correct position by timestamp
-        val position = messagesList.binarySearch { it.timestamp.compareTo(message.timestamp) }
-        val insertPosition = if (position < 0) -(position + 1) else position
+        runOnUiThread {
+            // Find correct position by timestamp
+            val position = messagesList.binarySearch { it.timestamp.compareTo(message.timestamp) }
+            val insertPosition = if (position < 0) -(position + 1) else position
 
-        messagesList.add(insertPosition, message)
-        messagesAdapter.notifyItemInserted(insertPosition)
+            // Only add if not already present
+            if (insertPosition >= messagesList.size || messagesList[insertPosition].timestamp != message.timestamp ||
+                messagesList[insertPosition].message != message.message) {
 
-        // Scroll to bottom if inserting at the end
-        if (insertPosition == messagesList.size - 1) {
-            rvChatMessages.scrollToPosition(messagesList.size - 1)
+                messagesList.add(insertPosition, message)
+                messagesAdapter.notifyItemInserted(insertPosition)
+
+                // Scroll to bottom if inserting at the end
+                if (insertPosition == messagesList.size - 1) {
+                    rvChatMessages.scrollToPosition(messagesList.size - 1)
+                }
+            }
         }
     }
 
