@@ -1,6 +1,9 @@
 package com.remedio.weassist.Lawyer
 
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -9,9 +12,12 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
@@ -69,6 +75,9 @@ class LawyerAppointmentsFragment : Fragment() {
 
         recyclerView.adapter = appointmentAdapter
 
+        // Setup swipe-to-delete
+        setupSwipeToDelete()
+
         // Show loading state initially
         showLoading()
 
@@ -77,6 +86,142 @@ class LawyerAppointmentsFragment : Fragment() {
         setupSessionListener()
 
         return view
+    }
+
+    private fun setupSwipeToDelete() {
+        val swipeHandler = object : ItemTouchHelper.SimpleCallback(
+            0, ItemTouchHelper.LEFT
+        ) {
+            private val deleteBackground = ColorDrawable(Color.RED)
+            private val deleteIcon = ContextCompat.getDrawable(
+                requireContext(),
+                android.R.drawable.ic_menu_delete
+            )
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                return false // We're not handling drag & drop
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
+                val position = viewHolder.adapterPosition
+                val appointment = appointmentList[position]
+
+                // Show confirmation dialog
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Delete Appointment")
+                    .setMessage("Are you sure you want to delete this appointment with ${appointment.fullName}?")
+                    .setPositiveButton("Delete") { _, _ ->
+                        deleteAppointment(appointment)
+                    }
+                    .setNegativeButton("Cancel") { _, _ ->
+                        // Restore the item if the user cancels
+                        appointmentAdapter.notifyItemChanged(position)
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
+
+            override fun onChildDraw(
+                c: Canvas,
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                dX: Float,
+                dY: Float,
+                actionState: Int,
+                isCurrentlyActive: Boolean
+            ) {
+                val itemView = viewHolder.itemView
+
+                // Calculate icon dimensions
+                val iconMargin = (itemView.height - (deleteIcon?.intrinsicHeight ?: 0)) / 2
+                val iconLeft = itemView.right - iconMargin - (deleteIcon?.intrinsicWidth ?: 0)
+                val iconRight = itemView.right - iconMargin
+                val iconTop = itemView.top + iconMargin
+                val iconBottom = itemView.bottom - iconMargin
+
+                // Draw the red delete background
+                deleteBackground.setBounds(
+                    itemView.right + dX.toInt(),
+                    itemView.top,
+                    itemView.right,
+                    itemView.bottom
+                )
+                deleteBackground.draw(c)
+
+                // Draw the delete icon if we've swiped far enough
+                if (dX < -iconMargin) {
+                    deleteIcon?.setBounds(iconLeft, iconTop, iconRight, iconBottom)
+                    deleteIcon?.draw(c)
+                }
+
+                super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive)
+            }
+        }
+
+        val itemTouchHelper = ItemTouchHelper(swipeHandler)
+        itemTouchHelper.attachToRecyclerView(recyclerView)
+    }
+
+    private fun deleteAppointment(appointment: Appointment) {
+        val currentUser = auth.currentUser ?: return
+        val lawyerId = currentUser.uid
+
+        // Remove from lawyer's appointments
+        val appointmentRef = FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(lawyerId).child("appointments")
+            .child(appointment.appointmentId)
+
+        // Also remove from active_sessions if it exists there
+        val activeSessionRef = FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(lawyerId).child("active_sessions")
+            .child(appointment.appointmentId)
+
+        // Also remove from accepted_appointment
+        val acceptedAppointmentRef = FirebaseDatabase.getInstance().reference
+            .child("accepted_appointment").child(appointment.appointmentId)
+
+        // Create a map of updates to perform all deletions in one transaction
+        val updates = hashMapOf<String, Any?>(
+            "/lawyers/$lawyerId/appointments/${appointment.appointmentId}" to null,
+            "/lawyers/$lawyerId/active_sessions/${appointment.appointmentId}" to null,
+            "/accepted_appointment/${appointment.appointmentId}" to null
+        )
+
+        // Create a notification for the client
+        val notificationData = hashMapOf<String, Any>(
+            "type" to "appointment_cancelled",
+            "message" to "Your appointment has been cancelled by the lawyer",
+            "timestamp" to ServerValue.TIMESTAMP,
+            "isRead" to false
+        )
+
+        // Add notification to the updates
+        updates["/notifications/${appointment.clientId}/${appointment.appointmentId}"] = notificationData
+
+        // Perform all updates in one transaction
+        FirebaseDatabase.getInstance().reference.updateChildren(updates)
+            .addOnSuccessListener {
+                // Remove from local list and update adapter
+                appointmentList.remove(appointment)
+                appointmentAdapter.removeAppointment(appointment.appointmentId)
+
+                // Show empty state if needed
+                if (appointmentList.isEmpty()) {
+                    showEmptyState()
+                }
+
+                Toast.makeText(requireContext(), "Appointment deleted successfully", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(requireContext(), "Failed to delete appointment", Toast.LENGTH_SHORT).show()
+                Log.e("AppointmentDelete", "Error deleting appointment", e)
+                // Make sure the UI is consistent
+                loadAcceptedAppointments()
+            }
     }
 
     private fun setupSessionListener() {
@@ -155,6 +300,11 @@ class LawyerAppointmentsFragment : Fragment() {
 
                                 appointmentAdapter.removeAppointment(appointment.appointmentId)
                                 appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
+
+                                // Check if we need to show empty state
+                                if (appointmentList.isEmpty()) {
+                                    showEmptyState()
+                                }
                             }
                     }
             }
