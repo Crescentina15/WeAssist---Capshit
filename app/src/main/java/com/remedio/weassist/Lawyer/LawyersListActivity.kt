@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
+import android.view.KeyEvent
+import android.view.inputmethod.EditorInfo
+import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +26,10 @@ import com.remedio.weassist.R
 import com.remedio.weassist.Secretary.AddAvailabilityActivity
 import com.remedio.weassist.Secretary.AddBackgroundActivity
 import com.remedio.weassist.Secretary.SetAppointmentActivity
+import android.text.Editable
+import android.text.TextWatcher
+import android.view.View
+import androidx.recyclerview.widget.DividerItemDecoration
 
 class LawyersListActivity : AppCompatActivity() {
 
@@ -30,7 +37,9 @@ class LawyersListActivity : AppCompatActivity() {
     private lateinit var lawyerAdapter: LawyerAdapter
     private lateinit var databaseReference: DatabaseReference
     private lateinit var lawFirmAdminReference: DatabaseReference
+    private lateinit var searchEditText: EditText
     private var lawyerList = ArrayList<Lawyer>()
+    private var filteredLawyerList = ArrayList<Lawyer>()
     private var userLatitude: Double = 0.0
     private var userLongitude: Double = 0.0
     private var hasLocation: Boolean = false
@@ -71,6 +80,16 @@ class LawyersListActivity : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.lawyerlist)
         recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
+
+        // Setup empty state view
+        val emptyStateView = findViewById<View>(R.id.empty_state)
+        val progressBar = findViewById<View>(R.id.progressBar)
+        progressBar.visibility = View.VISIBLE
+
+        // Initialize search functionality
+        searchEditText = findViewById(R.id.search_edit_text)
+        setupSearchFunctionality()
 
         // Initialize empty adapter first to show loading state
         lawyerAdapter = LawyerAdapter(
@@ -93,6 +112,123 @@ class LawyersListActivity : AppCompatActivity() {
         // Handle back button click
         findViewById<ImageButton>(R.id.back_button).setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
+        }
+    }
+
+    private fun setupSearchFunctionality() {
+        searchEditText.setOnEditorActionListener { _, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH ||
+                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER)) {
+                performSearch(searchEditText.text.toString())
+                return@setOnEditorActionListener true
+            }
+            return@setOnEditorActionListener false
+        }
+
+        searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+
+            override fun afterTextChanged(s: Editable?) {
+                filterLawyers(s.toString())
+            }
+        })
+    }
+
+    private fun performSearch(query: String) {
+        if (query.isBlank()) {
+            // If search is empty, just show all lawyers
+            updateAdapterWithFilteredList(lawyerList)
+            return
+        }
+
+        val trimmedQuery = query.trim().lowercase()
+
+        // Find exact match first
+        val exactMatch = lawyerList.find {
+            it.name.lowercase() == trimmedQuery
+        }
+
+        if (exactMatch != null) {
+            // Direct to lawyer details if exact match
+            navigateToLawyerDetails(exactMatch)
+        } else {
+            // Filter and show results
+            filterLawyers(trimmedQuery)
+
+            // Show message if no results
+            if (filteredLawyerList.isEmpty()) {
+                Toast.makeText(
+                    this,
+                    "No lawyer found with name \"$query\"",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    private fun filterLawyers(query: String) {
+        if (query.isBlank()) {
+            // If filter is empty, show all lawyers
+            filteredLawyerList = ArrayList(lawyerList)
+        } else {
+            // Filter lawyers by name (case insensitive)
+            filteredLawyerList = ArrayList(lawyerList.filter {
+                it.name.lowercase().contains(query.lowercase())
+            })
+        }
+
+        updateAdapterWithFilteredList(filteredLawyerList)
+    }
+
+    private fun updateAdapterWithFilteredList(lawyers: List<Lawyer>) {
+        // Show/hide empty state based on filtered results
+        val emptyStateView = findViewById<View>(R.id.empty_state)
+        emptyStateView.visibility = if (lawyers.isEmpty()) View.VISIBLE else View.GONE
+
+        lawyerAdapter = LawyerAdapter(
+            lawyersList = lawyers,
+            onLawyerClick = { selectedLawyer -> navigateToLawyerDetails(selectedLawyer) },
+            onDirectionsClick = { lawyer -> showDirections(lawyer) }
+        )
+        recyclerView.adapter = lawyerAdapter
+    }
+
+    private fun navigateToLawyerDetails(selectedLawyer: Lawyer) {
+        val context = this@LawyersListActivity
+        if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
+            val intent = Intent(context, LawyerBackgroundActivity::class.java)
+            intent.putExtra("LAWYER_ID", selectedLawyer.id)
+            startActivity(intent)
+        } else {
+            val intent = when {
+                fromManageAvailability -> Intent(
+                    context,
+                    AddAvailabilityActivity::class.java
+                )
+                fromAddBackgroundActivity -> Intent(
+                    context,
+                    AddBackgroundActivity::class.java
+                )
+                fromAddBalanceActivity -> Intent(
+                    context,
+                    AddBalanceActivity::class.java
+                )
+                else -> Intent(context, SetAppointmentActivity::class.java)
+            }
+            intent.putExtra("LAWYER_ID", selectedLawyer.id)
+            intent.putExtra("LAWYER_NAME", selectedLawyer.name)
+            intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
+            intent.putExtra("LOCATION", selectedLawyer.location)
+
+            // Also add client location to intent if available
+            if (hasLocation) {
+                intent.putExtra("USER_LATITUDE", userLatitude)
+                intent.putExtra("USER_LONGITUDE", userLongitude)
+            }
+
+            startActivity(intent)
         }
     }
 
@@ -253,6 +389,10 @@ class LawyersListActivity : AppCompatActivity() {
     }
 
     private fun loadLawyers(specialization: String?, lawFirm: String?) {
+        // Show progress bar while loading
+        findViewById<View>(R.id.progressBar).visibility = View.VISIBLE
+        findViewById<View>(R.id.empty_state).visibility = View.GONE
+
         lawFirmAdminReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(adminSnapshot: DataSnapshot) {
                 val firmLocationMap = HashMap<String, String>()
@@ -269,6 +409,7 @@ class LawyersListActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
+                findViewById<View>(R.id.progressBar).visibility = View.GONE
                 Toast.makeText(applicationContext, "Failed to load firm data.", Toast.LENGTH_SHORT)
                     .show()
             }
@@ -283,6 +424,9 @@ class LawyersListActivity : AppCompatActivity() {
         databaseReference.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val tempLawyerList = ArrayList<Lawyer>()
+
+                // Hide progress bar
+                findViewById<View>(R.id.progressBar).visibility = View.GONE
 
                 for (lawyerSnapshot in snapshot.children) {
                     val lawyerId = lawyerSnapshot.key ?: continue
@@ -377,48 +521,15 @@ class LawyersListActivity : AppCompatActivity() {
                     })
                 }
 
-                lawyerAdapter = LawyerAdapter(
-                    lawyersList = lawyerList,
-                    onLawyerClick = { selectedLawyer ->
-                        val context = this@LawyersListActivity
-                        if (!fromManageAvailability && !fromAddBackgroundActivity && !fromAddBalanceActivity) {
-                            val intent = Intent(context, LawyerBackgroundActivity::class.java)
-                            intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                            startActivity(intent)
-                        } else {
-                            val intent = when {
-                                fromManageAvailability -> Intent(
-                                    context,
-                                    AddAvailabilityActivity::class.java
-                                )
-                                fromAddBackgroundActivity -> Intent(
-                                    context,
-                                    AddBackgroundActivity::class.java
-                                )
-                                fromAddBalanceActivity -> Intent(
-                                    context,
-                                    AddBalanceActivity::class.java
-                                )
-                                else -> Intent(context, SetAppointmentActivity::class.java)
-                            }
-                            intent.putExtra("LAWYER_ID", selectedLawyer.id)
-                            intent.putExtra("LAWYER_NAME", selectedLawyer.name)
-                            intent.putExtra("LAW_FIRM", selectedLawyer.lawFirm)
-                            intent.putExtra("LOCATION", selectedLawyer.location)
+                // Start with full list
+                filteredLawyerList = ArrayList(lawyerList)
 
-                            // Also add client location to intent if available
-                            if (hasLocation) {
-                                intent.putExtra("USER_LATITUDE", userLatitude)
-                                intent.putExtra("USER_LONGITUDE", userLongitude)
-                            }
-
-                            startActivity(intent)
-                        }
-                    },
-                    onDirectionsClick = { lawyer -> showDirections(lawyer) }
-                )
-
-                recyclerView.adapter = lawyerAdapter
+                // Apply any existing search filter
+                if (searchEditText.text.isNotEmpty()) {
+                    filterLawyers(searchEditText.text.toString())
+                } else {
+                    updateAdapterWithFilteredList(lawyerList)
+                }
 
                 // Check if list is empty
                 if (lawyerList.isEmpty()) {
@@ -427,10 +538,14 @@ class LawyersListActivity : AppCompatActivity() {
                         "No ${specialization ?: "matching"} lawyers found",
                         Toast.LENGTH_SHORT
                     ).show()
+
+                    // Show empty state
+                    findViewById<View>(R.id.empty_state).visibility = View.VISIBLE
                 }
             }
 
             override fun onCancelled(error: DatabaseError) {
+                findViewById<View>(R.id.progressBar).visibility = View.GONE
                 Toast.makeText(applicationContext, "Failed to load lawyers.", Toast.LENGTH_SHORT)
                     .show()
             }
