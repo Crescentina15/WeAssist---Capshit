@@ -33,6 +33,7 @@ class SecretaryAppointmentFragment : Fragment() {
     private lateinit var deleteDrawable: ColorDrawable
     private lateinit var emptyStateLayout: LinearLayout
     private lateinit var progressIndicator: CircularProgressIndicator
+    private val loadedAppointmentIds = HashSet<String>() // Track loaded appointment IDs
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -128,6 +129,7 @@ class SecretaryAppointmentFragment : Fragment() {
 
                     // Remove from the list and notify adapter
                     appointmentList.removeAt(position)
+                    loadedAppointmentIds.remove(deletedAppointment.appointmentId) // Remove from tracking set
                     adapter.notifyItemRemoved(position)
 
                     // Update UI state
@@ -158,6 +160,7 @@ class SecretaryAppointmentFragment : Fragment() {
                         }
 
                         appointmentList.add(newPosition, deletedAppointment)
+                        loadedAppointmentIds.add(deletedAppointment.appointmentId) // Add back to tracking set
                         adapter.notifyItemInserted(newPosition)
                         updateUiState()
                     }
@@ -320,7 +323,9 @@ class SecretaryAppointmentFragment : Fragment() {
                                 Log.d("SecretaryCheck", "Found lawyer with ID: $lawyerKey")
                             }
                         }
+                        // First fetch existing appointments
                         fetchAppointmentsForLawyers(lawyerIdList)
+                        // Then listen for changes
                         listenForAppointmentChanges(lawyerIdList)
                     } else {
                         Log.d("SecretaryCheck", "No lawyers found for lawFirm: $lawFirm")
@@ -355,24 +360,29 @@ class SecretaryAppointmentFragment : Fragment() {
                 appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snapshot: DataSnapshot) {
                         appointmentList.clear()
+                        loadedAppointmentIds.clear() // Clear tracking set
                         if (snapshot.exists()) {
                             val pendingAppointments = mutableListOf<Appointment>()
                             val acceptedAppointments = mutableListOf<Appointment>()
                             val forwardedAppointments = mutableListOf<Appointment>()
 
                             for (child in snapshot.children) {
+                                val appointmentId = child.key ?: continue
                                 val appointment = child.getValue(Appointment::class.java)
                                 val clientId = child.child("clientId").getValue(String::class.java)
                                     ?: "Unknown"
 
                                 if (appointment != null && appointment.lawyerId in lawyerIds) {
                                     val updatedAppointment = appointment.copy(
-                                        appointmentId = child.key ?: "Unknown",
+                                        appointmentId = appointmentId,
                                         clientId = clientId,
                                         lawyerName = lawyerDetails[appointment.lawyerId]?.first
                                             ?: "Unknown Lawyer",
                                         lawyerProfileImage = lawyerDetails[appointment.lawyerId]?.second
                                     )
+
+                                    // Add to tracking set
+                                    loadedAppointmentIds.add(appointmentId)
 
                                     when (updatedAppointment.status?.lowercase()) {
                                         "pending" -> pendingAppointments.add(updatedAppointment)
@@ -413,9 +423,17 @@ class SecretaryAppointmentFragment : Fragment() {
         val appointmentsRef = database.child("appointments")
         appointmentsRef.addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                val appointment = snapshot.getValue(Appointment::class.java)
-                if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown"
+                val appointmentId = snapshot.key ?: return
+
+                // Skip if already in our list
+                if (loadedAppointmentIds.contains(appointmentId)) {
+                    return
+                }
+
+                val appointment = snapshot.getValue(Appointment::class.java) ?: return
+
+                if (appointment.lawyerId in lawyerIds) {
+                    appointment.appointmentId = appointmentId
 
                     val lawyersRef = database.child("lawyers").child(appointment.lawyerId)
                     lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
@@ -430,6 +448,9 @@ class SecretaryAppointmentFragment : Fragment() {
                                 lawyerName = lawyerName,
                                 lawyerProfileImage = lawyerProfileImage
                             )
+
+                            // Add to tracking set
+                            loadedAppointmentIds.add(appointmentId)
 
                             val position = calculatePositionForStatus(updatedAppointment.status)
                             appointmentList.add(position, updatedAppointment)
@@ -448,9 +469,11 @@ class SecretaryAppointmentFragment : Fragment() {
             }
 
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                val appointment = snapshot.getValue(Appointment::class.java)
-                if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown"
+                val appointmentId = snapshot.key ?: return
+                val appointment = snapshot.getValue(Appointment::class.java) ?: return
+
+                if (appointment.lawyerId in lawyerIds) {
+                    appointment.appointmentId = appointmentId
 
                     val lawyersRef = database.child("lawyers").child(appointment.lawyerId)
                     lawyersRef.addListenerForSingleValueEvent(object : ValueEventListener {
@@ -493,12 +516,17 @@ class SecretaryAppointmentFragment : Fragment() {
             }
 
             override fun onChildRemoved(snapshot: DataSnapshot) {
-                val appointment = snapshot.getValue(Appointment::class.java)
-                if (appointment != null && appointment.lawyerId in lawyerIds) {
-                    appointment.appointmentId = snapshot.key ?: "Unknown"
-                    appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
-                    adapter.updateAppointments(appointmentList)
-                    updateUiState()
+                val appointmentId = snapshot.key ?: return
+
+                // Only process if it's in our tracking set
+                if (loadedAppointmentIds.contains(appointmentId)) {
+                    val position = appointmentList.indexOfFirst { it.appointmentId == appointmentId }
+                    if (position != -1) {
+                        appointmentList.removeAt(position)
+                        loadedAppointmentIds.remove(appointmentId) // Remove from tracking set
+                        adapter.notifyItemRemoved(position)
+                        updateUiState()
+                    }
                 }
             }
 
