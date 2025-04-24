@@ -28,6 +28,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -92,6 +93,8 @@ dependencies {
     implementation("com.google.maps.android:android-maps-utils:3.4.0")
     implementation("com.google.maps:google-maps-services:2.2.0")
     implementation("org.slf4j:slf4j-simple:1.7.25")
+
+    implementation("com.github.chrisbanes:PhotoView:2.3.0")
 
 
 }

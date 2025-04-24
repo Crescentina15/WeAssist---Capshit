@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -23,14 +24,54 @@ class MessageAdapter(private val messagesList: List<Message>) :
 
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     private val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
-    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault()) // Add this line
+    private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+
+    // Interface for image click listener
+    interface OnFileClickListener {
+        fun onFileClick(message: Message)
+    }
+
+    // Listener field
+    private var fileClickListener: OnFileClickListener? = null
+
+    // Method to set the listener
+    fun setOnFileClickListener(listener: OnFileClickListener) {
+        this.fileClickListener = listener
+    }
+
+    // Convenient method to set the listener using a lambda
+    fun setOnFileClickListener(listener: (Message) -> Unit) {
+        this.fileClickListener = object : OnFileClickListener {
+            override fun onFileClick(message: Message) {
+                listener(message)
+            }
+        }
+    }
 
     companion object {
+        // View types
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_SYSTEM = 3
         private const val VIEW_TYPE_SENT_FILE = 4
         private const val VIEW_TYPE_RECEIVED_FILE = 5
+
+        // Utility function to get the MIME type from URL
+        fun getMimeType(url: String): String {
+            return when {
+                url.endsWith(".jpg", true) || url.endsWith(".jpeg", true) -> "image/jpeg"
+                url.endsWith(".png", true) -> "image/png"
+                url.endsWith(".gif", true) -> "image/gif"
+                url.endsWith(".pdf", true) -> "application/pdf"
+                url.endsWith(".doc", true) -> "application/msword"
+                url.endsWith(".docx", true) -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                url.endsWith(".xls", true) -> "application/vnd.ms-excel"
+                url.endsWith(".xlsx", true) -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                url.endsWith(".mp4", true) -> "video/mp4"
+                url.endsWith(".mp3", true) -> "audio/mpeg"
+                else -> "*/*"
+            }
+        }
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -74,6 +115,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messagesList[position]
         val date = Date(message.timestamp)
@@ -90,18 +132,15 @@ class MessageAdapter(private val messagesList: List<Message>) :
             }
             is SystemMessageViewHolder -> holder.bind(message)
             is SentFileViewHolder -> {
-                holder.bind(message)
+                holder.bind(message, fileClickListener)
                 holder.tvTimestamp?.text = timeString
             }
             is ReceivedFileViewHolder -> {
-                holder.bind(message)
+                holder.bind(message, fileClickListener)
                 holder.tvTimestamp?.text = timeString
             }
         }
     }
-
-
-
 
     private fun shouldShowDateHeader(position: Int): Boolean {
         if (position == 0) return true
@@ -197,7 +236,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
         val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
         private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, fileClickListener: OnFileClickListener? = null) {
             tvFileName.text = message.fileName ?: "File"
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
@@ -235,12 +274,21 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Handle file click
+            // Handle file click with listener
             itemView.setOnClickListener {
-                message.fileUrl?.let { url ->
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = Uri.parse(url)
-                    ContextCompat.startActivity(itemView.context, intent, null)
+                if (fileClickListener != null) {
+                    fileClickListener.onFileClick(message)
+                } else {
+                    // Fallback to default behavior if no listener is set
+                    message.fileUrl?.let { url ->
+                        val intent = Intent(Intent.ACTION_VIEW)
+                        intent.data = Uri.parse(url)
+                        try {
+                            ContextCompat.startActivity(itemView.context, intent, null)
+                        } catch (e: Exception) {
+                            Toast.makeText(itemView.context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
         }
@@ -255,7 +303,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
         val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
         private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
 
-        fun bind(message: Message) {
+        fun bind(message: Message, fileClickListener: OnFileClickListener? = null) {
             tvFileName.text = message.fileName ?: "File"
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
@@ -303,12 +351,21 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Handle file click
+            // Handle file click with listener
             itemView.setOnClickListener {
-                message.fileUrl?.let { url ->
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = Uri.parse(url)
-                    ContextCompat.startActivity(itemView.context, intent, null)
+                if (fileClickListener != null) {
+                    fileClickListener.onFileClick(message)
+                } else {
+                    // Fallback to default behavior if no listener is set
+                    message.fileUrl?.let { url ->
+                        val intent = Intent(Intent.ACTION_VIEW)
+                        intent.data = Uri.parse(url)
+                        try {
+                            ContextCompat.startActivity(itemView.context, intent, null)
+                        } catch (e: Exception) {
+                            Toast.makeText(itemView.context, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                        }
+                    }
                 }
             }
         }

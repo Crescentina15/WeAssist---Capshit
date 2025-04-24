@@ -25,6 +25,8 @@ import com.remedio.weassist.Clients.MessageAdapter
 import com.remedio.weassist.R
 import java.util.UUID
 
+
+private const val REQUEST_IMAGE_PREVIEW = 1001
 class ChatActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
     private lateinit var tvChatPartnerName: TextView
@@ -50,6 +52,7 @@ class ChatActivity : AppCompatActivity() {
     private var lawyerId: String? = null  // Add this line
 
     private lateinit var profileImageView: ImageView
+
 
     // Current user type
     private var userType: String? = null
@@ -1265,6 +1268,29 @@ class ChatActivity : AppCompatActivity() {
             }
         })
 
+        // Assuming you're in an Activity or Fragment
+        val messagesAdapter = MessageAdapter(messagesList)
+        rvChatMessages.adapter = messagesAdapter
+
+// Set the click listener with explicit type parameter
+        messagesAdapter.setOnFileClickListener { message: Message ->
+            message.fileUrl?.let { fileUrl ->
+                if (message.fileType == "image") {
+                    showImagePreview(fileUrl)
+                } else {
+                    // For non-image files, open them with an appropriate viewer
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW)
+                        intent.setDataAndType(Uri.parse(fileUrl), MessageAdapter.getMimeType(fileUrl))
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
         // Set up real-time listener for new messages
         messagesRef.orderByChild("timestamp").addChildEventListener(object : ChildEventListener {
             override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
@@ -1317,6 +1343,7 @@ class ChatActivity : AppCompatActivity() {
                 }
             }
 
+
             override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
                 // Handle message updates if needed
             }
@@ -1333,6 +1360,27 @@ class ChatActivity : AppCompatActivity() {
                 Log.e("ChatActivity", "Message listener cancelled: ${error.message}")
             }
         })
+    }
+    // Add this function to your ChatActivity
+    private fun showImagePreview(imageUrl: String) {
+        val intent = Intent(this, ImagePreviewActivity::class.java).apply {
+            putExtra("image_url", imageUrl)
+        }
+        startActivityForResult(intent, REQUEST_IMAGE_PREVIEW)
+    }
+    // Helper function to get MIME type from URL
+    private fun getMimeType(url: String): String {
+        return when {
+            url.endsWith(".pdf") -> "application/pdf"
+            url.endsWith(".doc") || url.endsWith(".docx") -> "application/msword"
+            url.endsWith(".xls") || url.endsWith(".xlsx") -> "application/vnd.ms-excel"
+            url.endsWith(".ppt") || url.endsWith(".pptx") -> "application/vnd.ms-powerpoint"
+            url.endsWith(".txt") -> "text/plain"
+            url.endsWith(".jpg") || url.endsWith(".jpeg") -> "image/jpeg"
+            url.endsWith(".png") -> "image/png"
+            url.endsWith(".gif") -> "image/gif"
+            else -> "*/*"
+        }
     }
     private fun updateMessagesList(newMessages: List<Message>) {
         runOnUiThread {

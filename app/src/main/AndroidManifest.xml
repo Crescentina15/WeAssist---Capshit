@@ -103,6 +103,9 @@
             android:name=".MessageConversation.ChatActivity"
             android:exported="true" />
         <activity
+            android:name=".MessageConversation.ImagePreviewActivity"
+            android:exported="true" />
+        <activity
             android:name=".Clients.ClientDashboard"
             android:exported="false" />
         <activity
