@@ -3,6 +3,7 @@ package com.remedio.weassist.MessageConversation
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.util.Log
 import android.view.View
 import android.widget.EditText
@@ -722,10 +723,13 @@ class ChatActivity : AppCompatActivity() {
         val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
 
+        // Get the original filename
+        val fileName = getFileNameFromUri(fileUri) ?: "file"
+
         try {
             MediaManager.get().upload(fileUri)
-                .unsigned("weassist_upload_preset") // Use your upload preset name
-                .option("resource_type", "auto") // Auto-detect file type
+                .unsigned("weassist_upload_preset")
+                .option("resource_type", "auto")
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
                         Log.d("ChatActivity", "Upload started: $requestId")
@@ -741,10 +745,8 @@ class ChatActivity : AppCompatActivity() {
 
                         val fileUrl = resultData["secure_url"] as? String
                         val fileType = resultData["resource_type"] as? String
-                        val fileName = resultData["original_filename"] as? String ?: "file"
 
                         if (fileUrl != null) {
-                            // Get sender details before creating the message
                             getCurrentUserImageUrl { imageUrl ->
                                 val timestamp = System.currentTimeMillis()
 
@@ -755,7 +757,8 @@ class ChatActivity : AppCompatActivity() {
                                     timestamp = timestamp,
                                     senderImageUrl = imageUrl,
                                     fileUrl = fileUrl,
-                                    fileType = fileType
+                                    fileType = fileType,
+                                    fileName = fileName
                                 )
 
                                 // Add to local list immediately for instant UI feedback
@@ -814,6 +817,31 @@ class ChatActivity : AppCompatActivity() {
             showUploadProgress(false)
             Toast.makeText(this, "Error uploading file", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun getFileNameFromUri(uri: Uri): String? {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        result = cursor.getString(nameIndex)
+                    }
+                }
+            } finally {
+                cursor?.close()
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/')
+            if (cut != -1) {
+                result = result?.substring(cut!! + 1)
+            }
+        }
+        return result
     }
 
     private fun showUploadProgress(show: Boolean) {
@@ -1188,6 +1216,9 @@ class ChatActivity : AppCompatActivity() {
                         val receiverId = messageSnapshot.child("receiverId").getValue(String::class.java)
                         val messageText = messageSnapshot.child("message").getValue(String::class.java) ?: ""
                         val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                        val fileUrl = messageSnapshot.child("fileUrl").getValue(String::class.java)
+                        val fileType = messageSnapshot.child("fileType").getValue(String::class.java)
+                        val fileName = messageSnapshot.child("fileName").getValue(String::class.java)
 
                         if (senderId == "system") {
                             tempMessages.add(Message(
@@ -1196,7 +1227,7 @@ class ChatActivity : AppCompatActivity() {
                                 message = messageText,
                                 timestamp = timestamp
                             ))
-                        } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
+                        } else if (!senderId.isNullOrEmpty() && (messageText.isNotEmpty() || fileUrl != null)) {
                             fetchSenderDetails(senderId) { senderName, imageUrl ->
                                 val message = Message(
                                     senderId = senderId,
@@ -1204,7 +1235,10 @@ class ChatActivity : AppCompatActivity() {
                                     message = messageText,
                                     timestamp = timestamp,
                                     senderName = senderName,
-                                    senderImageUrl = imageUrl
+                                    senderImageUrl = imageUrl,
+                                    fileUrl = fileUrl,
+                                    fileType = fileType,
+                                    fileName = fileName
                                 )
 
                                 synchronized(tempMessages) {
@@ -1245,9 +1279,12 @@ class ChatActivity : AppCompatActivity() {
                     val receiverId = snapshot.child("receiverId").getValue(String::class.java)
                     val messageText = snapshot.child("message").getValue(String::class.java) ?: ""
                     val timestamp = snapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                    val fileUrl = snapshot.child("fileUrl").getValue(String::class.java)
+                    val fileType = snapshot.child("fileType").getValue(String::class.java)
+                    val fileName = snapshot.child("fileName").getValue(String::class.java)
 
                     // Skip if we already have a message with this exact timestamp and content
-                    if (messagesList.any { it.timestamp == timestamp && it.message == messageText }) {
+                    if (messagesList.any { it.timestamp == timestamp && it.message == messageText && it.fileUrl == fileUrl }) {
                         return
                     }
 
@@ -1259,7 +1296,7 @@ class ChatActivity : AppCompatActivity() {
                             timestamp = timestamp
                         )
                         addMessageInOrder(systemMessage)
-                    } else if (!senderId.isNullOrEmpty() && messageText.isNotEmpty()) {
+                    } else if (!senderId.isNullOrEmpty() && (messageText.isNotEmpty() || fileUrl != null)) {
                         fetchSenderDetails(senderId) { senderName, imageUrl ->
                             val message = Message(
                                 senderId = senderId,
@@ -1267,7 +1304,10 @@ class ChatActivity : AppCompatActivity() {
                                 message = messageText,
                                 timestamp = timestamp,
                                 senderName = senderName,
-                                senderImageUrl = imageUrl
+                                senderImageUrl = imageUrl,
+                                fileUrl = fileUrl,
+                                fileType = fileType,
+                                fileName = fileName
                             )
                             addMessageInOrder(message)
                         }
