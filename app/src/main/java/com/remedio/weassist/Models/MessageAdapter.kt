@@ -1,9 +1,13 @@
 package com.remedio.weassist.Clients
 
+import android.content.Intent
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
@@ -25,12 +29,16 @@ class MessageAdapter(private val messagesList: List<Message>) :
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_SYSTEM = 3
+        private const val VIEW_TYPE_SENT_FILE = 4
+        private const val VIEW_TYPE_RECEIVED_FILE = 5
     }
 
     override fun getItemViewType(position: Int): Int {
         val message = messagesList[position]
         return when {
             message.senderId == "system" -> VIEW_TYPE_SYSTEM
+            message.isFileMessage() && message.senderId == currentUserId -> VIEW_TYPE_SENT_FILE
+            message.isFileMessage() -> VIEW_TYPE_RECEIVED_FILE
             message.senderId == currentUserId -> VIEW_TYPE_SENT
             else -> VIEW_TYPE_RECEIVED
         }
@@ -53,10 +61,19 @@ class MessageAdapter(private val messagesList: List<Message>) :
                     .inflate(R.layout.item_message_system, parent, false)
                 SystemMessageViewHolder(view)
             }
+            VIEW_TYPE_SENT_FILE -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_file_sent, parent, false)
+                SentFileViewHolder(view)
+            }
+            VIEW_TYPE_RECEIVED_FILE -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_file_received, parent, false)
+                ReceivedFileViewHolder(view)
+            }
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
-
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val message = messagesList[position]
         val date = Date(message.timestamp)
@@ -72,8 +89,19 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 holder.tvTimestamp?.text = timeString
             }
             is SystemMessageViewHolder -> holder.bind(message)
+            is SentFileViewHolder -> {
+                holder.bind(message)
+                holder.tvTimestamp?.text = timeString
+            }
+            is ReceivedFileViewHolder -> {
+                holder.bind(message)
+                holder.tvTimestamp?.text = timeString
+            }
         }
     }
+
+
+
 
     private fun shouldShowDateHeader(position: Int): Boolean {
         if (position == 0) return true
@@ -107,8 +135,8 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 if (!message.senderImageUrl.isNullOrEmpty()) {
                     Glide.with(itemView.context)
                         .load(message.senderImageUrl)
-                        .placeholder(R.drawable.profile) // Default profile image
-                        .error(R.drawable.profile) // Fallback image
+                        .placeholder(R.drawable.profile)
+                        .error(R.drawable.profile)
                         .into(imageView)
                 } else {
                     imageView.setImageResource(R.drawable.profile)
@@ -126,12 +154,9 @@ class MessageAdapter(private val messagesList: List<Message>) :
 
         fun bind(message: Message) {
             tvMessage.text = message.message
-
-            // Set timestamp if view exists
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
 
-            // Set sender name if available and view exists
             tvSenderName?.let { nameView ->
                 if (message.senderName != null) {
                     nameView.text = message.senderName
@@ -141,13 +166,12 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Load sender image if available and view exists
             ivProfile?.let { imageView ->
                 if (!message.senderImageUrl.isNullOrEmpty()) {
                     Glide.with(itemView.context)
                         .load(message.senderImageUrl)
-                        .placeholder(R.drawable.profile) // Default profile image
-                        .error(R.drawable.profile) // Fallback image
+                        .placeholder(R.drawable.profile)
+                        .error(R.drawable.profile)
                         .into(imageView)
                 } else {
                     imageView.setImageResource(R.drawable.profile)
@@ -162,6 +186,131 @@ class MessageAdapter(private val messagesList: List<Message>) :
 
         fun bind(message: Message) {
             tvMessage.text = message.message
+        }
+    }
+
+    // View holder for files sent by current user
+    class SentFileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvFileName: TextView = itemView.findViewById(R.id.file_name)
+        private val ivFileIcon: ImageView = itemView.findViewById(R.id.file_icon)
+        private val ivFilePreview: ImageView? = itemView.findViewById(R.id.file_preview)
+        val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+        private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
+
+        fun bind(message: Message) {
+            tvFileName.text = message.fileName ?: "File"
+            tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                .format(Date(message.timestamp))
+
+            // Set appropriate icon based on file type
+            val iconRes = when (message.fileType) {
+                "image" -> R.drawable.ic_image
+                "pdf" -> R.drawable.ic_pdf
+                "video" -> R.drawable.ic_video
+                else -> R.drawable.ic_file
+            }
+            ivFileIcon.setImageResource(iconRes)
+
+            // Load image preview if this is an image
+            if (message.fileType == "image" && ivFilePreview != null) {
+                ivFilePreview.visibility = View.VISIBLE
+                Glide.with(itemView.context)
+                    .load(message.fileUrl)
+                    .placeholder(R.drawable.ic_image)
+                    .into(ivFilePreview)
+            } else {
+                ivFilePreview?.visibility = View.GONE
+            }
+
+            // Load sender image if available
+            ivProfile?.let { imageView ->
+                if (!message.senderImageUrl.isNullOrEmpty()) {
+                    Glide.with(itemView.context)
+                        .load(message.senderImageUrl)
+                        .placeholder(R.drawable.profile)
+                        .error(R.drawable.profile)
+                        .into(imageView)
+                } else {
+                    imageView.setImageResource(R.drawable.profile)
+                }
+            }
+
+            // Handle file click
+            itemView.setOnClickListener {
+                message.fileUrl?.let { url ->
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = Uri.parse(url)
+                    ContextCompat.startActivity(itemView.context, intent, null)
+                }
+            }
+        }
+    }
+
+    // View holder for files received from other users
+    class ReceivedFileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        private val tvFileName: TextView = itemView.findViewById(R.id.file_name)
+        private val tvSenderName: TextView? = itemView.findViewById(R.id.sender_name)
+        private val ivFileIcon: ImageView = itemView.findViewById(R.id.file_icon)
+        private val ivFilePreview: ImageView? = itemView.findViewById(R.id.file_preview)
+        val tvTimestamp: TextView? = itemView.findViewById(R.id.message_time)
+        private val ivProfile: CircleImageView? = itemView.findViewById(R.id.profile_image)
+
+        fun bind(message: Message) {
+            tvFileName.text = message.fileName ?: "File"
+            tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                .format(Date(message.timestamp))
+
+            // Set sender name if available
+            tvSenderName?.let { nameView ->
+                if (message.senderName != null) {
+                    nameView.text = message.senderName
+                    nameView.visibility = View.VISIBLE
+                } else {
+                    nameView.visibility = View.GONE
+                }
+            }
+
+            // Set appropriate icon based on file type
+            val iconRes = when (message.fileType) {
+                "image" -> R.drawable.ic_image
+                "pdf" -> R.drawable.ic_pdf
+                "video" -> R.drawable.ic_video
+                else -> R.drawable.ic_file
+            }
+            ivFileIcon.setImageResource(iconRes)
+
+            // Load image preview if this is an image
+            if (message.fileType == "image" && ivFilePreview != null) {
+                ivFilePreview.visibility = View.VISIBLE
+                Glide.with(itemView.context)
+                    .load(message.fileUrl)
+                    .placeholder(R.drawable.ic_image)
+                    .into(ivFilePreview)
+            } else {
+                ivFilePreview?.visibility = View.GONE
+            }
+
+            // Load sender image if available
+            ivProfile?.let { imageView ->
+                if (!message.senderImageUrl.isNullOrEmpty()) {
+                    Glide.with(itemView.context)
+                        .load(message.senderImageUrl)
+                        .placeholder(R.drawable.profile)
+                        .error(R.drawable.profile)
+                        .into(imageView)
+                } else {
+                    imageView.setImageResource(R.drawable.profile)
+                }
+            }
+
+            // Handle file click
+            itemView.setOnClickListener {
+                message.fileUrl?.let { url ->
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = Uri.parse(url)
+                    ContextCompat.startActivity(itemView.context, intent, null)
+                }
+            }
         }
     }
 }

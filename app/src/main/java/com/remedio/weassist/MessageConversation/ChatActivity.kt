@@ -14,6 +14,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Clients.Message
@@ -50,6 +53,9 @@ class ChatActivity : AppCompatActivity() {
     // Current user type
     private var userType: String? = null
 
+    private var isUploadingFile = false
+    private var currentFileUri: Uri? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_chat)
@@ -82,11 +88,17 @@ class ChatActivity : AppCompatActivity() {
         rvChatMessages.adapter = messagesAdapter
 
         fileAttachmentButton.setOnClickListener {
+            if (isUploadingFile) {
+                Toast.makeText(this, "Please wait, file upload in progress", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
             // Generate a dynamic request code using UUID
             val dynamicRequestCode = UUID.randomUUID().toString()
 
-            val intent = Intent(Intent.ACTION_PICK)
+            val intent = Intent(Intent.ACTION_GET_CONTENT)
             intent.type = "*/*" // Allow all file types to be picked
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
             startActivityForResult(intent, dynamicRequestCode.hashCode())
         }
 
@@ -695,6 +707,128 @@ class ChatActivity : AppCompatActivity() {
                 Toast.makeText(this, "Failed to load secretary information", Toast.LENGTH_SHORT).show()
                 finish()
             }
+    }
+    private fun uploadFileToCloudinary(fileUri: Uri) {
+        isUploadingFile = true
+        showUploadProgress(true)
+
+        val receiverId = determineReceiverId() ?: run {
+            Toast.makeText(this, "Recipient not identified", Toast.LENGTH_SHORT).show()
+            isUploadingFile = false
+            showUploadProgress(false)
+            return
+        }
+
+        val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
+        val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
+
+        try {
+            MediaManager.get().upload(fileUri)
+                .unsigned("weassist_upload_preset") // Use your upload preset name
+                .option("resource_type", "auto") // Auto-detect file type
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {
+                        Log.d("ChatActivity", "Upload started: $requestId")
+                    }
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                        val progress = (bytes * 100 / totalBytes).toInt()
+                        Log.d("ChatActivity", "Upload progress: $progress%")
+                    }
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                        Log.d("ChatActivity", "Upload success: $resultData")
+
+                        val fileUrl = resultData["secure_url"] as? String
+                        val fileType = resultData["resource_type"] as? String
+                        val fileName = resultData["original_filename"] as? String ?: "file"
+
+                        if (fileUrl != null) {
+                            // Get sender details before creating the message
+                            getCurrentUserImageUrl { imageUrl ->
+                                val timestamp = System.currentTimeMillis()
+
+                                val message = Message(
+                                    senderId = currentUserId!!,
+                                    receiverId = receiverId,
+                                    message = "[File] $fileName",
+                                    timestamp = timestamp,
+                                    senderImageUrl = imageUrl,
+                                    fileUrl = fileUrl,
+                                    fileType = fileType
+                                )
+
+                                // Add to local list immediately for instant UI feedback
+                                runOnUiThread {
+                                    messagesList.add(message)
+                                    messagesAdapter.notifyItemInserted(messagesList.size - 1)
+                                    rvChatMessages.scrollToPosition(messagesList.size - 1)
+                                }
+
+                                // Save to Firebase
+                                database.child("conversations").child(conversationId)
+                                    .child("messages").child(messageId)
+                                    .setValue(message)
+                                    .addOnSuccessListener {
+                                        incrementUnreadCounter(conversationId, receiverId)
+                                        createNotificationForRecipient(message)
+                                        Toast.makeText(this@ChatActivity, "File sent successfully", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("ChatActivity", "Failed to save file message", e)
+                                        runOnUiThread {
+                                            messagesList.removeAll { it.timestamp == message.timestamp }
+                                            messagesAdapter.notifyDataSetChanged()
+                                            Toast.makeText(this@ChatActivity, "Failed to send file", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                            }
+                        } else {
+                            Log.e("ChatActivity", "File URL not found in upload result")
+                            Toast.makeText(this@ChatActivity, "Failed to get file URL", Toast.LENGTH_SHORT).show()
+                        }
+
+                        isUploadingFile = false
+                        showUploadProgress(false)
+                    }
+
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        Log.e("ChatActivity", "Upload error: ${error.description}")
+                        runOnUiThread {
+                            Toast.makeText(this@ChatActivity, "File upload failed: ${error.description}", Toast.LENGTH_SHORT).show()
+                        }
+                        isUploadingFile = false
+                        showUploadProgress(false)
+                    }
+
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {
+                        Log.e("ChatActivity", "Upload rescheduled: ${error.description}")
+                        isUploadingFile = false
+                        showUploadProgress(false)
+                    }
+                })
+                .dispatch()
+        } catch (e: Exception) {
+            Log.e("ChatActivity", "Error uploading file: ${e.message}")
+            isUploadingFile = false
+            showUploadProgress(false)
+            Toast.makeText(this, "Error uploading file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showUploadProgress(show: Boolean) {
+        runOnUiThread {
+            if (show) {
+                // Show progress bar or disable UI elements
+                btnSendMessage.isEnabled = false
+                findViewById<ImageButton>(R.id.file_attachment_button).isEnabled = false
+                Toast.makeText(this, "Uploading file...", Toast.LENGTH_SHORT).show()
+            } else {
+                // Hide progress bar or enable UI elements
+                btnSendMessage.isEnabled = true
+                findViewById<ImageButton>(R.id.file_attachment_button).isEnabled = true
+            }
+        }
     }
 
     private fun updateConversationWithClientInfo(clientId: String, clientName: String, clientImageUrl: String) {
@@ -1674,13 +1808,12 @@ class ChatActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
-        // You can dynamically check for the request code and process it accordingly
-        if (resultCode == RESULT_OK && requestCode != 0) { // Check if the requestCode is valid (non-zero)
-            val fileUri: Uri? = data?.data
-            fileUri?.let {
-                // Handle the selected file URI
-                // For example, you can upload it to Firebase or show it in your UI
-                Toast.makeText(this, "File Selected: $fileUri", Toast.LENGTH_SHORT).show()
+        if (resultCode == RESULT_OK && data != null && data.data != null) {
+            currentFileUri = data.data
+            currentFileUri?.let { uri ->
+                uploadFileToCloudinary(uri)
+            } ?: run {
+                Toast.makeText(this, "Failed to get file URI", Toast.LENGTH_SHORT).show()
             }
         }
     }
