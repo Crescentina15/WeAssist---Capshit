@@ -34,7 +34,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var etMessageInput: EditText
     private lateinit var btnSendMessage: ImageButton
     private lateinit var rvChatMessages: RecyclerView
-    private lateinit var messagesAdapter: MessageAdapter
+    lateinit var messagesAdapter: MessageAdapter
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
     private var createOnFirstMessage = false
