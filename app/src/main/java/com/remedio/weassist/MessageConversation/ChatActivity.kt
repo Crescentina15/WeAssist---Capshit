@@ -33,7 +33,7 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var etMessageInput: EditText
     private lateinit var btnSendMessage: ImageButton
     private lateinit var rvChatMessages: RecyclerView
-    private lateinit var messagesAdapter: MessageAdapter
+    lateinit var messagesAdapter: MessageAdapter
     private lateinit var backButton: ImageButton
     private val messagesList = mutableListOf<Message>()
     private var createOnFirstMessage = false
@@ -172,6 +172,7 @@ class ChatActivity : AppCompatActivity() {
 
         // Replace your current btnSendMessage.setOnClickListener with this:
 
+        // Replace your current btnSendMessage.setOnClickListener with this:
         btnSendMessage.setOnClickListener {
             if (!isSending) {
                 val messageText = etMessageInput.text.toString().trim()
@@ -726,13 +727,21 @@ class ChatActivity : AppCompatActivity() {
         val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
 
-        // Get the original filename
+        // Get the original filename and extension
         val fileName = getFileNameFromUri(fileUri) ?: "file"
+        val fileExtension = fileName.substringAfterLast('.', "").lowercase()
+
+        // Determine resource type based on file extension
+        val resourceType = when (fileExtension) {
+            "pdf" -> "raw"
+            else -> "auto" // Let Cloudinary auto-detect for other files
+        }
 
         try {
             MediaManager.get().upload(fileUri)
                 .unsigned("weassist_upload_preset")
-                .option("resource_type", "auto")
+                .option("resource_type", resourceType) // Set the resource type
+                .option("context", "filename=$fileName") // Preserve original filename
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
                         Log.d("ChatActivity", "Upload started: $requestId")
@@ -747,7 +756,11 @@ class ChatActivity : AppCompatActivity() {
                         Log.d("ChatActivity", "Upload success: $resultData")
 
                         val fileUrl = resultData["secure_url"] as? String
-                        val fileType = resultData["resource_type"] as? String
+                        val fileType = when (fileExtension) {
+                            "pdf" -> "pdf"
+                            "jpg", "jpeg", "png", "gif" -> "image"
+                            else -> resultData["resource_type"] as? String ?: "file"
+                        }
 
                         if (fileUrl != null) {
                             getCurrentUserImageUrl { imageUrl ->

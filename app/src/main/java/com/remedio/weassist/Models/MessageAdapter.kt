@@ -1,7 +1,13 @@
 package com.remedio.weassist.Clients
 
+import android.app.DownloadManager
+import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,12 +18,13 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.google.firebase.auth.FirebaseAuth
+import com.remedio.weassist.MessageConversation.ChatActivity
+import com.remedio.weassist.MessageConversation.ImagePreviewActivity
 import com.remedio.weassist.R
 import de.hdodenhof.circleimageview.CircleImageView
+import java.io.File
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
+import java.util.*
 
 class MessageAdapter(private val messagesList: List<Message>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -25,21 +32,19 @@ class MessageAdapter(private val messagesList: List<Message>) :
     private val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
     private val dateFormat = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
     private val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
+    private var downloadId: Long = -1
+    private var downloadReceiver: BroadcastReceiver? = null
 
-    // Interface for image click listener
     interface OnFileClickListener {
         fun onFileClick(message: Message)
     }
 
-    // Listener field
     private var fileClickListener: OnFileClickListener? = null
 
-    // Method to set the listener
     fun setOnFileClickListener(listener: OnFileClickListener) {
         this.fileClickListener = listener
     }
 
-    // Convenient method to set the listener using a lambda
     fun setOnFileClickListener(listener: (Message) -> Unit) {
         this.fileClickListener = object : OnFileClickListener {
             override fun onFileClick(message: Message) {
@@ -49,14 +54,12 @@ class MessageAdapter(private val messagesList: List<Message>) :
     }
 
     companion object {
-        // View types
         private const val VIEW_TYPE_SENT = 1
         private const val VIEW_TYPE_RECEIVED = 2
         private const val VIEW_TYPE_SYSTEM = 3
         private const val VIEW_TYPE_SENT_FILE = 4
         private const val VIEW_TYPE_RECEIVED_FILE = 5
 
-        // Utility function to get the MIME type from URL
         fun getMimeType(url: String): String {
             return when {
                 url.endsWith(".jpg", true) || url.endsWith(".jpeg", true) -> "image/jpeg"
@@ -67,12 +70,117 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 url.endsWith(".docx", true) -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 url.endsWith(".xls", true) -> "application/vnd.ms-excel"
                 url.endsWith(".xlsx", true) -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                url.endsWith(".mp4", true) -> "video/mp4"
+                url.endsWith(".ppt", true) -> "application/vnd.ms-powerpoint"
+                url.endsWith(".pptx", true) -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                url.endsWith(".txt", true) -> "text/plain"
                 url.endsWith(".mp3", true) -> "audio/mpeg"
+                url.endsWith(".wav", true) -> "audio/wav"
+                url.endsWith(".mp4", true) -> "video/mp4"
+                url.endsWith(".avi", true) -> "video/x-msvideo"
+                url.endsWith(".zip", true) -> "application/zip"
+                url.endsWith(".rar", true) -> "application/x-rar-compressed"
                 else -> "*/*"
             }
         }
+
+        private fun isImageFileType(fileType: String?): Boolean {
+            return fileType == "image"
+        }
+
+        private fun downloadFile(context: Context, fileUrl: String, fileName: String) {
+            val downloadManager =
+                context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val uri = Uri.parse(fileUrl)
+
+            val request = DownloadManager.Request(uri)
+                .setTitle(fileName)
+                .setDescription("Downloading file...")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(true)
+
+            try {
+                val downloadId = downloadManager.enqueue(request)
+                Toast.makeText(context, "Download started", Toast.LENGTH_SHORT).show()
+
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(context: Context?, intent: Intent?) {
+                        val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                        if (id == downloadId) {
+                            Toast.makeText(context, "Download completed", Toast.LENGTH_SHORT).show()
+                            context?.unregisterReceiver(this)
+                        }
+                    }
+                }
+
+                // For Android 13+ (API 33+), we need to specify the receiver flag
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    context.registerReceiver(
+                        receiver,
+                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                        Context.RECEIVER_NOT_EXPORTED
+                    )
+                } else {
+                    // For older versions, use the traditional method
+                    ContextCompat.registerReceiver(
+                        context,
+                        receiver,
+                        IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                        ContextCompat.RECEIVER_NOT_EXPORTED
+                    )
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
+
+    fun handleFileClick(context: Context, message: Message) {
+        message.fileUrl?.let { fileUrl ->
+            when (message.fileType) {
+                "image" -> {
+                    // Open image preview for image files
+                    val intent = Intent(context, ImagePreviewActivity::class.java).apply {
+                        putExtra("image_url", fileUrl)
+                    }
+                    context.startActivity(intent)
+                }
+                "pdf" -> {
+                    // Handle PDF files specifically
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(Uri.parse(fileUrl), "application/pdf")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: ActivityNotFoundException) {
+                        // If no PDF viewer is installed, download the file
+                        downloadFile(context, fileUrl, message.fileName ?: "document.pdf")
+                        Toast.makeText(context, "No PDF viewer found. Downloading file instead.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                else -> {
+                    // Handle other file types generically
+                    try {
+                        val mimeType = getMimeType(fileUrl)
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(Uri.parse(fileUrl), mimeType)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        downloadFile(context, fileUrl, message.fileName ?: "file")
+                        Toast.makeText(context, "No app found to open this file. Downloading instead.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+
 
     override fun getItemViewType(position: Int): Int {
         val message = messagesList[position]
@@ -169,7 +277,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
 
-            // Load sender image if available and view exists
             ivProfile?.let { imageView ->
                 if (!message.senderImageUrl.isNullOrEmpty()) {
                     Glide.with(itemView.context)
@@ -241,7 +348,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
 
-            // Set appropriate icon based on file type
             val iconRes = when (message.fileType) {
                 "image" -> R.drawable.ic_image
                 "pdf" -> R.drawable.ic_pdf
@@ -250,7 +356,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
             }
             ivFileIcon.setImageResource(iconRes)
 
-            // Load image preview if this is an image
+            // Hide preview for non-image files
             if (message.fileType == "image" && ivFilePreview != null) {
                 ivFilePreview.visibility = View.VISIBLE
                 Glide.with(itemView.context)
@@ -261,7 +367,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 ivFilePreview?.visibility = View.GONE
             }
 
-            // Load sender image if available
             ivProfile?.let { imageView ->
                 if (!message.senderImageUrl.isNullOrEmpty()) {
                     Glide.with(itemView.context)
@@ -274,21 +379,11 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Handle file click with listener
             itemView.setOnClickListener {
-                if (fileClickListener != null) {
-                    fileClickListener.onFileClick(message)
-                } else {
-                    // Fallback to default behavior if no listener is set
-                    message.fileUrl?.let { url ->
-                        val intent = Intent(Intent.ACTION_VIEW)
-                        intent.data = Uri.parse(url)
-                        try {
-                            ContextCompat.startActivity(itemView.context, intent, null)
-                        } catch (e: Exception) {
-                            Toast.makeText(itemView.context, "No app found to open this file", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                fileClickListener?.onFileClick(message) ?: run {
+                    // Fallback if no listener is set
+                    val adapter = (itemView.context as? ChatActivity)?.messagesAdapter
+                    adapter?.handleFileClick(itemView.context, message)
                 }
             }
         }
@@ -308,7 +403,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
             tvTimestamp?.text = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                 .format(Date(message.timestamp))
 
-            // Set sender name if available
             tvSenderName?.let { nameView ->
                 if (message.senderName != null) {
                     nameView.text = message.senderName
@@ -318,7 +412,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Set appropriate icon based on file type
             val iconRes = when (message.fileType) {
                 "image" -> R.drawable.ic_image
                 "pdf" -> R.drawable.ic_pdf
@@ -327,7 +420,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
             }
             ivFileIcon.setImageResource(iconRes)
 
-            // Load image preview if this is an image
+            // Hide preview for non-image files
             if (message.fileType == "image" && ivFilePreview != null) {
                 ivFilePreview.visibility = View.VISIBLE
                 Glide.with(itemView.context)
@@ -338,7 +431,6 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 ivFilePreview?.visibility = View.GONE
             }
 
-            // Load sender image if available
             ivProfile?.let { imageView ->
                 if (!message.senderImageUrl.isNullOrEmpty()) {
                     Glide.with(itemView.context)
@@ -351,21 +443,11 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
             }
 
-            // Handle file click with listener
             itemView.setOnClickListener {
-                if (fileClickListener != null) {
-                    fileClickListener.onFileClick(message)
-                } else {
-                    // Fallback to default behavior if no listener is set
-                    message.fileUrl?.let { url ->
-                        val intent = Intent(Intent.ACTION_VIEW)
-                        intent.data = Uri.parse(url)
-                        try {
-                            ContextCompat.startActivity(itemView.context, intent, null)
-                        } catch (e: Exception) {
-                            Toast.makeText(itemView.context, "No app found to open this file", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                fileClickListener?.onFileClick(message) ?: run {
+                    // Fallback if no listener is set
+                    val adapter = (itemView.context as? ChatActivity)?.messagesAdapter
+                    adapter?.handleFileClick(itemView.context, message)
                 }
             }
         }
