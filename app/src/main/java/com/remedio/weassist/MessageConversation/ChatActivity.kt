@@ -27,6 +27,7 @@ import java.util.UUID
 
 
 private const val REQUEST_IMAGE_PREVIEW = 1001
+
 class ChatActivity : AppCompatActivity() {
     private lateinit var database: DatabaseReference
     private lateinit var tvChatPartnerName: TextView
@@ -97,13 +98,13 @@ class ChatActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // Generate a dynamic request code using UUID
-            val dynamicRequestCode = UUID.randomUUID().toString()
+            // Use a constant request code instead of dynamic UUID
+            val FILE_PICK_REQUEST_CODE = 1001
 
             val intent = Intent(Intent.ACTION_GET_CONTENT)
             intent.type = "*/*" // Allow all file types to be picked
             intent.addCategory(Intent.CATEGORY_OPENABLE)
-            startActivityForResult(intent, dynamicRequestCode.hashCode())
+            startActivityForResult(intent, FILE_PICK_REQUEST_CODE)
         }
 
         // If we have a conversation ID, prioritize loading that conversation
@@ -729,10 +730,17 @@ class ChatActivity : AppCompatActivity() {
         // Get the original filename
         val fileName = getFileNameFromUri(fileUri) ?: "file"
 
+        // Determine if the file is a PDF based on extension or MIME type
+        val isPdf = fileName.lowercase().endsWith(".pdf") ||
+                contentResolver.getType(fileUri)?.lowercase()?.contains("pdf") == true
+
+        // Set the appropriate resource type
+        val resourceType = if (isPdf) "raw" else "auto"
+
         try {
             MediaManager.get().upload(fileUri)
                 .unsigned("weassist_upload_preset")
-                .option("resource_type", "auto")
+                .option("resource_type", resourceType)
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
                         Log.d("ChatActivity", "Upload started: $requestId")
@@ -747,7 +755,8 @@ class ChatActivity : AppCompatActivity() {
                         Log.d("ChatActivity", "Upload success: $resultData")
 
                         val fileUrl = resultData["secure_url"] as? String
-                        val fileType = resultData["resource_type"] as? String
+                        // Make sure we properly recognize PDFs in the file type
+                        val fileType = if (isPdf) "pdf" else resultData["resource_type"] as? String
 
                         if (fileUrl != null) {
                             getCurrentUserImageUrl { imageUrl ->
