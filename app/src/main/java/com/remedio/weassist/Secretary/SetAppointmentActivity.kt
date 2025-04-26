@@ -149,6 +149,7 @@ class SetAppointmentActivity : AppCompatActivity() {
     }
 
     private fun fetchExistingAppointments(lawyerId: String, availableTimeSlots: MutableMap<String, MutableList<TimeSlotInfo>>) {
+        // First, fetch existing appointments (booked time slots)
         val appointmentsRef = FirebaseDatabase.getInstance().getReference("appointments")
 
         appointmentsRef.orderByChild("lawyerId").equalTo(lawyerId)
@@ -171,26 +172,75 @@ class SetAppointmentActivity : AppCompatActivity() {
                         }
                     }
 
-                    // After processing all appointments, filter out dates with no available slots
-                    val filteredDates = mutableListOf<String>("Select Date")
-                    val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+                    // Now check for blocked time slots (from deleted appointments)
+                    val blockedSlotsRef = FirebaseDatabase.getInstance()
+                        .getReference("lawyers")
+                        .child(lawyerId)
+                        .child("blockedTimeSlots")
 
-                    for ((date, timeSlots) in availableTimeSlots) {
-                        val availableSlots = timeSlots.filter { it.isAvailable }
-                        if (availableSlots.isNotEmpty()) {
-                            filteredDates.add(date)
-                            filteredTimeSlotMap[date] = availableSlots
+                    blockedSlotsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(blockedSnapshot: DataSnapshot) {
+                            if (blockedSnapshot.exists()) {
+                                for (slotSnapshot in blockedSnapshot.children) {
+                                    val date = slotSnapshot.child("date").getValue(String::class.java)
+                                    val time = slotSnapshot.child("time").getValue(String::class.java)
+
+                                    if (date != null && time != null) {
+                                        availableTimeSlots[date]?.let { timeSlots ->
+                                            for (i in timeSlots.indices) {
+                                                if (timeSlots[i].timeSlot == time) {
+                                                    timeSlots[i] = TimeSlotInfo(timeSlots[i].timeSlot, false)
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // After processing all appointments and blocked slots, filter out dates with no available slots
+                            val filteredDates = mutableListOf<String>("Select Date")
+                            val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
+                            for ((date, timeSlots) in availableTimeSlots) {
+                                val availableSlots = timeSlots.filter { it.isAvailable }
+                                if (availableSlots.isNotEmpty()) {
+                                    filteredDates.add(date)
+                                    filteredTimeSlotMap[date] = availableSlots
+                                }
+                            }
+
+                            // Update the class variables with filtered data
+                            datesList.clear()
+                            datesList.addAll(filteredDates)
+                            timeSlotMap.clear()
+                            timeSlotMap.putAll(filteredTimeSlotMap)
+
+                            // Now setup the UI with complete data
+                            setupDateDropdown()
                         }
-                    }
 
-                    // Update the class variables with filtered data
-                    datesList.clear()
-                    datesList.addAll(filteredDates)
-                    timeSlotMap.clear()
-                    timeSlotMap.putAll(filteredTimeSlotMap)
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("SetAppointmentActivity", "Failed to fetch blocked slots: ${error.message}")
 
-                    // Now setup the UI with complete data
-                    setupDateDropdown()
+                            // Fallback - process without blocked slots information
+                            val filteredDates = mutableListOf<String>("Select Date")
+                            val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
+                            for ((date, timeSlots) in availableTimeSlots) {
+                                val availableSlots = timeSlots.filter { it.isAvailable }
+                                if (availableSlots.isNotEmpty()) {
+                                    filteredDates.add(date)
+                                    filteredTimeSlotMap[date] = availableSlots
+                                }
+                            }
+
+                            datesList.clear()
+                            datesList.addAll(filteredDates)
+                            timeSlotMap.clear()
+                            timeSlotMap.putAll(filteredTimeSlotMap)
+                            setupDateDropdown()
+                        }
+                    })
                 }
 
                 override fun onCancelled(error: DatabaseError) {

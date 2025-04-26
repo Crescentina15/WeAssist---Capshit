@@ -227,22 +227,37 @@ class SecretaryAppointmentFragment : Fragment() {
         appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (snapshot.exists()) {
+                    // Move to deletedAppointments
                     database.child("deletedAppointments")
                         .child(appointment.appointmentId)
                         .setValue(snapshot.value)
                         .addOnSuccessListener {
-                            appointmentRef.removeValue()
+                            // Add to blockedTimeSlots for this lawyer
+                            val blockedSlot = mapOf(
+                                "date" to appointment.date,
+                                "time" to appointment.time
+                            )
+
+                            database.child("lawyers")
+                                .child(appointment.lawyerId)
+                                .child("blockedTimeSlots")
+                                .push()
+                                .setValue(blockedSlot)
                                 .addOnSuccessListener {
-                                    Log.d(
-                                        "AppointmentRemoval",
-                                        "Appointment successfully removed: ${appointment.appointmentId}"
-                                    )
-                                }
-                                .addOnFailureListener { e ->
-                                    Log.e(
-                                        "AppointmentRemoval",
-                                        "Error removing appointment: ${e.message}"
-                                    )
+                                    // Now remove the appointment
+                                    appointmentRef.removeValue()
+                                        .addOnSuccessListener {
+                                            Log.d(
+                                                "AppointmentRemoval",
+                                                "Appointment successfully removed and slot blocked: ${appointment.appointmentId}"
+                                            )
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Log.e(
+                                                "AppointmentRemoval",
+                                                "Error removing appointment: ${e.message}"
+                                            )
+                                        }
                                 }
                         }
                 }
@@ -263,9 +278,39 @@ class SecretaryAppointmentFragment : Fragment() {
                             .child(appointment.appointmentId)
                             .setValue(snapshot.value)
                             .addOnSuccessListener {
+                                // Remove from deletedAppointments
                                 database.child("deletedAppointments")
                                     .child(appointment.appointmentId)
                                     .removeValue()
+
+                                // Remove from blockedTimeSlots if we're undoing the deletion
+                                val lawyerId = appointment.lawyerId
+                                val date = appointment.date
+                                val time = appointment.time
+
+                                if (lawyerId != null && date != null && time != null) {
+                                    val blockedSlotsRef = database.child("lawyers")
+                                        .child(lawyerId)
+                                        .child("blockedTimeSlots")
+
+                                    // Find and remove the blocked slot
+                                    blockedSlotsRef.orderByChild("date").equalTo(date)
+                                        .addListenerForSingleValueEvent(object : ValueEventListener {
+                                            override fun onDataChange(slotsSnapshot: DataSnapshot) {
+                                                for (slotSnapshot in slotsSnapshot.children) {
+                                                    val slotTime = slotSnapshot.child("time").getValue(String::class.java)
+                                                    if (slotTime == time) {
+                                                        slotSnapshot.ref.removeValue()
+                                                        break
+                                                    }
+                                                }
+                                            }
+
+                                            override fun onCancelled(error: DatabaseError) {
+                                                Log.e("AppointmentRestore", "Error removing blocked slot: ${error.message}")
+                                            }
+                                        })
+                                }
 
                                 Log.d(
                                     "AppointmentRestore",
