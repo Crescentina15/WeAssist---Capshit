@@ -18,14 +18,12 @@ import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
 class SecretaryAppointmentAdapter(
-    private val appointmentList: MutableList<Appointment>, // Changed to MutableList
+    private val appointmentList: MutableList<Appointment>,
     private val onSessionStart: (Appointment) -> Unit
 ) : RecyclerView.Adapter<SecretaryAppointmentAdapter.SecretaryAppointmentViewHolder>() {
 
     private val sessionStates = mutableMapOf<String, Boolean>()
-    private var sessionListener: ChildEventListener? = null
-
-
+    private val sessionListeners = mutableMapOf<String, ChildEventListener>()
 
     class SecretaryAppointmentViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val lawyerProfileImage: ImageView = itemView.findViewById(R.id.lawyer_profile_image)
@@ -43,6 +41,10 @@ class SecretaryAppointmentAdapter(
 
     override fun onBindViewHolder(holder: SecretaryAppointmentViewHolder, position: Int) {
         val appointment = appointmentList[position]
+
+        // Check session state from Firebase when binding
+        checkSessionState(appointment)
+
         val isSessionActive = sessionStates[appointment.appointmentId] ?: false
 
         // Set appointment details
@@ -89,45 +91,76 @@ class SecretaryAppointmentAdapter(
         }
     }
 
+    private fun checkSessionState(appointment: Appointment) {
+        // Create a single-time listener to get the current state
+        FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+            .child(appointment.appointmentId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val isActive = snapshot.exists() && (snapshot.getValue(Boolean::class.java) == true)
+                if (sessionStates[appointment.appointmentId] != isActive) {
+                    sessionStates[appointment.appointmentId] = isActive
+                    notifyDataSetChanged()
+                }
+            }
+    }
+
     fun updateSessionState(appointmentId: String, isActive: Boolean) {
         sessionStates[appointmentId] = isActive
         notifyDataSetChanged()
     }
 
-
     fun startListeningForSessions() {
         stopListeningForSessions()
 
-        sessionListener = object : ChildEventListener {
-            override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
-                updateSessionState(snapshot)
+        // Add listeners for each appointment
+        for (appointment in appointmentList) {
+            val listener = object : ChildEventListener {
+                override fun onChildAdded(snapshot: DataSnapshot, previousChildName: String?) {
+                    sessionStates[appointment.appointmentId] = true
+                    notifyDataSetChanged()
+                }
+
+                override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
+                    sessionStates[appointment.appointmentId] = snapshot.getValue(Boolean::class.java) ?: false
+                    notifyDataSetChanged()
+                }
+
+                override fun onChildRemoved(snapshot: DataSnapshot) {
+                    sessionStates[appointment.appointmentId] = false
+                    notifyDataSetChanged()
+                }
+
+                override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryAdapter", "Session listener cancelled", error.toException())
+                }
             }
 
-            override fun onChildChanged(snapshot: DataSnapshot, previousChildName: String?) {
-                updateSessionState(snapshot)
-            }
-
-            override fun onChildRemoved(snapshot: DataSnapshot) {
-                val appointmentId = snapshot.key ?: return
-                sessionStates[appointmentId] = false
-                notifyDataSetChanged()
-            }
-
-            override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
-            override fun onCancelled(error: DatabaseError) {
-                Log.e("SecretaryAdapter", "Session listener cancelled", error.toException())
-            }
-        }
-
-        appointmentList.forEach { appointment ->
+            // Use value event listener instead of child event listener for the specific appointment
             FirebaseDatabase.getInstance().reference
                 .child("lawyers").child(appointment.lawyerId).child("active_sessions")
-                .child(appointment.appointmentId)
-                .addChildEventListener(sessionListener!!)
+                .addChildEventListener(listener)
+
+            sessionListeners[appointment.appointmentId] = listener
         }
     }
 
-    // Add this to SecretaryAppointmentAdapter
+    fun stopListeningForSessions() {
+        // Remove all session listeners
+        for (appointment in appointmentList) {
+            sessionListeners[appointment.appointmentId]?.let { listener ->
+                FirebaseDatabase.getInstance().reference
+                    .child("lawyers").child(appointment.lawyerId).child("active_sessions")
+                    .removeEventListener(listener)
+            }
+        }
+        sessionListeners.clear()
+    }
+
+    // Appointments listener for real-time updates
     private var appointmentListener: ChildEventListener? = null
 
     fun startListeningForAppointments() {
@@ -146,12 +179,24 @@ class SecretaryAppointmentAdapter(
                 val appointmentId = snapshot.key ?: return
                 val position = appointmentList.indexOfFirst { it.appointmentId == appointmentId }
                 if (position != -1) {
+                    // Also remove any associated session listeners
+                    sessionListeners[appointmentId]?.let { listener ->
+                        appointmentList[position].lawyerId.let { lawyerId ->
+                            FirebaseDatabase.getInstance().reference
+                                .child("lawyers").child(lawyerId).child("active_sessions")
+                                .removeEventListener(listener)
+                        }
+                    }
+                    sessionListeners.remove(appointmentId)
+                    sessionStates.remove(appointmentId)
+
                     appointmentList.removeAt(position)
                     notifyItemRemoved(position)
                 }
             }
 
             override fun onChildMoved(snapshot: DataSnapshot, previousChildName: String?) {}
+
             override fun onCancelled(error: DatabaseError) {
                 Log.e("SecretaryAdapter", "Appointment listener cancelled", error.toException())
             }
@@ -172,41 +217,5 @@ class SecretaryAppointmentAdapter(
         appointmentListener = null
     }
 
-
-    private fun updateSessionState(snapshot: DataSnapshot) {
-        val appointmentId = snapshot.key ?: return
-        val isActive = snapshot.getValue(Boolean::class.java) ?: false
-        sessionStates[appointmentId] = isActive
-        notifyDataSetChanged()
-    }
-
-    fun stopListeningForSessions() {
-        sessionListener?.let { listener ->
-            appointmentList.forEach { appointment ->
-                FirebaseDatabase.getInstance().reference
-                    .child("lawyers").child(appointment.lawyerId).child("active_sessions")
-                    .child(appointment.appointmentId)
-                    .removeEventListener(listener)
-            }
-        }
-        sessionListener = null
-    }
-
-    // Update onViewAttachedToWindow and onViewDetachedFromWindow
-    override fun onViewAttachedToWindow(holder: SecretaryAppointmentViewHolder) {
-        super.onViewAttachedToWindow(holder)
-        startListeningForSessions()
-        startListeningForAppointments()
-    }
-
-    override fun onViewDetachedFromWindow(holder: SecretaryAppointmentViewHolder) {
-        super.onViewDetachedFromWindow(holder)
-        stopListeningForSessions()
-        stopListeningForAppointments()
-    }
-
-
     override fun getItemCount(): Int = appointmentList.size
-
-
 }

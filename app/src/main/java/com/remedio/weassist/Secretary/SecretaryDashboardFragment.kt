@@ -128,11 +128,13 @@ class SecretaryDashboardFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         appointmentAdapter.startListeningForSessions()
+        appointmentAdapter.startListeningForAppointments()
     }
 
     override fun onPause() {
         super.onPause()
         appointmentAdapter.stopListeningForSessions()
+        appointmentAdapter.stopListeningForAppointments()
     }
 
     private fun setupNotificationBadge(notificationButton: ImageButton) {
@@ -278,7 +280,7 @@ class SecretaryDashboardFragment : Fragment() {
                 val secretaryLawFirm = secretarySnapshot.value.toString()
 
                 val appointmentsRef = FirebaseDatabase.getInstance().getReference("accepted_appointment")
-                appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                appointmentsRef.addValueEventListener(object : ValueEventListener { // Changed to addValueEventListener
                     override fun onDataChange(appointmentSnapshot: DataSnapshot) {
                         appointmentList.clear()
                         val lawyerRef = FirebaseDatabase.getInstance().getReference("lawyers")
@@ -286,22 +288,34 @@ class SecretaryDashboardFragment : Fragment() {
                         for (appointmentSnap in appointmentSnapshot.children) {
                             val appointment = appointmentSnap.getValue(Appointment::class.java) ?: continue
 
-                            lawyerRef.child(appointment.lawyerId).addListenerForSingleValueEvent(object : ValueEventListener {
-                                override fun onDataChange(lawyerSnapshot: DataSnapshot) {
-                                    val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
-                                    val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
-                                    val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").value?.toString()
+                            // Check if session is started directly from the appointment data
+                            lawyerRef.child(appointment.lawyerId).child("active_sessions")
+                                .child(appointment.appointmentId)
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(sessionSnapshot: DataSnapshot) {
+                                        appointment.sessionStarted = sessionSnapshot.exists() &&
+                                                sessionSnapshot.getValue(Boolean::class.java) == true
 
-                                    if (lawyerLawFirm == secretaryLawFirm) {
-                                        appointment.fullName = lawyerName
-                                        appointment.lawyerProfileImage = lawyerProfileImage // Set the lawyer's profile image URL
-                                        appointmentList.add(appointment)
-                                        appointmentAdapter.notifyDataSetChanged()
+                                        lawyerRef.child(appointment.lawyerId).addListenerForSingleValueEvent(object : ValueEventListener {
+                                            override fun onDataChange(lawyerSnapshot: DataSnapshot) {
+                                                val lawyerLawFirm = lawyerSnapshot.child("lawFirm").value?.toString()
+                                                val lawyerName = lawyerSnapshot.child("name").value?.toString() ?: "Unknown Lawyer"
+                                                val lawyerProfileImage = lawyerSnapshot.child("profileImageUrl").value?.toString()
+
+                                                if (lawyerLawFirm == secretaryLawFirm) {
+                                                    appointment.fullName = lawyerName
+                                                    appointment.lawyerProfileImage = lawyerProfileImage
+                                                    appointmentList.add(appointment)
+                                                    appointmentAdapter.notifyDataSetChanged()
+                                                }
+                                            }
+
+                                            override fun onCancelled(error: DatabaseError) {}
+                                        })
                                     }
-                                }
 
-                                override fun onCancelled(error: DatabaseError) {}
-                            })
+                                    override fun onCancelled(error: DatabaseError) {}
+                                })
                         }
                     }
 
