@@ -368,10 +368,8 @@ class SecretaryAppointmentFragment : Fragment() {
                                 Log.d("SecretaryCheck", "Found lawyer with ID: $lawyerKey")
                             }
                         }
-                        // First fetch existing appointments
+                        // Fetch appointments and set up listening in one step
                         fetchAppointmentsForLawyers(lawyerIdList)
-                        // Then listen for changes
-                        listenForAppointmentChanges(lawyerIdList)
                     } else {
                         Log.d("SecretaryCheck", "No lawyers found for lawFirm: $lawFirm")
                         showEmptyState()
@@ -402,59 +400,13 @@ class SecretaryAppointmentFragment : Fragment() {
                     lawyerDetails[lawyerId] = Pair(lawyerName, lawyerProfileImage)
                 }
 
-                appointmentsRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                    override fun onDataChange(snapshot: DataSnapshot) {
-                        appointmentList.clear()
-                        loadedAppointmentIds.clear() // Clear tracking set
-                        if (snapshot.exists()) {
-                            val pendingAppointments = mutableListOf<Appointment>()
-                            val acceptedAppointments = mutableListOf<Appointment>()
-                            val forwardedAppointments = mutableListOf<Appointment>()
+                // Clear previous data first
+                appointmentList.clear()
+                loadedAppointmentIds.clear() // Clear tracking set
 
-                            for (child in snapshot.children) {
-                                val appointmentId = child.key ?: continue
-                                val appointment = child.getValue(Appointment::class.java)
-                                val clientId = child.child("clientId").getValue(String::class.java)
-                                    ?: "Unknown"
-
-                                if (appointment != null && appointment.lawyerId in lawyerIds) {
-                                    val updatedAppointment = appointment.copy(
-                                        appointmentId = appointmentId,
-                                        clientId = clientId,
-                                        lawyerName = lawyerDetails[appointment.lawyerId]?.first
-                                            ?: "Unknown Lawyer",
-                                        lawyerProfileImage = lawyerDetails[appointment.lawyerId]?.second
-                                    )
-
-                                    // Add to tracking set
-                                    loadedAppointmentIds.add(appointmentId)
-
-                                    when (updatedAppointment.status?.lowercase()) {
-                                        "pending" -> pendingAppointments.add(updatedAppointment)
-                                        "accepted" -> acceptedAppointments.add(updatedAppointment)
-                                        else -> forwardedAppointments.add(updatedAppointment)
-                                    }
-                                }
-                            }
-
-                            // Combine in order: pending -> accepted -> forwarded
-                            appointmentList.addAll(pendingAppointments)
-                            appointmentList.addAll(acceptedAppointments)
-                            appointmentList.addAll(forwardedAppointments)
-
-                            adapter.updateAppointments(appointmentList)
-                            updateUiState()
-                        } else {
-                            Log.d("SecretaryCheck", "No appointments found in DB.")
-                            showEmptyState()
-                        }
-                    }
-
-                    override fun onCancelled(error: DatabaseError) {
-                        Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
-                        showEmptyState()
-                    }
-                })
+                // Now listen for appointment changes - this will handle both the initial loading
+                // and subsequent changes
+                listenForAppointmentChanges(lawyerIds, lawyerDetails)
             }
 
             override fun onCancelled(error: DatabaseError) {
@@ -463,6 +415,74 @@ class SecretaryAppointmentFragment : Fragment() {
             }
         })
     }
+
+    private fun listenForAppointmentChanges(lawyerIds: List<String>, lawyerDetails: Map<String, Pair<String, String?>>) {
+        val appointmentsRef = database.child("appointments")
+
+        // Remove any previous listener first to prevent duplicates
+        if (::appointmentListener.isInitialized) {
+            appointmentsRef.removeEventListener(appointmentListener)
+        }
+
+        // Create a new listener for all appointment changes
+        appointmentListener = appointmentsRef.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Clear existing data
+                appointmentList.clear()
+                loadedAppointmentIds.clear()
+
+                if (snapshot.exists()) {
+                    val pendingAppointments = mutableListOf<Appointment>()
+                    val acceptedAppointments = mutableListOf<Appointment>()
+                    val forwardedAppointments = mutableListOf<Appointment>()
+
+                    for (child in snapshot.children) {
+                        val appointmentId = child.key ?: continue
+                        val appointment = child.getValue(Appointment::class.java)
+                        val clientId = child.child("clientId").getValue(String::class.java) ?: "Unknown"
+
+                        if (appointment != null && appointment.lawyerId in lawyerIds) {
+                            val updatedAppointment = appointment.copy(
+                                appointmentId = appointmentId,
+                                clientId = clientId,
+                                lawyerName = lawyerDetails[appointment.lawyerId]?.first ?: "Unknown Lawyer",
+                                lawyerProfileImage = lawyerDetails[appointment.lawyerId]?.second
+                            )
+
+                            // Add to tracking set
+                            loadedAppointmentIds.add(appointmentId)
+
+                            when (updatedAppointment.status?.lowercase()) {
+                                "pending" -> pendingAppointments.add(updatedAppointment)
+                                "accepted" -> acceptedAppointments.add(updatedAppointment)
+                                else -> forwardedAppointments.add(updatedAppointment)
+                            }
+                        }
+                    }
+
+                    // Combine in order: pending -> accepted -> forwarded
+                    appointmentList.addAll(pendingAppointments)
+                    appointmentList.addAll(acceptedAppointments)
+                    appointmentList.addAll(forwardedAppointments)
+
+                    adapter.updateAppointments(appointmentList)
+                    updateUiState()
+                } else {
+                    Log.d("SecretaryCheck", "No appointments found in DB.")
+                    showEmptyState()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryCheck", "Error fetching appointments: ${error.message}")
+                showEmptyState()
+            }
+        })
+    }
+
+
+    // Add this property to your class
+    private lateinit var appointmentListener: ValueEventListener
 
     private fun listenForAppointmentChanges(lawyerIds: List<String>) {
         val appointmentsRef = database.child("appointments")
@@ -604,5 +624,12 @@ class SecretaryAppointmentFragment : Fragment() {
         val intent = Intent(requireContext(), SecretaryAppointmentDetailsActivity::class.java)
         intent.putExtra("APPOINTMENT_ID", appointment.appointmentId)
         startActivity(intent)
+    }
+    override fun onDestroyView() {
+        super.onDestroyView()
+        // Remove the appointment listener
+        if (::appointmentListener.isInitialized) {
+            database.child("appointments").removeEventListener(appointmentListener)
+        }
     }
 }
