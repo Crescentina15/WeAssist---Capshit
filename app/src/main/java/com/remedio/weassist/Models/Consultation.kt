@@ -7,5 +7,6 @@ data class Consultation(
     val lawyerId: String = "",
     val consultationDate: String = "",
     val consultationType: String = "",
-    val status: String = ""
+    val status: String = "",
+    val problem: String = ""
 )

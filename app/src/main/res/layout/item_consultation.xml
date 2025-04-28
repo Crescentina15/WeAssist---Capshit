@@ -52,6 +52,37 @@
                 android:background="#EEEEEE"
                 android:layout_marginBottom="12dp"/>
 
+            <!-- Problem section -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#F5F7FA"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Client's Problem"
+                    android:textSize="15sp"
+                    android:textColor="#212121"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvProblem"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Problem description"
+                    android:textSize="14sp"
+                    android:textColor="#212121"
+                    android:minHeight="40dp"
+                    android:maxLines="2"
+                    android:ellipsize="end"/>
+            </LinearLayout>
+
+            <!-- Notes section -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -76,8 +107,8 @@
                     android:text="Notes"
                     android:textSize="14sp"
                     android:textColor="#212121"
-                    android:minHeight="60dp"
-                    android:maxLines="3"
+                    android:minHeight="40dp"
+                    android:maxLines="2"
                     android:ellipsize="end"/>
             </LinearLayout>
 

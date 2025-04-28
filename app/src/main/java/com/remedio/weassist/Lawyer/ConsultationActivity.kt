@@ -26,6 +26,7 @@ class ConsultationActivity : AppCompatActivity() {
         val clientName = intent.getStringExtra("client_name") ?: "Unknown Client"
         val consultationTime = intent.getStringExtra("consultation_time") ?: "Unknown Time"
         val consultationDate = intent.getStringExtra("date") ?: "Unknown Date"
+        val problem = intent.getStringExtra("problem") ?: "" // Get problem from intent
 
         findViewById<TextView>(R.id.client_name_title).text = "Consultation with $clientName"
         findViewById<TextView>(R.id.consultation_time).text = "$consultationTime, $consultationDate"
@@ -36,7 +37,6 @@ class ConsultationActivity : AppCompatActivity() {
         val imageButton: ImageButton = findViewById(R.id.btn_back)
 
         imageButton.setOnClickListener {
-            // Finish the activity to go back to the previous fragment
             finish()
         }
 
@@ -57,7 +57,8 @@ class ConsultationActivity : AppCompatActivity() {
                 "consultationTime" to consultationTime,
                 "consultationDate" to consultationDate,
                 "notes" to notes,
-                "lawyerId" to lawyerId
+                "lawyerId" to lawyerId,
+                "problem" to problem // Include problem in consultation data
             )
 
             database.child(clientName).child(consultationId).setValue(consultationData)
@@ -73,7 +74,6 @@ class ConsultationActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         super.onBackPressed()
-        // Handle the back button press the same way as the back ImageButton
         finish()
     }
 }

@@ -21,6 +21,7 @@ class ConsultationAdapter(private val consultationList: ArrayList<Consultation>)
         val clientName: TextView = itemView.findViewById(R.id.tvClientName)
         val consultationDateTime: TextView = itemView.findViewById(R.id.tvConsultationTime)
         val notes: TextView = itemView.findViewById(R.id.tvNotes)
+        val problem: TextView = itemView.findViewById(R.id.tvProblem) // Added problem TextView
         val editButton: Button = itemView.findViewById(R.id.btnEdit)
         val detailsButton: Button = itemView.findViewById(R.id.btnDetails)
     }
@@ -36,6 +37,7 @@ class ConsultationAdapter(private val consultationList: ArrayList<Consultation>)
         holder.clientName.text = "Client: ${consultation.clientName}"
         holder.consultationDateTime.text = "Date: ${consultation.consultationDate} • Time: ${consultation.consultationTime}"
         holder.notes.text = "Notes: ${consultation.notes}"
+        holder.problem.text = consultation.problem // Set problem text
 
         holder.editButton.setOnClickListener {
             showEditDialog(holder.itemView.context, consultation, position)
