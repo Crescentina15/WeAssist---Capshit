@@ -11,6 +11,10 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.R
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class SetAppointmentActivity : AppCompatActivity() {
 
@@ -29,6 +33,10 @@ class SetAppointmentActivity : AppCompatActivity() {
 
     private var datesList = mutableListOf<String>()
     private var timeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
+
+    private val dateFormat = SimpleDateFormat("MM/dd/yyyy", Locale.US)
+    private val timeFormat = SimpleDateFormat("h:mm a", Locale.US)
+    private val fullDateTimeFormat = SimpleDateFormat("MM/dd/yyyy h:mm a", Locale.US)
 
     // Data class to represent time slot information
     data class TimeSlotInfo(
@@ -117,21 +125,27 @@ class SetAppointmentActivity : AppCompatActivity() {
                     datesList.clear()
                     datesList.add("Select Date")
 
+                    // Get current date and time for filtering
+                    val currentDateTime = Calendar.getInstance().time
+
                     for (availabilitySnapshot in snapshot.children) {
                         val date = availabilitySnapshot.child("date").getValue(String::class.java)
                         val startTime = availabilitySnapshot.child("startTime").getValue(String::class.java)
                         val endTime = availabilitySnapshot.child("endTime").getValue(String::class.java)
 
                         if (date != null && startTime != null && endTime != null) {
-                            val timeSlot = "$startTime - $endTime"
+                            // Check if this slot is in the future
+                            if (isTimeSlotInFuture(date, startTime)) {
+                                val timeSlot = "$startTime - $endTime"
 
-                            if (!datesList.contains(date)) {
-                                datesList.add(date)
+                                if (!datesList.contains(date)) {
+                                    datesList.add(date)
+                                }
+
+                                val timeSlots = tempTimeSlotMap[date] ?: mutableListOf()
+                                timeSlots.add(TimeSlotInfo(timeSlot, true)) // All slots are initially available
+                                tempTimeSlotMap[date] = timeSlots
                             }
-
-                            val timeSlots = tempTimeSlotMap[date] ?: mutableListOf()
-                            timeSlots.add(TimeSlotInfo(timeSlot, true)) // All slots are initially available
-                            tempTimeSlotMap[date] = timeSlots
                         }
                     }
 
@@ -146,6 +160,34 @@ class SetAppointmentActivity : AppCompatActivity() {
                 Toast.makeText(applicationContext, "Failed to load availability", Toast.LENGTH_SHORT).show()
             }
         })
+    }
+
+    // Add this helper method to check if a time slot is in the future
+    private fun isTimeSlotInFuture(dateStr: String, startTimeStr: String): Boolean {
+        try {
+            // Parse the appointment date and time
+            val slotDateTime = parseDateTime(dateStr, startTimeStr)
+
+            // Get current date and time
+            val currentDateTime = Calendar.getInstance().time
+
+            // Compare with current time
+            return slotDateTime.after(currentDateTime)
+        } catch (e: Exception) {
+            Log.e("SetAppointmentActivity", "Error parsing date/time: ${e.message}")
+            return true // Default to showing the slot if there's a parsing error
+        }
+    }
+    // Helper method to parse date and time strings into a Date object
+    private fun parseDateTime(dateStr: String, timeStr: String): Date {
+        try {
+            // Combine date and start time
+            val dateTimeStr = "$dateStr $timeStr"
+            return fullDateTimeFormat.parse(dateTimeStr) ?: Date()
+        } catch (e: Exception) {
+            Log.e("SetAppointmentActivity", "Error parsing date/time: ${e.message}")
+            throw e
+        }
     }
 
     private fun fetchExistingAppointments(lawyerId: String, availableTimeSlots: MutableMap<String, MutableList<TimeSlotInfo>>) {
@@ -197,15 +239,31 @@ class SetAppointmentActivity : AppCompatActivity() {
                                 }
                             }
 
-                            // After processing all appointments and blocked slots, filter out dates with no available slots
+                            // Filter dates with no available slots or past dates
                             val filteredDates = mutableListOf<String>("Select Date")
                             val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
 
+                            // Get current date for same-day time filtering
+                            val currentDate = dateFormat.format(Calendar.getInstance().time)
+
                             for ((date, timeSlots) in availableTimeSlots) {
-                                val availableSlots = timeSlots.filter { it.isAvailable }
-                                if (availableSlots.isNotEmpty()) {
-                                    filteredDates.add(date)
-                                    filteredTimeSlotMap[date] = availableSlots
+                                // If it's today, filter out past time slots
+                                if (date == currentDate) {
+                                    val currentTimeSlots = timeSlots.filter {
+                                        it.isAvailable && isTimeSlotInFuture(date, it.timeSlot.split(" - ")[0].trim())
+                                    }
+                                    if (currentTimeSlots.isNotEmpty()) {
+                                        filteredDates.add(date)
+                                        filteredTimeSlotMap[date] = currentTimeSlots
+                                    }
+                                }
+                                // For future dates, just check if there are available slots
+                                else {
+                                    val availableSlots = timeSlots.filter { it.isAvailable }
+                                    if (availableSlots.isNotEmpty() && isDateInFuture(date)) {
+                                        filteredDates.add(date)
+                                        filteredTimeSlotMap[date] = availableSlots
+                                    }
                                 }
                             }
 
@@ -223,14 +281,27 @@ class SetAppointmentActivity : AppCompatActivity() {
                             Log.e("SetAppointmentActivity", "Failed to fetch blocked slots: ${error.message}")
 
                             // Fallback - process without blocked slots information
+                            // Same filtering logic as above
                             val filteredDates = mutableListOf<String>("Select Date")
                             val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
 
+                            val currentDate = dateFormat.format(Calendar.getInstance().time)
+
                             for ((date, timeSlots) in availableTimeSlots) {
-                                val availableSlots = timeSlots.filter { it.isAvailable }
-                                if (availableSlots.isNotEmpty()) {
-                                    filteredDates.add(date)
-                                    filteredTimeSlotMap[date] = availableSlots
+                                if (date == currentDate) {
+                                    val currentTimeSlots = timeSlots.filter {
+                                        it.isAvailable && isTimeSlotInFuture(date, it.timeSlot.split(" - ")[0].trim())
+                                    }
+                                    if (currentTimeSlots.isNotEmpty()) {
+                                        filteredDates.add(date)
+                                        filteredTimeSlotMap[date] = currentTimeSlots
+                                    }
+                                } else {
+                                    val availableSlots = timeSlots.filter { it.isAvailable }
+                                    if (availableSlots.isNotEmpty() && isDateInFuture(date)) {
+                                        filteredDates.add(date)
+                                        filteredTimeSlotMap[date] = availableSlots
+                                    }
                                 }
                             }
 
@@ -250,9 +321,15 @@ class SetAppointmentActivity : AppCompatActivity() {
                     val filteredDates = mutableListOf<String>("Select Date")
                     val filteredTimeSlotMap = mutableMapOf<String, List<TimeSlotInfo>>()
 
+                    // Filter out past dates
                     for ((date, timeSlots) in availableTimeSlots) {
-                        filteredDates.add(date)
-                        filteredTimeSlotMap[date] = timeSlots
+                        if (isDateInFuture(date)) {
+                            val availableSlots = timeSlots.filter { it.isAvailable }
+                            if (availableSlots.isNotEmpty()) {
+                                filteredDates.add(date)
+                                filteredTimeSlotMap[date] = availableSlots
+                            }
+                        }
                     }
 
                     datesList.clear()
@@ -262,6 +339,30 @@ class SetAppointmentActivity : AppCompatActivity() {
                     setupDateDropdown()
                 }
             })
+    }
+
+    // Helper method to check if a date is in the future
+    private fun isDateInFuture(dateStr: String): Boolean {
+        try {
+            val appointmentDate = dateFormat.parse(dateStr) ?: return false
+
+            // Create a calendar for the appointment date (midnight)
+            val appointmentCal = Calendar.getInstance()
+            appointmentCal.time = appointmentDate
+
+            // Create a calendar for today (midnight)
+            val todayCal = Calendar.getInstance()
+            todayCal.set(Calendar.HOUR_OF_DAY, 0)
+            todayCal.set(Calendar.MINUTE, 0)
+            todayCal.set(Calendar.SECOND, 0)
+            todayCal.set(Calendar.MILLISECOND, 0)
+
+            // Compare dates
+            return !appointmentCal.before(todayCal)
+        } catch (e: Exception) {
+            Log.e("SetAppointmentActivity", "Error parsing date: ${e.message}")
+            return true // Default to showing the slot if there's a parsing error
+        }
     }
 
     private fun setupDateDropdown() {
