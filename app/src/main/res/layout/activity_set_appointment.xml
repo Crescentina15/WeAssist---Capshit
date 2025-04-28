@@ -178,7 +178,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="120dp"
                         android:gravity="top"
-                        android:hint="Describe your problem"
+                        android:hint="Client's Concern"
                         android:inputType="textMultiLine"
                         android:scrollbars="vertical" />
                 </com.google.android.material.textfield.TextInputLayout>
