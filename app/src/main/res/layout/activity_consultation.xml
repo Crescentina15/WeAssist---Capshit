@@ -98,6 +98,20 @@
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
+    <!-- Floating Action Button for Speech-to-Text -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fab_speech_to_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_mic"
+        android:contentDescription="Speech to Text"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        app:layout_constraintBottom_toTopOf="@id/btn_save_consultation"
+        app:layout_constraintEnd_toEndOf="@id/notes_card"
+        app:backgroundTint="#2196F3"
+        app:tint="#FFFFFF"/>
+
     <!-- Save Button -->
     <Button
         android:id="@+id/btn_save_consultation"
