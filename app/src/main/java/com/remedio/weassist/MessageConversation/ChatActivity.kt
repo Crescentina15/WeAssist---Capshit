@@ -727,8 +727,8 @@ class ChatActivity : AppCompatActivity() {
         val conversationId = conversationId ?: generateConversationId(currentUserId!!, receiverId)
         val messageId = database.child("conversations").child(conversationId).child("messages").push().key!!
 
-        // Get the original filename
-        val fileName = getFileNameFromUri(fileUri) ?: "file"
+        // Get the original filename with extension
+        val fileName = getFileNameFromUri(fileUri) ?: "file_${System.currentTimeMillis()}"
 
         // Determine if the file is a PDF based on extension or MIME type
         val isPdf = fileName.lowercase().endsWith(".pdf") ||
@@ -741,6 +741,8 @@ class ChatActivity : AppCompatActivity() {
             MediaManager.get().upload(fileUri)
                 .unsigned("weassist_upload_preset")
                 .option("resource_type", resourceType)
+                .option("public_id", fileName.substringBeforeLast('.')) // Use filename without extension as public_id
+                .option("filename_override", fileName) // Preserve original filename
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
                         Log.d("ChatActivity", "Upload started: $requestId")
@@ -770,7 +772,7 @@ class ChatActivity : AppCompatActivity() {
                                     senderImageUrl = imageUrl,
                                     fileUrl = fileUrl,
                                     fileType = fileType,
-                                    fileName = fileName
+                                    fileName = fileName // Store the original filename
                                 )
 
                                 // Add to local list immediately for instant UI feedback
@@ -849,9 +851,21 @@ class ChatActivity : AppCompatActivity() {
         if (result == null) {
             result = uri.path
             val cut = result?.lastIndexOf('/')
-            if (cut != -1) {
-                result = result?.substring(cut!! + 1)
+            if (cut != -1 && cut != null) {
+                result = result?.substring(cut + 1)
             }
+        }
+        // Ensure the filename has an extension
+        if (result != null && !result.contains('.')) {
+            val mimeType = contentResolver.getType(uri)
+            val extension = when {
+                mimeType?.startsWith("image/") == true -> ".jpg"
+                mimeType == "application/pdf" -> ".pdf"
+                mimeType == "application/msword" -> ".doc"
+                mimeType == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx"
+                else -> ".file"
+            }
+            result += extension
         }
         return result
     }
