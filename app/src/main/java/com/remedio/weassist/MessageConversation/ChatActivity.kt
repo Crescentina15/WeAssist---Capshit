@@ -741,7 +741,7 @@ class ChatActivity : AppCompatActivity() {
             MediaManager.get().upload(fileUri)
                 .unsigned("weassist_upload_preset")
                 .option("resource_type", resourceType)
-                .option("public_id", fileName.substringBeforeLast('.')) // Use filename without extension as public_id
+                .option("public_id", fileName)
                 .option("filename_override", fileName) // Preserve original filename
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
