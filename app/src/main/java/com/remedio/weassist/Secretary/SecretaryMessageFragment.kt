@@ -50,7 +50,7 @@ class SecretaryMessageFragment : Fragment() {
         // Initialize adapter
         conversationsAdapter = ConversationAdapter(
             conversationList,
-            { conversation -> openChatActivity(conversation.clientId) },
+            { conversation -> openChatActivity(conversation) },  // Pass the whole conversation object
             currentUserId  // Pass current user ID (secretary)
         )
         conversationsRecyclerView.adapter = conversationsAdapter
@@ -343,34 +343,102 @@ class SecretaryMessageFragment : Fragment() {
         isInactive: Boolean,
         callback: (Conversation) -> Unit
     ) {
-        // Fetch client details
-        database.child("Users").child(clientId).get().addOnSuccessListener { clientSnapshot ->
-            val clientName = "${clientSnapshot.child("firstName").value ?: "Unknown"} ${clientSnapshot.child("lastName").value ?: ""}".trim()
-            val clientImageUrl = clientSnapshot.child("profileImageUrl").value?.toString() ?: ""
+        // Add detailed logging
+        Log.d("ClientNameDebug", "Fetching conversation details for clientId: $clientId")
 
-            // Fetch secretary details (current user)
-            val secretaryId = currentUserId ?: ""
-            database.child("secretaries").child(secretaryId).get().addOnSuccessListener { secretarySnapshot ->
-                val secretaryName = secretarySnapshot.child("name").value?.toString() ?: ""
-                val secretaryImageUrl = secretarySnapshot.child("profileImageUrl").value?.toString() ?: ""
+        // Direct reference to Users node
+        database.child("Users").child(clientId).get()
+            .addOnSuccessListener { clientSnapshot ->
+                if (clientSnapshot.exists()) {
+                    Log.d("ClientNameDebug", "Client data found in Users node: ${clientSnapshot.value}")
 
-                val conversation = Conversation(
-                    conversationId = conversationId,
-                    secretaryId = secretaryId,
-                    secretaryName = secretaryName,
-                    secretaryImageUrl = secretaryImageUrl,
-                    lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
-                    unreadCount = unreadCount,
-                    clientId = clientId,
-                    clientName = clientName,
-                    clientImageUrl = clientImageUrl,
-                    isForwarded = isForwarded,  // Add this property
-                    isActive = !isInactive      // Add this property
-                )
+                    // Get names directly from fields
+                    val firstName = clientSnapshot.child("firstName").getValue(String::class.java)
+                    val lastName = clientSnapshot.child("lastName").getValue(String::class.java)
 
-                callback(conversation)
-            }.addOnFailureListener {
-                // Fallback if secretary details can't be fetched
+                    Log.d("ClientNameDebug", "firstName: $firstName, lastName: $lastName")
+
+                    // Combine for full name
+                    val clientName = "${firstName ?: ""} ${lastName ?: ""}".trim()
+                    Log.d("ClientNameDebug", "Resolved clientName: $clientName")
+
+                    // Get profile image
+                    val clientImageUrl = clientSnapshot.child("profileImageUrl").getValue(String::class.java) ?: ""
+
+                    // Now get secretary details
+                    val secretaryId = currentUserId ?: ""
+                    database.child("secretaries").child(secretaryId).get()
+                        .addOnSuccessListener { secretarySnapshot ->
+                            val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: ""
+                            val secretaryImageUrl = secretarySnapshot.child("profilePicture").getValue(String::class.java) ?: ""
+
+                            // Create conversation object
+                            val conversation = Conversation(
+                                conversationId = conversationId,
+                                secretaryId = secretaryId,
+                                secretaryName = secretaryName,
+                                secretaryImageUrl = secretaryImageUrl,
+                                lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
+                                unreadCount = unreadCount,
+                                clientId = clientId,
+                                clientName = clientName.ifEmpty { "Unknown Client" },
+                                clientImageUrl = clientImageUrl,
+                                isForwarded = isForwarded,
+                                isActive = !isInactive
+                            )
+
+                            Log.d("ClientNameDebug", "Created conversation with clientName: ${conversation.clientName}")
+
+                            // Return the conversation object
+                            callback(conversation)
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ClientNameDebug", "Error fetching secretary details: ${e.message}")
+
+                            // Still create conversation with client info even if secretary info fails
+                            val conversation = Conversation(
+                                conversationId = conversationId,
+                                secretaryId = secretaryId,
+                                secretaryName = "",
+                                secretaryImageUrl = "",
+                                lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
+                                unreadCount = unreadCount,
+                                clientId = clientId,
+                                clientName = clientName.ifEmpty { "Unknown Client" },
+                                clientImageUrl = clientImageUrl,
+                                isForwarded = isForwarded,
+                                isActive = !isInactive
+                            )
+
+                            callback(conversation)
+                        }
+                } else {
+                    Log.e("ClientNameDebug", "Client data not found in Users node for ID: $clientId")
+
+                    // Create conversation with unknown client
+                    val secretaryId = currentUserId ?: ""
+                    val conversation = Conversation(
+                        conversationId = conversationId,
+                        secretaryId = secretaryId,
+                        secretaryName = "",
+                        secretaryImageUrl = "",
+                        lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
+                        unreadCount = unreadCount,
+                        clientId = clientId,
+                        clientName = "Unknown Client",
+                        clientImageUrl = "",
+                        isForwarded = isForwarded,
+                        isActive = !isInactive
+                    )
+
+                    callback(conversation)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ClientNameDebug", "Error fetching client data: ${e.message}")
+
+                // Create conversation with unknown client on error
+                val secretaryId = currentUserId ?: ""
                 val conversation = Conversation(
                     conversationId = conversationId,
                     secretaryId = secretaryId,
@@ -379,35 +447,28 @@ class SecretaryMessageFragment : Fragment() {
                     lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
                     unreadCount = unreadCount,
                     clientId = clientId,
-                    clientName = clientName,
-                    clientImageUrl = clientImageUrl,
-                    isForwarded = isForwarded,  // Add this property
-                    isActive = !isInactive      // Add this property
+                    clientName = "Unknown Client",
+                    clientImageUrl = "",
+                    isForwarded = isForwarded,
+                    isActive = !isInactive
                 )
+
                 callback(conversation)
             }
-        }.addOnFailureListener {
-            // Fallback if client details can't be fetched
-            val conversation = Conversation(
-                conversationId = conversationId,
-                secretaryId = currentUserId ?: "",
-                secretaryName = "",
-                secretaryImageUrl = "",
-                lastMessage = if (isForwarded) "[Forwarded to lawyer] $lastMessage" else lastMessage,
-                unreadCount = unreadCount,
-                clientId = clientId,
-                clientName = "Unknown",
-                clientImageUrl = "",
-                isForwarded = isForwarded,  // Add this property
-                isActive = !isInactive      // Add this property
-            )
-            callback(conversation)
-        }
     }
 
-    private fun openChatActivity(clientId: String) {
+    // Change this method to accept a Conversation object instead of just the clientId
+    private fun openChatActivity(conversation: Conversation) {
+        // Log debug info
+        Log.d("SecretaryMessageFragment", "Opening chat with client: ${conversation.clientId}")
+        Log.d("SecretaryMessageFragment", "Using conversation ID: ${conversation.conversationId}")
+
         val intent = Intent(requireContext(), ChatActivity::class.java)
-        intent.putExtra("CLIENT_ID", clientId)
+        intent.putExtra("CLIENT_ID", conversation.clientId)
+        intent.putExtra("CONVERSATION_ID", conversation.conversationId)
+        intent.putExtra("USER_TYPE", "secretary")
         startActivity(intent)
     }
+
+
 }

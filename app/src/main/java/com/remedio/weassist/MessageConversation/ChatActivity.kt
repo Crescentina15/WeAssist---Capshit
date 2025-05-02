@@ -324,18 +324,22 @@ class ChatActivity : AppCompatActivity() {
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
+                        // Find the client participant (should be set to true and not be the current user)
                         for (participantSnapshot in snapshot.children) {
                             val participantId = participantSnapshot.key
-                            if (participantId != currentUserId) {
-                                // Verify this is a client
+                            val isActive = participantSnapshot.getValue(Boolean::class.java) ?: false
+
+                            if (participantId != currentUserId && isActive) {
+                                // This is likely the client - verify in Users database
                                 database.child("Users").child(participantId!!).get()
                                     .addOnSuccessListener { userSnapshot ->
                                         if (userSnapshot.exists()) {
                                             clientId = participantId
                                             Log.d("ChatActivity", "Extracted clientId: $clientId from conversation")
-                                            setupChatPartner()
+                                            getClientName(clientId!!)
                                         } else {
-                                            // If not found in Users, just use the ID anyway
+                                            // If not found in Users, it might be another secretary or lawyer
+                                            // Just use as clientId anyway for fallback
                                             clientId = participantId
                                             Log.d("ChatActivity", "Using participantId as clientId: $clientId")
                                             getClientName(clientId!!)
@@ -348,13 +352,27 @@ class ChatActivity : AppCompatActivity() {
                                         tvChatPartnerName.text = "Client"
                                         listenForMessages()
                                     }
-                                break
+                                return@onDataChange
                             }
                         }
+
+                        // If no active participant found, try with any participant that isn't current user
+                        for (participantSnapshot in snapshot.children) {
+                            val participantId = participantSnapshot.key
+                            if (participantId != currentUserId) {
+                                clientId = participantId
+                                Log.d("ChatActivity", "Using fallback participantId: $clientId")
+                                getClientName(clientId!!)
+                                return@onDataChange
+                            }
+                        }
+
+                        // Last resort - no suitable participant found
+                        Log.e("ChatActivity", "No suitable chat partner found in conversation")
+                        tvChatPartnerName.text = "Client"
+                        listenForMessages()
                     } else {
                         Log.e("ChatActivity", "No participants found in conversation")
-                        // Since we're showing existing conversations, we need a fallback
-                        // Just use a default name and proceed
                         tvChatPartnerName.text = "Client"
                         listenForMessages()
                     }
@@ -362,7 +380,6 @@ class ChatActivity : AppCompatActivity() {
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("ChatActivity", "Error fetching conversation participants: ${error.message}")
-                    // Since we're showing existing conversations, provide fallback
                     tvChatPartnerName.text = "Client"
                     listenForMessages()
                 }
@@ -629,18 +646,89 @@ class ChatActivity : AppCompatActivity() {
 
 
     private fun getClientName(clientId: String) {
+        // Add more logging
+        Log.d("ClientNameDebug", "Getting client name for ID: $clientId")
+
+        // Direct reference to Users node
         database.child("Users").child(clientId).get()
-            .addOnSuccessListener { clientSnapshot ->
-                if (clientSnapshot.exists()) {
-                    val firstName = clientSnapshot.child("firstName").value?.toString() ?: "Unknown"
-                    val lastName = clientSnapshot.child("lastName").value?.toString() ?: ""
-                    val fullName = "$firstName $lastName".trim()
-                    val imageUrl = clientSnapshot.child("profileImageUrl").value?.toString() ?: ""
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    // Log full data for debugging
+                    Log.d("ClientNameDebug", "Client data found: ${snapshot.value}")
 
-                    tvChatPartnerName.text = fullName
+                    // Get first and last name fields directly
+                    val firstName = snapshot.child("firstName").getValue(String::class.java)
+                    val lastName = snapshot.child("lastName").getValue(String::class.java)
 
-                    // Load profile image
-                    if (imageUrl.isNotEmpty()) {
+                    // Log individual field values
+                    Log.d("ClientNameDebug", "firstName: $firstName, lastName: $lastName")
+
+                    // Combine for full name
+                    val fullName = "${firstName ?: ""} ${lastName ?: ""}".trim()
+                    Log.d("ClientNameDebug", "Full name: $fullName")
+
+                    // Update UI with a post to ensure it's on the main thread
+                    tvChatPartnerName.post {
+                        tvChatPartnerName.text = if (fullName.isNotEmpty()) fullName else "Client"
+                        Log.d("ClientNameDebug", "Set chat partner name to: ${tvChatPartnerName.text}")
+                    }
+
+                    // Get image URL
+                    val imageUrl = snapshot.child("profileImageUrl").getValue(String::class.java)
+
+                    // Load image if available
+                    if (!imageUrl.isNullOrEmpty()) {
+                        profileImageView.post {
+                            Glide.with(applicationContext)
+                                .load(imageUrl)
+                                .placeholder(R.drawable.profile)
+                                .error(R.drawable.profile)
+                                .circleCrop()
+                                .into(profileImageView)
+                        }
+                    }
+
+                    // Update conversation metadata with client info
+                    if (conversationId != null) {
+                        val updates = hashMapOf<String, Any>(
+                            "clientName" to fullName,
+                            "clientImageUrl" to (imageUrl ?: "")
+                        )
+                        database.child("conversations").child(conversationId!!).updateChildren(updates)
+                            .addOnSuccessListener {
+                                Log.d("ClientNameDebug", "Updated conversation with client info")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("ClientNameDebug", "Failed to update conversation: ${e.message}")
+                            }
+                    }
+
+                    // Start listening for messages
+                    listenForMessages()
+                } else {
+                    Log.e("ClientNameDebug", "Client data not found for ID: $clientId")
+                    tvChatPartnerName.post { tvChatPartnerName.text = "Client" }
+                    listenForMessages()
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("ClientNameDebug", "Error fetching client data: ${e.message}")
+                tvChatPartnerName.post { tvChatPartnerName.text = "Client" }
+                listenForMessages()
+            }
+    }
+
+    // Add this new helper method
+    private fun checkOtherUserTypes(userId: String) {
+        // Check if this is a secretary
+        database.child("secretaries").child(userId).get()
+            .addOnSuccessListener { secretarySnapshot ->
+                if (secretarySnapshot.exists()) {
+                    val name = secretarySnapshot.child("name").getValue(String::class.java) ?: "Secretary"
+                    tvChatPartnerName.text = name
+
+                    val imageUrl = secretarySnapshot.child("profilePicture").getValue(String::class.java)
+                    if (!imageUrl.isNullOrEmpty()) {
                         Glide.with(this)
                             .load(imageUrl)
                             .placeholder(R.drawable.profile)
@@ -649,26 +737,45 @@ class ChatActivity : AppCompatActivity() {
                             .into(profileImageView)
                     }
 
-                    // Update conversation in Firebase
-                    conversationId?.let { convId ->
-                        val updates = hashMapOf<String, Any>(
-                            "clientName" to fullName,
-                            "clientImageUrl" to imageUrl
-                        )
-                        database.child("conversations").child(convId).updateChildren(updates)
-                    }
-
                     listenForMessages()
                 } else {
-                    Log.e("ChatActivity", "Client not found!")
-                    Toast.makeText(this, "Client information not found", Toast.LENGTH_SHORT).show()
-                    finish()
+                    // Check if this is a lawyer
+                    database.child("lawyers").child(userId).get()
+                        .addOnSuccessListener { lawyerSnapshot ->
+                            if (lawyerSnapshot.exists()) {
+                                val name = lawyerSnapshot.child("name").getValue(String::class.java) ?: "Lawyer"
+                                tvChatPartnerName.text = name
+
+                                val imageUrl = lawyerSnapshot.child("profileImageUrl").getValue(String::class.java)
+                                    ?: lawyerSnapshot.child("profileImage").getValue(String::class.java)
+
+                                if (!imageUrl.isNullOrEmpty()) {
+                                    Glide.with(this)
+                                        .load(imageUrl)
+                                        .placeholder(R.drawable.profile)
+                                        .error(R.drawable.profile)
+                                        .circleCrop()
+                                        .into(profileImageView)
+                                }
+
+                                listenForMessages()
+                            } else {
+                                // Not found anywhere, use a generic name
+                                tvChatPartnerName.text = "User"
+                                listenForMessages()
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e("ChatActivity", "Error checking lawyer: ${e.message}")
+                            tvChatPartnerName.text = "User"
+                            listenForMessages()
+                        }
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("ChatActivity", "Error fetching client data: ${e.message}")
-                Toast.makeText(this, "Failed to load client information", Toast.LENGTH_SHORT).show()
-                finish()
+                Log.e("ChatActivity", "Error checking secretary: ${e.message}")
+                tvChatPartnerName.text = "User"
+                listenForMessages()
             }
     }
 
