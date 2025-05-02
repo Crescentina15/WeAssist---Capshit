@@ -138,11 +138,13 @@ class MessageAdapter(private val messagesList: List<Message>) :
         private fun isImageFileType(fileType: String?): Boolean {
             return fileType == "image"
         }
+
         private fun getFilePathFromContentUri(context: Context, contentUri: Uri): String? {
             try {
                 // Try to get the direct path if possible
                 val filePathColumn = arrayOf(MediaStore.MediaColumns.DATA)
-                val cursor = context.contentResolver.query(contentUri, filePathColumn, null, null, null)
+                val cursor =
+                    context.contentResolver.query(contentUri, filePathColumn, null, null, null)
 
                 cursor?.use {
                     if (it.moveToFirst()) {
@@ -155,7 +157,8 @@ class MessageAdapter(private val messagesList: List<Message>) :
 
                 // If direct path not found, copy to a temp file and return its path
                 context.contentResolver.openInputStream(contentUri)?.use { inputStream ->
-                    val fileName = contentUri.lastPathSegment ?: "temp_${System.currentTimeMillis()}"
+                    val fileName =
+                        contentUri.lastPathSegment ?: "temp_${System.currentTimeMillis()}"
                     val tempFile = File(context.cacheDir, fileName)
                     FileOutputStream(tempFile).use { outputStream ->
                         val buffer = ByteArray(4096)
@@ -407,9 +410,13 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 else -> ".bin"
             }
 
-            val fileName = if (fileNameBase.contains('.')) fileNameBase else "$fileNameBase$fileExtension"
+            val fileName =
+                if (fileNameBase.contains('.')) fileNameBase else "$fileNameBase$fileExtension"
 
-            Log.d("HandleFileClick", "File URL: $fileUrl, Name: $fileName, Type: ${message.fileType}")
+            Log.d(
+                "HandleFileClick",
+                "File URL: $fileUrl, Name: $fileName, Type: ${message.fileType}"
+            )
 
             when {
                 message.fileType == "image" -> {
@@ -425,6 +432,7 @@ class MessageAdapter(private val messagesList: List<Message>) :
                         downloadFile(context, fileUrl, fileName, message.fileType)
                     }
                 }
+
                 message.fileType == "pdf" || fileName.endsWith(".pdf", true) -> {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -442,10 +450,12 @@ class MessageAdapter(private val messagesList: List<Message>) :
                         downloadFile(context, fileUrl, fileName, "pdf")
                     }
                 }
+
                 else -> {
                     Log.d("HandleFileClick", "Downloading general file")
                     downloadFile(context, fileUrl, fileName, message.fileType)
-                    Toast.makeText(context, "Downloading file: $fileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Downloading file: $fileName", Toast.LENGTH_SHORT)
+                        .show()
                 }
             }
         }
@@ -469,26 +479,31 @@ class MessageAdapter(private val messagesList: List<Message>) :
                     .inflate(R.layout.item_message_sent, parent, false)
                 SentMessageViewHolder(view)
             }
+
             VIEW_TYPE_RECEIVED -> {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_message_received, parent, false)
                 ReceivedMessageViewHolder(view)
             }
+
             VIEW_TYPE_SYSTEM -> {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_message_system, parent, false)
                 SystemMessageViewHolder(view)
             }
+
             VIEW_TYPE_SENT_FILE -> {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_file_sent, parent, false)
                 SentFileViewHolder(view)
             }
+
             VIEW_TYPE_RECEIVED_FILE -> {
                 val view = LayoutInflater.from(parent.context)
                     .inflate(R.layout.item_file_received, parent, false)
                 ReceivedFileViewHolder(view)
             }
+
             else -> throw IllegalArgumentException("Invalid view type")
         }
     }
@@ -503,15 +518,18 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 holder.bind(message)
                 holder.tvTimestamp?.text = timeString
             }
+
             is ReceivedMessageViewHolder -> {
                 holder.bind(message)
                 holder.tvTimestamp?.text = timeString
             }
+
             is SystemMessageViewHolder -> holder.bind(message)
             is SentFileViewHolder -> {
                 holder.bind(message, fileClickListener)
                 holder.tvTimestamp?.text = timeString
             }
+
             is ReceivedFileViewHolder -> {
                 holder.bind(message, fileClickListener)
                 holder.tvTimestamp?.text = timeString
@@ -655,6 +673,26 @@ class MessageAdapter(private val messagesList: List<Message>) :
                     adapter?.handleFileClick(itemView.context, message)
                 }
             }
+
+            // Add long-press listener for image download
+            if (message.fileType == "image") {
+                itemView.setOnLongClickListener {
+                    message.fileUrl?.let { fileUrl ->
+                        val fileName = message.fileName ?: fileUrl.substringAfterLast('/')
+                        downloadFile(
+                            itemView.context,
+                            fileUrl,
+                            fileName,
+                            message.fileType
+                        )
+                        Toast.makeText(itemView.context, "Downloading image...", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    true
+                }
+            } else {
+                itemView.setOnLongClickListener(null)
+            }
         }
     }
 
@@ -718,6 +756,26 @@ class MessageAdapter(private val messagesList: List<Message>) :
                     val adapter = (itemView.context as? ChatActivity)?.messagesAdapter
                     adapter?.handleFileClick(itemView.context, message)
                 }
+            }
+
+            // Add long-press listener for image download
+            if (message.fileType == "image") {
+                itemView.setOnLongClickListener {
+                    message.fileUrl?.let { fileUrl ->
+                        val fileName = message.fileName ?: fileUrl.substringAfterLast('/')
+                        downloadFile(
+                            itemView.context,
+                            fileUrl,
+                            fileName,
+                            message.fileType
+                        )
+                        Toast.makeText(itemView.context, "Downloading image...", Toast.LENGTH_SHORT)
+                            .show()
+                    }
+                    true
+                }
+            } else {
+                itemView.setOnLongClickListener(null)
             }
         }
     }
