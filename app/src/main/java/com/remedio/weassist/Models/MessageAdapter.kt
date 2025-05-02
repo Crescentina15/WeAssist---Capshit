@@ -434,26 +434,26 @@ class MessageAdapter(private val messagesList: List<Message>) :
                 }
 
                 message.fileType == "pdf" || fileName.endsWith(".pdf", true) -> {
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW).apply {
-                            data = Uri.parse(fileUrl)
-                            setDataAndType(Uri.parse(fileUrl), "application/pdf")
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                        }
-                        context.startActivity(intent)
-                    } catch (e: ActivityNotFoundException) {
-                        Log.d("HandleFileClick", "No PDF viewer found, downloading file")
-                        downloadFile(context, fileUrl, fileName, "pdf")
-                    } catch (e: Exception) {
-                        Log.e("HandleFileClick", "Error opening PDF directly", e)
-                        downloadFile(context, fileUrl, fileName, "pdf")
+                    Log.d("HandleFileClick", "Downloading PDF file directly")
+                    // Always download PDF files with attachment flag instead of trying to view them
+                    val downloadUrl = if (fileUrl.contains("?")) {
+                        "$fileUrl&fl_attachment=true"
+                    } else {
+                        "$fileUrl?fl_attachment=true"
                     }
+                    downloadFile(context, downloadUrl, fileName, "pdf")
+                    Toast.makeText(context, "Downloading PDF: $fileName", Toast.LENGTH_SHORT).show()
                 }
 
                 else -> {
                     Log.d("HandleFileClick", "Downloading general file")
-                    downloadFile(context, fileUrl, fileName, message.fileType)
+                    // Add fl_attachment parameter to all file downloads for consistency
+                    val downloadUrl = if (fileUrl.contains("?")) {
+                        "$fileUrl&fl_attachment=true"
+                    } else {
+                        "$fileUrl?fl_attachment=true"
+                    }
+                    downloadFile(context, downloadUrl, fileName, message.fileType)
                     Toast.makeText(context, "Downloading file: $fileName", Toast.LENGTH_SHORT)
                         .show()
                 }

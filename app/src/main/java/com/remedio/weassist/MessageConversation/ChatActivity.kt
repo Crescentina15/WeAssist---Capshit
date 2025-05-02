@@ -1295,22 +1295,11 @@ class ChatActivity : AppCompatActivity() {
         val messagesAdapter = MessageAdapter(messagesList)
         rvChatMessages.adapter = messagesAdapter
 
-// Set the click listener with explicit type parameter
-        messagesAdapter.setOnFileClickListener { message: Message ->
+        // Set the file click listener in your ChatActivity
+        messagesAdapter.setOnFileClickListener { message ->
             message.fileUrl?.let { fileUrl ->
-                if (message.fileType == "image") {
-                    showImagePreview(fileUrl)
-                } else {
-                    // For non-image files, open them with an appropriate viewer
-                    try {
-                        val intent = Intent(Intent.ACTION_VIEW)
-                        intent.setDataAndType(Uri.parse(fileUrl), MessageAdapter.getMimeType(fileUrl))
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        startActivity(intent)
-                    } catch (e: Exception) {
-                        Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
-                    }
-                }
+                // This will trigger our modified handleFileClick method which opens in Chrome
+                messagesAdapter.handleFileClick(this@ChatActivity, message)
             }
         }
 
