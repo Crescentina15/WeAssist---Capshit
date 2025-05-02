@@ -66,23 +66,32 @@ class Login : AppCompatActivity() {
                 if (task.isSuccessful) {
                     val user = auth.currentUser
                     if (user != null && user.isEmailVerified) {
-                        if (rememberMeCheckbox.isChecked) {
-                            saveLoginDetails(email, password)
-                        } else {
-                            clearLoginDetails()
-                        }
+                        // Check if the account is active
+                        checkAccountStatus(user.uid) { isActive ->
+                            if (isActive) {
+                                if (rememberMeCheckbox.isChecked) {
+                                    saveLoginDetails(email, password)
+                                } else {
+                                    clearLoginDetails()
+                                }
 
-                        // Check if password needs to be changed
-                        checkPasswordChangeRequired(user.uid, password) { changeRequired ->
-                            if (changeRequired) {
-                                // Redirect to change password screen
-                                val intent = Intent(this, ChangePasswordActivity::class.java)
-                                intent.putExtra("FIRST_LOGIN", true)
-                                startActivity(intent)
-                                finish()
+                                // Check if password needs to be changed
+                                checkPasswordChangeRequired(user.uid, password) { changeRequired ->
+                                    if (changeRequired) {
+                                        // Redirect to change password screen
+                                        val intent = Intent(this, ChangePasswordActivity::class.java)
+                                        intent.putExtra("FIRST_LOGIN", true)
+                                        startActivity(intent)
+                                        finish()
+                                    } else {
+                                        // Normal login flow
+                                        fetchAndRedirectUser(user.uid)
+                                    }
+                                }
                             } else {
-                                // Normal login flow
-                                fetchAndRedirectUser(user.uid)
+                                // Account is disabled
+                                Toast.makeText(this, "This account has been disabled. Please contact the administrator.", Toast.LENGTH_LONG).show()
+                                auth.signOut()
                             }
                         }
                     } else {
@@ -92,6 +101,28 @@ class Login : AppCompatActivity() {
                     Toast.makeText(this, "Login failed: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
                 }
             }
+    }
+
+    // Add this new function to check if the account is active
+    private fun checkAccountStatus(uid: String, callback: (Boolean) -> Unit) {
+        // Check if user is a secretary
+        val secretaryRef = FirebaseDatabase.getInstance().getReference("secretaries").child(uid)
+        secretaryRef.child("active").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val isActive = snapshot.getValue(Boolean::class.java) ?: true
+                    callback(isActive)
+                } else {
+                    // If not a secretary or no active field, assume account is active
+                    callback(true)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                // In case of error, allow login (fail open)
+                callback(true)
+            }
+        })
     }
 
     private fun isTemporaryPassword(password: String): Boolean {
