@@ -101,7 +101,6 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         }
     }
 
-    // Implement forwarding logic directly in this activity instead of using the fragment
     private fun forwardAppointmentToLawyer(appointment: Appointment) {
         val loadingSnackbar = Snackbar.make(
             findViewById(android.R.id.content),
@@ -135,45 +134,42 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 val clientId = appointment.clientId
                 val newConversationId = ConversationUtils.generateConversationId(clientId, lawyerId)
 
-                // 4. Extract problem description from original conversation
-                ConversationUtils.extractProblemFromConversation(
-                    database,
-                    secretaryConversationId
-                ) { problemDescription ->
-                    // 5. Mark secretary conversation as forwarded
-                    closeSecretaryClientConversation(
-                        secretaryConversationId,
+                // Use the current appointment's problem description
+                val currentProblem = appointment.problem ?: "No problem description available"
+
+                // 5. Mark secretary conversation as forwarded
+                closeSecretaryClientConversation(
+                    secretaryConversationId,
+                    appointment,
+                    currentProblem
+                ) {
+                    // 6. Create lawyer-client conversation
+                    createLawyerClientConversation(
                         appointment,
-                        problemDescription
+                        secretaryConversationId,
+                        newConversationId,
+                        currentProblem
                     ) {
-                        // 6. Create lawyer-client conversation
-                        createLawyerClientConversation(
+                        // 7. Create notifications
+                        createForwardingNotifications(
                             appointment,
                             secretaryConversationId,
                             newConversationId,
-                            problemDescription
-                        ) {
-                            // 7. Create notifications
-                            createForwardingNotifications(
-                                appointment,
-                                secretaryConversationId,
-                                newConversationId,
-                                problemDescription
-                            )
+                            currentProblem
+                        )
 
-                            loadingSnackbar.dismiss()
-                            Snackbar.make(
-                                findViewById(android.R.id.content),
-                                "Appointment successfully forwarded to lawyer",
-                                Snackbar.LENGTH_SHORT
-                            ).show()
+                        loadingSnackbar.dismiss()
+                        Snackbar.make(
+                            findViewById(android.R.id.content),
+                            "Appointment successfully forwarded to lawyer",
+                            Snackbar.LENGTH_SHORT
+                        ).show()
 
-                            // Update UI to show forwarded status
-                            tvStatus.text = "Status: Forwarded"
-                            tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
-                            // Hide the forward button
-                            cardViewForward.visibility = View.GONE
-                        }
+                        // Update UI to show forwarded status
+                        tvStatus.text = "Status: Forwarded"
+                        tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
+                        // Hide the forward button
+                        cardViewForward.visibility = View.GONE
                     }
                 }
             }
@@ -423,10 +419,13 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         database.child("secretaries").child(currentSecretaryId).get().addOnSuccessListener { secretarySnapshot ->
             val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: "a secretary"
 
-            // Add system message with secretary name
+            // Get the current appointment's problem description
+            val currentProblem = appointment.problem ?: problemDescription
+
+            // Add system message with secretary name and current problem
             val systemMessage = mapOf(
                 "senderId" to "system",
-                "message" to "This is a forwarded conversation from secretary $secretaryName. Original problem: $problemDescription",
+                "message" to "This is a forwarded conversation from secretary $secretaryName. Current case details: $currentProblem",
                 "timestamp" to ServerValue.TIMESTAMP
             )
 
@@ -438,10 +437,12 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 callback()
             }
         }.addOnFailureListener { e ->
-            // If we can't get the secretary name, fall back to generic system message
+            // If we can't get the secretary name, fall back to generic system message with current problem
+            val currentProblem = appointment.problem ?: problemDescription
+
             val systemMessage = mapOf(
                 "senderId" to "system",
-                "message" to "This is a forwarded conversation from a secretary. Original problem: $problemDescription",
+                "message" to "This is a forwarded conversation from a secretary. Current case details: $currentProblem",
                 "timestamp" to ServerValue.TIMESTAMP
             )
 
@@ -622,11 +623,14 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         val currentTime = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
             .format(java.util.Date())
 
+        // Use the current appointment's problem description
+        val currentProblem = appointment.problem ?: problemDescription
+
         // Create formatted forwarding message
         val forwardingMessage = "The case been forwarded\n" +
                 "from secretary $secretaryName regarding\n" +
                 "appointment on $currentDate at $currentTime.\n" +
-                "Original problem: $problemDescription"
+                "Current case details: $currentProblem"
 
         // Create notification for lawyer
         val notificationRef = database.child("notifications").child(lawyerId).push()
@@ -750,7 +754,14 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         tvStatus.text = "Status: ${appointment.status}"
         tvAppointmentDate.text = "Date: ${appointment.date}"
         tvAppointmentTime.text = "Time: ${appointment.time}"
-        tvProblemDescription.text = appointment.problem
+
+        // Clear the problem description to avoid showing stale data
+        tvProblemDescription.text = ""
+
+        // Fetch the original problem description for this appointment
+        fetchOriginalProblem(appointment.appointmentId) { originalProblem ->
+            tvProblemDescription.text = originalProblem ?: "No problem description available."
+        }
 
         // Set status color based on status
         when (appointment.status?.lowercase()) {
@@ -771,6 +782,24 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         } else {
             tvSecretaryName.text = "Secretary: Not Assigned"
         }
+    }
+
+    private fun fetchOriginalProblem(appointmentId: String, callback: (String?) -> Unit) {
+        Log.d("SecretaryAppointment", "Fetching problem description for appointment ID: $appointmentId")
+        val appointmentRef = FirebaseDatabase.getInstance().getReference("appointments").child(appointmentId)
+
+        appointmentRef.child("problem").addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val originalProblem = snapshot.getValue(String::class.java)
+                Log.d("SecretaryAppointment", "Fetched problem description: $originalProblem")
+                callback(originalProblem)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error fetching original problem: ${error.message}")
+                callback(null)
+            }
+        })
     }
 
     private fun fetchLawyerName(lawyerId: String) {

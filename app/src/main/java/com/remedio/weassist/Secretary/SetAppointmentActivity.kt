@@ -543,6 +543,7 @@ class SetAppointmentActivity : AppCompatActivity() {
                             // Store metadata
                             conversationRef.child("appointedLawyerId").setValue(lawyerId)
                             conversationRef.child("appointmentId").setValue(appointmentId)
+                            conversationRef.child("problem").setValue(problem)
 
                             // Increment unread counter for secretary
                             incrementUnreadCounter(conversationId, secretaryId)
@@ -567,6 +568,8 @@ class SetAppointmentActivity : AppCompatActivity() {
         conversationRef.child("forwarded").setValue(false)
         conversationRef.child("handledByLawyer").setValue(false)
         conversationRef.child("appointedLawyerId").removeValue()
+        conversationRef.child("appointmentId").removeValue() // Ensure previous appointment ID is cleared
+        conversationRef.child("problem").removeValue() // Ensure previous problem description is cleared
         conversationRef.child("forwardedFromSecretary").setValue(false)
         conversationRef.child("secretaryActive").setValue(true)
         Log.d("SetAppointmentActivity", "Forwarding state reset for conversation: $conversationId")
