@@ -425,7 +425,10 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             // Add system message with secretary name and current problem
             val systemMessage = mapOf(
                 "senderId" to "system",
-                "message" to "This is a forwarded conversation from secretary $secretaryName. Current case details: $currentProblem",
+                "message" to "This is a forwarded conversation from secretary $secretaryName.\n\n" +
+                        "🔴Problem Description:\n" +
+                        "$currentProblem\n\n",
+
                 "timestamp" to ServerValue.TIMESTAMP
             )
 
