@@ -11,10 +11,12 @@
     <!-- Header -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/header"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="56dp"
         android:background="@color/purple_500"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
         <ImageButton
             android:id="@+id/buttonBack"
@@ -25,7 +27,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginStart="16dp"/>
+            android:layout_marginStart="16dp" />
 
         <TextView
             android:id="@+id/header_title"
@@ -38,31 +40,36 @@
             app:layout_constraintStart_toEndOf="@id/buttonBack"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintBottom_toBottomOf="parent"
-            android:layout_marginStart="16dp" />
+            android:layout_marginStart="16dp"
+            tools:ignore="HardcodedText" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- RecyclerView for Conversations -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/inbox_recycler_view"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="0dp"
         android:padding="16dp"
         android:clipToPadding="false"
         app:layout_constraintTop_toBottomOf="@id/header"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         tools:listitem="@layout/item_conversation" />
 
     <!-- Empty State -->
     <LinearLayout
         android:id="@+id/empty_state_layout"
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/header"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintVertical_bias="0.4"
         tools:visibility="visible">
 
@@ -80,7 +87,8 @@
             android:text="No new messages"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#212121" />
+            android:textColor="#212121"
+            tools:ignore="HardcodedText" />
 
         <TextView
             android:layout_width="wrap_content"
@@ -89,7 +97,8 @@
             android:layout_marginHorizontal="32dp"
             android:text="Your inbox is empty"
             android:textAlignment="center"
-            android:textColor="#757575" />
+            android:textColor="#757575"
+            tools:ignore="HardcodedText" />
 
     </LinearLayout>
 
@@ -103,6 +112,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@id/header" />
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -8,4 +8,7 @@
     <dimen name="button_elevation">4dp</dimen>
     <dimen name="button_width">0dp</dimen> <!-- Will be determined by GridLayout weight -->
     <dimen name="button_height">120dp</dimen>
+
+    <!-- Standard padding for content containers -->
+    <dimen name="content_padding">16dp</dimen>
 </resources>

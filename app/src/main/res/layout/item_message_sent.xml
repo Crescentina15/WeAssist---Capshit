@@ -11,7 +11,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:gravity="end">
+        android:gravity="end"
+        android:layout_weight="1">
 
         <TextView
             android:id="@+id/message_text"
@@ -20,7 +21,9 @@
             android:padding="12dp"
             android:background="@drawable/bg_message_sent"
             android:textColor="@android:color/white"
-            android:textSize="16sp"/>
+            android:textSize="16sp"
+            android:maxWidth="250dp"
+            android:ellipsize="end"/>
 
         <TextView
             android:id="@+id/message_time"
@@ -36,6 +39,7 @@
         android:layout_width="36dp"
         android:layout_height="36dp"
         android:layout_marginStart="8dp"
+        android:layout_gravity="center_vertical"
         android:src="@drawable/profile"
         app:civ_border_width="1dp"
         app:civ_border_color="#DDDDDD"/>
