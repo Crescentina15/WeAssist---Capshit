@@ -68,6 +68,10 @@ class ConversationAdapter(
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
+                // Mark unread messages as read
+                markConversationAsRead(conversation.conversationId)
+
+                // Trigger the onItemClick callback
                 onItemClick(conversation)
             }
         }
@@ -103,20 +107,18 @@ class ConversationAdapter(
         }
     }
 
-    private fun checkIfConversationIsActive(conversationId: String, callback: (Boolean, Boolean) -> Unit) {
+    private fun markConversationAsRead(conversationId: String) {
         val database = FirebaseDatabase.getInstance().reference
-        database.child("conversations").child(conversationId).get()
-            .addOnSuccessListener { snapshot ->
-                val isActive = !(snapshot.child("secretaryActive").exists() &&
-                        snapshot.child("secretaryActive").getValue(Boolean::class.java) == false)
+        val unreadCountRef = database.child("conversations").child(conversationId).child("unreadMessages").child(currentUserId ?: return)
 
-                val isHandledByLawyer = snapshot.child("handledByLawyer").exists() &&
-                        snapshot.child("handledByLawyer").getValue(Boolean::class.java) == true
-
-                callback(isActive, isHandledByLawyer)
+        unreadCountRef.setValue(0)
+            .addOnSuccessListener {
+                // Optionally, you can log or notify that the unread count was successfully reset
+                println("Unread messages marked as read for conversation: $conversationId")
             }
-            .addOnFailureListener {
-                callback(true, false)
+            .addOnFailureListener { e ->
+                // Optionally, handle the error
+                println("Failed to mark conversation as read: ${e.message}")
             }
     }
 
