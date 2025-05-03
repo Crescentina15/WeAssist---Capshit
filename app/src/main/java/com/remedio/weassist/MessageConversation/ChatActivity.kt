@@ -1913,6 +1913,7 @@ class ChatActivity : AppCompatActivity() {
             }
     }
 
+
     private fun checkForwardedStatus(conversationId: String) {
         database.child("conversations").child(conversationId)
             .addListenerForSingleValueEvent(object : ValueEventListener {

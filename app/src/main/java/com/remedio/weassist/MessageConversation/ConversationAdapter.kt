@@ -51,32 +51,25 @@ class ConversationAdapter(
         holder.unreadCountTextView.text = conversation.unreadCount.toString()
         holder.unreadCountTextView.visibility = if (conversation.unreadCount > 0) View.VISIBLE else View.GONE
 
-        // Apply visual treatment for forwarded/inactive conversations
-        if (conversation.isForwarded || !conversation.isActive) {
-            // This conversation has been forwarded
-            holder.itemView.alpha = 0.6f
-
-            // If not already showing forwarded message prefix, show it
-            if (!holder.lastMessageTextView.text.toString().startsWith("[Forwarded to lawyer]")) {
-                holder.lastMessageTextView.text = "[Forwarded to lawyer] " + holder.lastMessageTextView.text
-            }
-        } else {
+        // Reset visual indicators for forwarded conversations
+        if (!conversation.isForwarded && conversation.isActive) {
             holder.itemView.alpha = 1.0f
+            holder.lastMessageTextView.text = conversation.lastMessage
+        } else {
+            holder.itemView.alpha = 0.6f
+            holder.lastMessageTextView.text = "[Forwarded to lawyer] " + conversation.lastMessage
         }
 
-        // Set click listener
         holder.itemView.setOnClickListener {
-            if (conversation.isForwarded || !conversation.isActive) {
-                // For forwarded conversations, show a toast explaining the status
-                val context = holder.itemView.context
+            if (conversation.isForwarded) {
                 Toast.makeText(
-                    context,
-                    "This conversation has been forwarded to a lawyer and is now read-only.",
+                    holder.itemView.context,
+                    "This conversation was forwarded to a lawyer and is read-only.",
                     Toast.LENGTH_SHORT
                 ).show()
+            } else {
+                onItemClick(conversation)
             }
-            // Always invoke the click handler - the ChatActivity will handle the read-only state
-            onItemClick(conversation)
         }
     }
 

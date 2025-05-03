@@ -514,6 +514,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                             // Generate conversation ID
                             val conversationId = generateConversationId(clientId!!, secretaryId)
 
+                            // Reset forwarding state for any previous conversation
+                            resetForwardingState(conversationId)
+
                             // Create the message
                             val message = mapOf(
                                 "senderId" to clientId,
@@ -522,52 +525,32 @@ class SetAppointmentActivity : AppCompatActivity() {
                                 "timestamp" to System.currentTimeMillis()
                             )
 
-                            // After creating the conversation and incrementing the unread counter
-                            val messageNotificationRef = FirebaseDatabase.getInstance().getReference("notifications").child(secretaryId)
-                            val messageNotificationId = messageNotificationRef.push().key
-
-                            if (messageNotificationId != null) {
-                                val messageNotificationData = mapOf(
-                                    "id" to messageNotificationId,
-                                    "senderId" to clientId,
-                                    "message" to "New message: $problem",
-                                    "timestamp" to System.currentTimeMillis(),
-                                    "type" to "message",
-                                    "isRead" to false,
-                                    "conversationId" to conversationId
-                                )
-
-                                messageNotificationRef.child(messageNotificationId).setValue(messageNotificationData)
-                            }
-
                             // Save the message to the conversation
                             val conversationRef = FirebaseDatabase.getInstance()
                                 .getReference("conversations")
                                 .child(conversationId)
 
-                            // Add the message
                             conversationRef.child("messages").push().setValue(message)
 
-                            // Add participants to the conversation - include lawyer ID but set to false initially
-                            // This will store the lawyer in the conversation but they won't see it until forwarded
+                            // Add participants to the conversation
                             val participantsMap = mapOf(
                                 clientId!! to true,
                                 secretaryId to true,
-                                lawyerId to false  // Lawyer is included but with 'false' flag (not visible yet)
+                                lawyerId to false // Initially set to false for the lawyer
                             )
                             conversationRef.child("participantIds").updateChildren(participantsMap)
 
-                            // Store the appointed lawyer ID in the conversation metadata
+                            // Store metadata
                             conversationRef.child("appointedLawyerId").setValue(lawyerId)
                             conversationRef.child("appointmentId").setValue(appointmentId)
 
                             // Increment unread counter for secretary
                             incrementUnreadCounter(conversationId, secretaryId)
 
-                            // Update the notification to include the conversation ID
+                            // Update secretary's notification
                             updateNotificationWithConversationId(secretaryId, appointmentId, conversationId)
 
-                            Log.d("SetAppointmentActivity", "Created conversation between client and secretary with problem description and linked lawyer")
+                            Log.d("SetAppointmentActivity", "Created conversation and reset forwarding state")
                         }
                     }
                 }
@@ -577,6 +560,16 @@ class SetAppointmentActivity : AppCompatActivity() {
                 }
             })
         }
+    }
+
+    private fun resetForwardingState(conversationId: String) {
+        val conversationRef = FirebaseDatabase.getInstance().getReference("conversations").child(conversationId)
+        conversationRef.child("forwarded").setValue(false)
+        conversationRef.child("handledByLawyer").setValue(false)
+        conversationRef.child("appointedLawyerId").removeValue()
+        conversationRef.child("forwardedFromSecretary").setValue(false)
+        conversationRef.child("secretaryActive").setValue(true)
+        Log.d("SetAppointmentActivity", "Forwarding state reset for conversation: $conversationId")
     }
 
     private fun generateConversationId(user1: String, user2: String): String {
