@@ -1,7 +1,7 @@
 <androidx.cardview.widget.CardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
     app:cardCornerRadius="16dp"
@@ -9,7 +9,7 @@
     android:background="@android:color/white">
 
     <LinearLayout
-        android:layout_width="363dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="horizontal"
         android:padding="10dp">
@@ -31,7 +31,6 @@
             android:layout_weight="1"
             android:layout_marginStart="5dp"
             android:gravity="center_vertical"
-            android:layout_marginTop="5dp"
             android:orientation="vertical">
 
             <TextView
@@ -72,14 +71,6 @@
             android:backgroundTint="#008000"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:minWidth="120dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
-
-
+            android:minWidth="120dp" />
     </LinearLayout>
-
-
 </androidx.cardview.widget.CardView>
-    <!-- Makita sa dashboard -->
-
