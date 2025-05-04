@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/appointment_card_view"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="12dp"
@@ -8,6 +9,7 @@
     app:cardElevation="6dp">
 
     <LinearLayout
+        android:id="@+id/appointment_background"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
@@ -122,8 +124,7 @@
                 android:layout_weight="1"
                 android:text="No active session"
                 android:textColor="#9E9E9E"
-                android:textStyle="italic"
-                android:visibility="gone" />
+                android:textStyle="italic" />
 
             <Button
                 android:id="@+id/end_session_button"

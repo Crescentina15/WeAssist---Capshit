@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import com.remedio.weassist.R
 
@@ -22,7 +23,8 @@ class LawyerAppointmentAdapter(
         val consultationTimeTextView: TextView = itemView.findViewById(R.id.consultation_time_text_view)
         val problemTextView: TextView = itemView.findViewById(R.id.problem_text_view)
         val endSessionButton: Button = itemView.findViewById(R.id.end_session_button)
-        val sessionStatusText: TextView = itemView.findViewById(R.id.session_status_text) // Add this TextView to your layout
+        val sessionStatusText: TextView = itemView.findViewById(R.id.session_status_text)
+        val appointmentBackground: View = itemView.findViewById(R.id.appointment_background) // For graying out
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -43,14 +45,20 @@ class LawyerAppointmentAdapter(
         if (isSessionActive) {
             holder.endSessionButton.visibility = View.VISIBLE
             holder.sessionStatusText.visibility = View.GONE
+            holder.appointmentBackground.isEnabled = true
+            holder.appointmentBackground.alpha = 1.0f // Make fully visible
         } else {
             holder.endSessionButton.visibility = View.GONE
             holder.sessionStatusText.visibility = View.VISIBLE
             holder.sessionStatusText.text = "No active session"
+            holder.appointmentBackground.isEnabled = false
+            holder.appointmentBackground.alpha = 0.5f // Gray out
         }
 
         holder.itemView.setOnClickListener {
-            onItemClick(appointment)
+            if (isSessionActive) {
+                onItemClick(appointment)
+            }
         }
 
         holder.endSessionButton.setOnClickListener {
@@ -71,15 +79,9 @@ class LawyerAppointmentAdapter(
         sessionStates[appointmentId] = isActive
         notifyDataSetChanged()
     }
-    fun removeAppointment(appointmentId: String) {
-        // Create a new list without the removed appointment
-        val newList = appointments.filterNot { it.appointmentId == appointmentId }
-        updateAppointments(newList)
-    }
-    fun removeAppointmentById(appointmentId: String) {
-        // Create a new list without the removed appointment
-        val newList = appointments.filterNot { it.appointmentId == appointmentId }
-        updateAppointments(newList)
-    }
 
+    fun removeAppointment(appointmentId: String) {
+        val newList = appointments.filterNot { it.appointmentId == appointmentId }
+        updateAppointments(newList)
+    }
 }
