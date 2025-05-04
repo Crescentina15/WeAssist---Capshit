@@ -57,14 +57,14 @@ class ConversationAdapter(
             holder.lastMessageTextView.text = conversation.lastMessage
         } else {
             holder.itemView.alpha = 0.6f
-            holder.lastMessageTextView.text = "[Forwarded to lawyer] " + conversation.lastMessage
+            holder.lastMessageTextView.text =  conversation.lastMessage
         }
 
         holder.itemView.setOnClickListener {
             if (conversation.isForwarded) {
                 Toast.makeText(
                     holder.itemView.context,
-                    "This conversation was forwarded to a lawyer and is read-only.",
+                    "Chat Locked : This conversation was forwarded to a lawyer",
                     Toast.LENGTH_SHORT
                 ).show()
             } else {
