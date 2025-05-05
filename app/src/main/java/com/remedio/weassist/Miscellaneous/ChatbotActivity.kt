@@ -67,7 +67,7 @@ class ChatbotActivity : AppCompatActivity() {
     private val recentMessages = mutableListOf<String>()
     private val MESSAGE_SIMILARITY_THRESHOLD = 0.7  // Adjust this value as needed
 
-    private val mapsApiKey = "AIzaSyBceN-dLuvJXdpGVpgZ1ckhfm4kCzuIjhM"
+    private val mapsApiKey = "AIzaSyAF6AsA2lBW5vEtgvLAHTEe-NGG-uf2zo4"
 
 
     private val apiKey = "AIzaSyCBW1bOCten1GbAoRqcAuhRePWj7O12qtM"  // Replace with your Google Gemini API key
