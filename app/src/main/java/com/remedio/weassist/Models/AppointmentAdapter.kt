@@ -82,7 +82,20 @@ class AppointmentAdapter(
     }
 
     private fun bindClientViewHolder(holder: ClientAppointmentViewHolder, appointment: Appointment) {
-        holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown"} accepted your appointment"
+        when (appointment.status) {
+            "Complete" -> {
+                holder.appointmentTitle?.text = "Completed session with Atty. ${appointment.lawyerName ?: "Unknown"}"
+                holder.appointmentStatus?.text = "Complete"
+                holder.appointmentStatus?.setTextColor(holder.itemView.context.getColor(R.color.completed_status))
+                holder.itemView.alpha = 0.7f  // Slightly dim completed appointments
+            }
+            else -> {
+                holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown"} accepted your appointment"
+                holder.appointmentStatus?.text = appointment.status ?: "Pending"
+                holder.itemView.alpha = 1.0f
+            }
+        }
+
         holder.appointmentDate?.text = appointment.date
 
         // Check if the time is booked
@@ -93,7 +106,6 @@ class AppointmentAdapter(
         }
 
         holder.lawyerName?.text = "For Atty. : ${appointment.lawyerName ?: "Unknown"}"
-        holder.appointmentStatus?.text = appointment.status ?: "Pending"
 
         holder.lawyerProfileImage?.let { imageView ->
             if (!appointment.lawyerProfileImage.isNullOrEmpty()) {

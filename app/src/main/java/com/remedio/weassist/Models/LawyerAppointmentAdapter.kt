@@ -7,6 +7,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import com.google.firebase.database.FirebaseDatabase
 import com.remedio.weassist.R
 
 class LawyerAppointmentAdapter(
@@ -62,9 +63,18 @@ class LawyerAppointmentAdapter(
         }
 
         holder.endSessionButton.setOnClickListener {
-            onEndSessionClick(appointment)
-            sessionStates[appointment.appointmentId] = false
-            notifyItemChanged(position)
+            // Update appointment status to "Complete" in Firebase
+            val database = FirebaseDatabase.getInstance().reference
+            database.child("appointments").child(appointment.appointmentId)
+                .child("status").setValue("Complete")
+                .addOnSuccessListener {
+                    onEndSessionClick(appointment)
+                    sessionStates[appointment.appointmentId] = false
+                    notifyItemChanged(position)
+                }
+                .addOnFailureListener {
+                    // Handle failure if needed
+                }
         }
     }
 

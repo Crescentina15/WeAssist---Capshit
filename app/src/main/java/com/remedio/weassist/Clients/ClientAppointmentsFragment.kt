@@ -106,13 +106,16 @@ class ClientAppointmentsFragment : Fragment() {
 
                         for (child in snapshot.children) {
                             val appointment = child.getValue(Appointment::class.java)
-                            // Only process if status is "Accepted" or "Forwarded"
+                            // Only process if status is "Accepted", "Forwarded", or "Complete"
                             if (appointment != null &&
-                                (appointment.status == "Accepted" || appointment.status == "Forwarded")) {
+                                (appointment.status == "Accepted" ||
+                                        appointment.status == "Forwarded" ||
+                                        appointment.status == "Complete")) {
+
                                 // Store the appointment ID from Firebase
                                 appointment.appointmentId = child.key ?: ""
 
-                                Log.d("ClientCheck", "Found accepted appointment: ${appointment.fullName}, lawyerId=${appointment.lawyerId}")
+                                Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, status=${appointment.status}")
 
                                 // Fetch the lawyer's details if not already set
                                 if (appointment.lawyerName.isEmpty() || appointment.lawyerProfileImage.isNullOrEmpty()) {
@@ -198,7 +201,10 @@ class ClientAppointmentsFragment : Fragment() {
     private fun updateAdapter() {
         if (!::adapter.isInitialized) {
             adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
-                showAppointmentDetails(selectedAppointment)
+                // Only allow clicking on non-completed appointments
+                if (selectedAppointment.status != "Complete") {
+                    showAppointmentDetails(selectedAppointment)
+                }
             }
             appointmentRecyclerView.adapter = adapter
 
@@ -213,6 +219,13 @@ class ClientAppointmentsFragment : Fragment() {
                     val position = viewHolder.adapterPosition
                     val appointmentToDelete = appointmentList[position]
                     val appointmentId = appointmentToDelete.appointmentId
+
+                    // Don't allow deleting completed appointments
+                    if (appointmentToDelete.status == "Complete") {
+                        adapter.notifyItemChanged(position)
+                        Toast.makeText(requireContext(), "Completed appointments cannot be deleted", Toast.LENGTH_SHORT).show()
+                        return
+                    }
 
                     if (appointmentId.isNotEmpty()) {
                         database.child("appointments").child(appointmentId).removeValue()
@@ -233,7 +246,7 @@ class ClientAppointmentsFragment : Fragment() {
 
             ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(appointmentRecyclerView)
         } else {
-            adapter.notifyDataSetChanged()
+            adapter.updateAppointments(appointmentList)
         }
     }
 
@@ -252,5 +265,54 @@ class ClientAppointmentsFragment : Fragment() {
         intent.putExtra("LAWYER_PROFILE_IMAGE", appointment.lawyerProfileImage)
 
         startActivity(intent)
+    }
+
+    // Add a real-time listener for appointment status changes
+    override fun onResume() {
+        super.onResume()
+
+        // Set up real-time listener for appointment updates
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        val clientId = currentUser?.uid
+
+        if (clientId != null) {
+            setupAppointmentListener(clientId)
+        }
+    }
+
+    private lateinit var appointmentListener: ValueEventListener
+
+    private fun setupAppointmentListener(clientId: String) {
+        val appointmentsRef = database.child("appointments").orderByChild("clientId").equalTo(clientId)
+
+        appointmentListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                // Only refresh if we already have appointments loaded
+                if (::adapter.isInitialized) {
+                    fetchClientAppointments(clientId)
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("AppointmentListener", "Database error: ${error.message}")
+            }
+        }
+
+        appointmentsRef.addValueEventListener(appointmentListener)
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        // Remove listener to prevent memory leaks
+        if (::appointmentListener.isInitialized) {
+            val currentUser = FirebaseAuth.getInstance().currentUser
+            val clientId = currentUser?.uid
+
+            if (clientId != null) {
+                val appointmentsRef = database.child("appointments").orderByChild("clientId").equalTo(clientId)
+                appointmentsRef.removeEventListener(appointmentListener)
+            }
+        }
     }
 }

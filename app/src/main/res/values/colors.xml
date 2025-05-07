@@ -23,4 +23,6 @@
 
   <color name="dark_gray">#424242</color>
 
+  <color name="completed_status">#4CAF50</color>
+
 </resources>
