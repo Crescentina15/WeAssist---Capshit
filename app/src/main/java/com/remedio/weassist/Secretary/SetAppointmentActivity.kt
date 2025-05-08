@@ -1,15 +1,22 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.text.format.Formatter.formatFileSize
 import android.util.Log
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.Models.FileAttachmentAdapter
 import com.remedio.weassist.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -25,6 +32,24 @@ class SetAppointmentActivity : AppCompatActivity() {
     private lateinit var editProblem: TextInputEditText
     private lateinit var btnSetAppointment: MaterialButton
     private lateinit var backArrow: ImageButton
+
+    private lateinit var btnAddFile: MaterialButton
+    private lateinit var fileAttachmentRecyclerView: RecyclerView
+    private lateinit var noAttachmentsView: LinearLayout
+    private val attachedFiles = mutableListOf<FileAttachment>()
+    private lateinit var fileAdapter: FileAttachmentAdapter
+
+
+    // Add a constant for file picker request code
+    companion object {
+        private const val PICK_FILE_REQUEST_CODE = 123
+    }
+    // Add a data class for file attachments
+    data class FileAttachment(
+        val uri: Uri,
+        val fileName: String,
+        val fileSize: String
+    )
 
     private var lawyerId: String? = null
     private var selectedDate: String? = null
@@ -58,6 +83,12 @@ class SetAppointmentActivity : AppCompatActivity() {
         btnSetAppointment = findViewById(R.id.btn_set_appointment)
         backArrow = findViewById(R.id.back_arrow)
 
+        btnAddFile = findViewById(R.id.btn_add_file)
+        fileAttachmentRecyclerView = findViewById(R.id.file_attachment_recycler_view)
+        noAttachmentsView = findViewById(R.id.no_attachments_view)
+
+        setupFileAttachmentSection()
+
         clientId = FirebaseAuth.getInstance().currentUser?.uid
 
         backArrow.setOnClickListener {
@@ -85,6 +116,123 @@ class SetAppointmentActivity : AppCompatActivity() {
             saveAppointment()
         }
     }
+    private fun setupFileAttachmentSection() {
+        // Set up the RecyclerView
+        fileAdapter = FileAttachmentAdapter(attachedFiles) { position ->
+            // Handle file removal
+            attachedFiles.removeAt(position)
+            fileAdapter.notifyItemRemoved(position)
+            updateAttachmentVisibility()
+        }
+
+        fileAttachmentRecyclerView.apply {
+            layoutManager = LinearLayoutManager(this@SetAppointmentActivity)
+            adapter = fileAdapter
+            setHasFixedSize(true)
+        }
+
+        btnAddFile.apply {
+            text = "Add File"
+            setOnClickListener { openFilePicker() }
+        }
+
+        updateAttachmentVisibility()
+    }
+    private fun openFilePicker() {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+            type = "*/*"
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+        }
+        startActivityForResult(Intent.createChooser(intent, "Select File"), PICK_FILE_REQUEST_CODE)
+    }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_FILE_REQUEST_CODE && resultCode == RESULT_OK) {
+            data?.let { handleFileSelection(it) }
+        }
+    }
+    private fun handleFileSelection(data: Intent) {
+        // Handle multiple file selection
+        if (data.clipData != null) {
+            val clipData = data.clipData!!
+            for (i in 0 until clipData.itemCount) {
+                val uri = clipData.getItemAt(i).uri
+                addFileToList(uri)
+            }
+        }
+        // Handle single file selection
+        else if (data.data != null) {
+            val uri = data.data!!
+            addFileToList(uri)
+        }
+    }
+    private fun addFileToList(uri: Uri) {
+        // Get file details
+        val fileName = getFileName(uri)
+        val fileSize = getFileSize(uri)
+
+        // Add to list and update UI
+        attachedFiles.add(FileAttachment(uri, fileName, fileSize))
+        fileAdapter.notifyItemInserted(attachedFiles.size - 1)
+        updateAttachmentVisibility()
+    }
+
+    private fun updateAttachmentVisibility() {
+        if (attachedFiles.isEmpty()) {
+            fileAttachmentRecyclerView.visibility = View.GONE
+            noAttachmentsView.visibility = View.VISIBLE
+        } else {
+            fileAttachmentRecyclerView.visibility = View.VISIBLE
+            noAttachmentsView.visibility = View.GONE
+        }
+    }
+    private fun getFileName(uri: Uri): String {
+        var result: String? = null
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index != -1) {
+                        result = it.getString(index)
+                    }
+                }
+            }
+        }
+        if (result == null) {
+            result = uri.path
+            val cut = result?.lastIndexOf('/')
+            if (cut != -1) {
+                result = result?.substring(cut!! + 1)
+            }
+        }
+        return result ?: "Unknown file"
+    }
+    private fun getFileSize(uri: Uri): String {
+        var fileSize: Long = 0
+        if (uri.scheme == "content") {
+            val cursor = contentResolver.query(uri, null, null, null, null)
+            cursor?.use {
+                if (it.moveToFirst()) {
+                    val sizeIndex = it.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIndex != -1) {
+                        fileSize = it.getLong(sizeIndex)
+                    }
+                }
+            }
+        }
+        return formatFileSize(fileSize)
+    }
+    private fun formatFileSize(size: Long): String {
+        if (size <= 0) return "0 B"
+        val units = arrayOf("B", "KB", "MB", "GB")
+        val digitGroups = (Math.log10(size.toDouble()) / Math.log10(1024.0)).toInt()
+        return String.format("%.1f %s", size / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups])
+    }
+
+
+
 
     private fun fetchClientName(clientId: String) {
         val userRef = FirebaseDatabase.getInstance().getReference("Users").child(clientId)
