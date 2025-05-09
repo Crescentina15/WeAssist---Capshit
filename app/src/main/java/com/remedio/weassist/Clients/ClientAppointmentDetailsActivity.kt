@@ -74,6 +74,12 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
         // Load complete appointment details
         loadAppointmentDetails()
+
+        // In the onCreate method:
+        appointmentId = intent.getStringExtra("APPOINTMENT_ID") ?: ""
+        if (appointmentId.isEmpty()) {
+            Log.e("ClientAppointmentDetails", "No appointment ID provided")
+        }
     }
 
     private fun displayIntentData() {
@@ -370,8 +376,8 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
     }
 
     private fun loadConsultationLogsByLawyerAndName(lawyerId: String, clientName: String) {
-        // Log request details to help debug
-        Log.d("ConsultationLogs", "Searching for logs with lawyerId=$lawyerId, clientName=$clientName")
+        // Log request details for debugging
+        Log.d("ConsultationLogs", "Searching for logs with appointmentId=$appointmentId")
 
         // Directly check all consultations nodes
         val consultationsRef = FirebaseDatabase.getInstance().reference.child("consultations")
@@ -380,28 +386,21 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val consultations = mutableListOf<Consultation>()
 
-                // Look through all consultation entries
+                // Look through all consultation entries - ONLY matching by appointmentId
                 for (clientSnapshot in snapshot.children) {
                     for (consultationSnapshot in clientSnapshot.children) {
                         val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                        val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
 
-                        if (consultation != null) {
-                            // Match by appointment ID if available
-                            val appId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
-                            if (appId == appointmentId) {
-                                consultations.add(consultation)
-                                Log.d("ConsultationLogs", "Found consultation by appointmentId")
-                            }
-                            // Also match by lawyer ID and client name as a fallback
-                            else if (consultation.lawyerId == lawyerId && matchesClientName(consultation.clientName, clientName)) {
-                                consultations.add(consultation)
-                                Log.d("ConsultationLogs", "Found consultation by lawyer ID and client name match")
-                            }
+                        // ONLY add consultations that match this specific appointment ID
+                        if (storedAppointmentId == appointmentId && consultation != null) {
+                            consultations.add(consultation)
+                            Log.d("ConsultationLogs", "Found consultation by appointmentId: $appointmentId")
                         }
                     }
                 }
 
-                Log.d("ConsultationLogs", "Total consultations found: ${consultations.size}")
+                Log.d("ConsultationLogs", "Total consultations found for this appointment: ${consultations.size}")
 
                 // Display what we found
                 displayConsultationsList(consultations)
@@ -444,11 +443,11 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
     }
 
     private fun displayConsultationsList(consultations: List<Consultation>) {
-        Log.d("ConsultationLogs", "Displaying ${consultations.size} consultation logs")
+        Log.d("ConsultationLogs", "Displaying ${consultations.size} consultation logs for appointment: $appointmentId")
 
         if (consultations.isEmpty()) {
             tvNoConsultationLogs.visibility = View.VISIBLE
-            tvNoConsultationLogs.text = "No consultation logs available"
+            tvNoConsultationLogs.text = "No consultation logs available for this appointment"
             tvConsultationLogsContent.visibility = View.GONE
             return
         }
@@ -465,6 +464,8 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
         // Build the consultation logs text
         val logsBuilder = StringBuilder()
+        logsBuilder.append("Consultation logs for this appointment:\n\n")
+
         for (consultation in sortedConsultations) {
             logsBuilder.append("Date: ${consultation.consultationDate}\n")
             logsBuilder.append("Time: ${consultation.consultationTime}\n")
