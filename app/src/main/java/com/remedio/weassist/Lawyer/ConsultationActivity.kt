@@ -10,14 +10,12 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.cardview.widget.CardView
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
-import com.remedio.weassist.Clients.Message
 import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.R
 import java.text.SimpleDateFormat
@@ -28,25 +26,21 @@ class ConsultationActivity : AppCompatActivity() {
 
     private lateinit var clientNameTitle: TextView
     private lateinit var consultationTime: TextView
-    private lateinit var consultationNotes: EditText
-    private lateinit var speechToTextFab: FloatingActionButton
-    private lateinit var saveButton: Button
-    private lateinit var backButton: ImageButton
-
-    // Transcript views
-    private lateinit var transcriptCard: CardView
+    private lateinit var problemDescriptionText: TextView
     private lateinit var noTranscriptText: TextView
-    private lateinit var transcriptScroll: ScrollView
     private lateinit var transcriptText: TextView
+    private lateinit var transcriptScroll: ScrollView
+    private lateinit var consultationNotes: EditText
+    private lateinit var saveButton: Button
+    private lateinit var btnBack: ImageButton
+    private lateinit var fabSpeechToText: FloatingActionButton
 
+    private lateinit var clientName: String
+    private lateinit var problem: String
+    private lateinit var date: String
     private var clientId: String = ""
     private var appointmentId: String = ""
-    private var problem: String = ""
-    private var date: String = ""
-    private var clientName: String = ""
-    private var conversationId: String? = null
 
-    // Update the onCreate method to remove the prefilled text in the consultation notes
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_consultation)
@@ -54,268 +48,184 @@ class ConsultationActivity : AppCompatActivity() {
         // Initialize views
         clientNameTitle = findViewById(R.id.client_name_title)
         consultationTime = findViewById(R.id.consultation_time)
-        consultationNotes = findViewById(R.id.consultation_notes)
-        speechToTextFab = findViewById(R.id.fab_speech_to_text)
-        saveButton = findViewById(R.id.btn_save_consultation)
-        backButton = findViewById(R.id.btn_back)
-
-        // Initialize transcript views
-        transcriptCard = findViewById(R.id.transcript_card)
+        problemDescriptionText = findViewById(R.id.problem_description_text)
         noTranscriptText = findViewById(R.id.no_transcript_text)
-        transcriptScroll = findViewById(R.id.transcript_scroll)
         transcriptText = findViewById(R.id.transcript_text)
+        transcriptScroll = findViewById(R.id.transcript_scroll)
+        consultationNotes = findViewById(R.id.consultation_notes)
+        saveButton = findViewById(R.id.btn_save_consultation)
+        btnBack = findViewById(R.id.btn_back)
+        fabSpeechToText = findViewById(R.id.fab_speech_to_text)
 
-        // Get intent extras
+        // Get data from intent
         clientName = intent.getStringExtra("client_name") ?: "Client"
-        val time = intent.getStringExtra("consultation_time") ?: ""
+        val consultationTimeStr = intent.getStringExtra("consultation_time") ?: ""
+        problem = intent.getStringExtra("problem") ?: "No problem description provided."
         appointmentId = intent.getStringExtra("appointment_id") ?: ""
-        problem = intent.getStringExtra("problem") ?: ""
-        date = intent.getStringExtra("date") ?: ""
+        clientId = intent.getStringExtra("client_id") ?: ""
+        date = intent.getStringExtra("date") ?: SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
 
-        // Set UI
+        // Log for debugging
+        Log.d("ConsultationActivity", "Appointment ID: $appointmentId")
+        Log.d("ConsultationActivity", "Client ID: $clientId")
+        Log.d("ConsultationActivity", "Client Name: $clientName")
+        Log.d("ConsultationActivity", "Problem: $problem")
+
+        // If client ID wasn't passed, try to get it from the appointment
+        if (clientId.isEmpty() && appointmentId.isNotEmpty()) {
+            fetchClientIdFromAppointment(appointmentId)
+        }
+
+        // Set up UI
         clientNameTitle.text = "Consultation with $clientName"
-        consultationTime.text = time
+        consultationTime.text = consultationTimeStr.ifEmpty { "Time not specified" }
+        problemDescriptionText.text = problem
 
-        // Set problem description
-        val problemDescriptionText = findViewById<TextView>(R.id.problem_description_text)
-        problemDescriptionText.text = problem.ifEmpty { "No problem description provided." }
+        // Check if there's a conversation transcript
+        checkForConversationTranscript()
 
-        // No prefilled notes text anymore
-
-        // Set click listeners
-        backButton.setOnClickListener { finish() }
-        saveButton.setOnClickListener { saveConsultation() }
-
-        // Find client ID for the appointment
-        findClientId()
-    }
-
-    private fun findClientId() {
-        if (appointmentId.isEmpty()) {
-            noTranscriptText.visibility = View.VISIBLE
-            transcriptScroll.visibility = View.GONE
-            return
+        // Set up buttons
+        saveButton.setOnClickListener {
+            saveConsultation()
         }
 
-        val database = FirebaseDatabase.getInstance().reference
-        database.child("appointments").child(appointmentId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        clientId = snapshot.child("clientId").getValue(String::class.java) ?: ""
-
-                        if (clientId.isNotEmpty()) {
-                            findClientSecretaryConversation()
-                        } else {
-                            noTranscriptText.visibility = View.VISIBLE
-                            transcriptScroll.visibility = View.GONE
-                        }
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ConsultationActivity", "Error finding client ID: ${error.message}")
-                }
-            })
-    }
-
-    private fun findClientSecretaryConversation() {
-        if (clientId.isEmpty()) {
-            noTranscriptText.visibility = View.VISIBLE
-            transcriptScroll.visibility = View.GONE
-            return
+        btnBack.setOnClickListener {
+            finish()
         }
 
-        val database = FirebaseDatabase.getInstance().reference
+        // Set up speech-to-text functionality
+        setupSpeechToText()
 
-        // First check for conversations by appointmentId
-        database.child("conversations")
-            .orderByChild("appointmentId")
-            .equalTo(appointmentId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var foundSecretaryConversation = false
-
-                    for (conversationSnapshot in snapshot.children) {
-                        // Look for secretary conversations
-                        if (conversationSnapshot.child("forwardedFromSecretary").getValue(Boolean::class.java) == true) {
-                            // We found a forwarded conversation, check for original
-                            val originalConversationId = conversationSnapshot.child("originalConversationId")
-                                .getValue(String::class.java)
-
-                            if (originalConversationId != null) {
-                                conversationId = originalConversationId
-                                foundSecretaryConversation = true
-                                loadConversationPreview(originalConversationId)
-                                break
-                            }
-                        } else if (!conversationSnapshot.child("handledByLawyer").exists() ||
-                            conversationSnapshot.child("handledByLawyer").getValue(Boolean::class.java) == false) {
-                            // This is likely a secretary conversation
-                            conversationId = conversationSnapshot.key
-                            foundSecretaryConversation = true
-                            loadConversationPreview(conversationSnapshot.key!!)
-                            break
-                        }
-                    }
-
-                    if (!foundSecretaryConversation) {
-                        findConversationByClientId()
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ConsultationActivity", "Error finding conversation: ${error.message}")
-                    noTranscriptText.visibility = View.VISIBLE
-                    transcriptScroll.visibility = View.GONE
-                }
-            })
+        // Check if we should load previous consultation data
+        if (appointmentId.isNotEmpty()) {
+            loadPreviousConsultationNotes(appointmentId)
+        }
     }
 
-    private fun findConversationByClientId() {
-        // Try to find a conversation between client and any secretary
-        val database = FirebaseDatabase.getInstance().reference
+    private fun setupSpeechToText() {
+        fabSpeechToText.setOnClickListener {
+            // Implement speech-to-text functionality
+            // This is a placeholder - you would need to implement the actual speech recognition
+            Toast.makeText(this, "Speech to text feature not implemented yet", Toast.LENGTH_SHORT).show()
+        }
+    }
 
-        database.child("conversations")
-            .orderByChild("participantIds/$clientId")
-            .equalTo(true)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    var foundSecretaryConversation = false
+    private fun checkForConversationTranscript() {
+        if (appointmentId.isNotEmpty()) {
+            val conversationsRef = FirebaseDatabase.getInstance().reference.child("conversations")
+            conversationsRef.orderByChild("appointmentId").equalTo(appointmentId)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        if (snapshot.exists()) {
+                            // Found conversation related to this appointment
+                            var transcriptFound = false
+                            for (conversationSnapshot in snapshot.children) {
+                                // Check if this has a secretary involved
+                                val secretaryActive = conversationSnapshot.child("secretaryActive").getValue(Boolean::class.java) ?: false
+                                val forwarded = conversationSnapshot.child("forwarded").getValue(Boolean::class.java) ?: false
 
-                    for (conversationSnapshot in snapshot.children) {
-                        // Skip if this is a lawyer conversation
-                        if (conversationSnapshot.child("handledByLawyer").getValue(Boolean::class.java) == true) {
-                            continue
-                        }
+                                if (secretaryActive || forwarded) {
+                                    // Get a sample of messages
+                                    val messagesSnapshot = conversationSnapshot.child("messages")
+                                    if (messagesSnapshot.exists() && messagesSnapshot.childrenCount > 0) {
+                                        val messageBuilder = StringBuilder()
+                                        var messageCount = 0
 
-                        // Look for secretary ID in the participants
-                        val participantIds = conversationSnapshot.child("participantIds")
+                                        // Get up to 5 most recent non-system messages
+                                        messagesSnapshot.children.forEach { messageNode ->
+                                            val senderId = messageNode.child("senderId").getValue(String::class.java)
+                                            if (senderId != "system" && messageCount < 5) {
+                                                val message = messageNode.child("message").getValue(String::class.java) ?: ""
+                                                val senderName = messageNode.child("senderName").getValue(String::class.java) ?: "Unknown"
 
-                        for (participantSnapshot in participantIds.children) {
-                            val participantId = participantSnapshot.key ?: continue
+                                                messageBuilder.append("$senderName: $message\n\n")
+                                                messageCount++
+                                            }
+                                        }
 
-                            // Check if this participant is a secretary
-                            isSecretaryAccount(participantId) { isSecretary ->
-                                if (isSecretary) {
-                                    conversationId = conversationSnapshot.key
-                                    foundSecretaryConversation = true
-                                    loadConversationPreview(conversationSnapshot.key!!)
-                                    return@isSecretaryAccount
+                                        if (messageCount > 0) {
+                                            transcriptFound = true
+                                            noTranscriptText.visibility = View.GONE
+                                            transcriptScroll.visibility = View.VISIBLE
+                                            transcriptText.text = messageBuilder.toString()
+                                            break
+                                        }
+                                    }
                                 }
                             }
 
-                            if (foundSecretaryConversation) break
-                        }
-
-                        if (foundSecretaryConversation) break
-                    }
-
-                    if (!foundSecretaryConversation) {
-                        // No secretary conversation found
-                        noTranscriptText.visibility = View.VISIBLE
-                        transcriptScroll.visibility = View.GONE
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ConsultationActivity", "Error finding conversation: ${error.message}")
-                    noTranscriptText.visibility = View.VISIBLE
-                    transcriptScroll.visibility = View.GONE
-                }
-            })
-    }
-
-    private fun isSecretaryAccount(userId: String, callback: (Boolean) -> Unit) {
-        val database = FirebaseDatabase.getInstance().reference
-
-        database.child("secretaries").child(userId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    callback(snapshot.exists())
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    callback(false)
-                }
-            })
-    }
-
-    private fun loadConversationPreview(conversationId: String) {
-        val database = FirebaseDatabase.getInstance().reference
-
-        database.child("conversations").child(conversationId).child("messages")
-            .limitToLast(5)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists() && snapshot.childrenCount > 0) {
-                        val messages = mutableListOf<Message>()
-
-                        for (messageSnapshot in snapshot.children) {
-                            val message = messageSnapshot.getValue(Message::class.java)
-                            if (message != null) {
-                                messages.add(message)
+                            if (!transcriptFound) {
+                                noTranscriptText.text = "No relevant messages found in conversation"
                             }
-                        }
-
-                        if (messages.isNotEmpty()) {
-                            showConversationPreview(messages)
                         } else {
-                            noTranscriptText.visibility = View.VISIBLE
-                            transcriptScroll.visibility = View.GONE
+                            noTranscriptText.text = "No prior conversation found for this appointment"
                         }
-                    } else {
-                        noTranscriptText.visibility = View.VISIBLE
-                        transcriptScroll.visibility = View.GONE
                     }
-                }
 
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("ConsultationActivity", "Error loading messages: ${error.message}")
-                    noTranscriptText.visibility = View.VISIBLE
-                    transcriptScroll.visibility = View.GONE
-                }
-            })
+                    override fun onCancelled(error: DatabaseError) {
+                        Log.e("ConsultationActivity", "Error fetching conversation: ${error.message}")
+                        noTranscriptText.text = "Error loading conversation data"
+                    }
+                })
+        } else {
+            noTranscriptText.text = "No appointment ID available to find conversation"
+        }
     }
 
-    private fun showConversationPreview(messages: List<Message>) {
-        if (messages.isEmpty()) {
-            noTranscriptText.visibility = View.VISIBLE
-            transcriptScroll.visibility = View.GONE
-            return
-        }
+    private fun fetchClientIdFromAppointment(appointmentId: String) {
+        val appointmentRef = FirebaseDatabase.getInstance().reference
+            .child("appointments").child(appointmentId)
 
-        val preview = StringBuilder()
-        val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
-
-        // Get names for the participants
-        val participantNames = mutableMapOf<String, String>()
-
-        // Add default names
-        participantNames[clientId] = clientName
-
-        for (message in messages) {
-            // Skip system messages in preview
-            if (message.senderId == "system") continue
-
-            val senderName = when (message.senderId) {
-                clientId -> clientName
-                "system" -> "System"
-                else -> message.senderName ?: "Secretary"
+        appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    clientId = snapshot.child("clientId").getValue(String::class.java) ?: ""
+                    Log.d("ConsultationActivity", "Fetched client ID: $clientId")
+                }
             }
 
-            val timestamp = dateFormat.format(Date(message.timestamp))
-            preview.append("$senderName ($timestamp): ${message.message}\n\n")
-        }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ConsultationActivity", "Error fetching client ID: ${error.message}")
+            }
+        })
+    }
 
-        if (preview.isNotEmpty()) {
-            transcriptText.text = preview.toString()
-            noTranscriptText.visibility = View.GONE
-            transcriptScroll.visibility = View.VISIBLE
-        } else {
-            noTranscriptText.visibility = View.VISIBLE
-            transcriptScroll.visibility = View.GONE
-        }
+    private fun loadPreviousConsultationNotes(appointmentId: String) {
+        // Try to load existing consultation for this appointment
+        val consultationsRef = FirebaseDatabase.getInstance().reference.child("consultations")
+
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    var foundExistingNotes = false
+
+                    // Search through all client nodes
+                    for (clientSnapshot in snapshot.children) {
+                        for (consultationSnapshot in clientSnapshot.children) {
+                            val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+
+                            if (storedAppointmentId == appointmentId) {
+                                // Found existing consultation for this appointment
+                                val notes = consultationSnapshot.child("notes").getValue(String::class.java) ?: ""
+                                if (notes.isNotEmpty()) {
+                                    consultationNotes.setText(notes)
+                                    foundExistingNotes = true
+                                    Toast.makeText(this@ConsultationActivity,
+                                        "Loaded existing consultation notes",
+                                        Toast.LENGTH_SHORT).show()
+                                }
+                                break
+                            }
+                        }
+                        if (foundExistingNotes) break
+                    }
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("ConsultationActivity", "Error loading previous notes: ${error.message}")
+            }
+        })
     }
 
     private fun saveConsultation() {
@@ -326,7 +236,24 @@ class ConsultationActivity : AppCompatActivity() {
             return
         }
 
-        val lawyerId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val lawyerId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+        if (lawyerId.isEmpty()) {
+            Toast.makeText(this, "Error: Not logged in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // If clientId is still empty, use a fallback method
+        val finalClientId = if (clientId.isEmpty()) {
+            // Generate a client ID from the name if we don't have one
+            val sanitizedName = clientName.replace(" ", "_").lowercase()
+            "client_${sanitizedName}_${System.currentTimeMillis()}"
+        } else {
+            clientId
+        }
+
+        // Log for debugging
+        Log.d("ConsultationSave", "Saving consultation with appointmentId: $appointmentId")
+        Log.d("ConsultationSave", "Client ID being used: $finalClientId")
 
         val consultation = Consultation(
             clientName = clientName,
@@ -336,23 +263,51 @@ class ConsultationActivity : AppCompatActivity() {
             consultationDate = date,
             consultationType = "Office Consultation",
             status = "Completed",
-            problem = problem
+            problem = problem,
+            appointmentId = appointmentId  // This is the critical fix
         )
 
         // Save the consultation data to Firebase
         val database = FirebaseDatabase.getInstance().reference
-        val consultationKey = database.child("consultations").child(clientId).push().key
+        val consultationKey = database.child("consultations").child(finalClientId).push().key
 
         if (consultationKey != null) {
-            database.child("consultations").child(clientId).child(consultationKey)
+            database.child("consultations").child(finalClientId).child(consultationKey)
                 .setValue(consultation)
                 .addOnSuccessListener {
+                    // Update the appointment status to Completed if needed
+                    updateAppointmentStatus()
+
                     Toast.makeText(this, "Consultation logs saved successfully", Toast.LENGTH_SHORT).show()
                     finish()
                 }
                 .addOnFailureListener { e ->
                     Toast.makeText(this, "Failed to save consultation logs: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
+        } else {
+            Toast.makeText(this, "Failed to generate key for consultation", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateAppointmentStatus() {
+        if (appointmentId.isNotEmpty()) {
+            // Update status in appointments node
+            val appointmentRef = FirebaseDatabase.getInstance().reference
+                .child("appointments").child(appointmentId)
+
+            appointmentRef.child("status").setValue("Complete")
+                .addOnSuccessListener {
+                    Log.d("ConsultationActivity", "Updated appointment status to Complete")
+                }
+                .addOnFailureListener { e ->
+                    Log.e("ConsultationActivity", "Failed to update appointment status: ${e.message}")
+                }
+
+            // Also update in accepted_appointment node if it exists
+            val acceptedAppointmentRef = FirebaseDatabase.getInstance().reference
+                .child("accepted_appointment").child(appointmentId)
+
+            acceptedAppointmentRef.child("status").setValue("Complete")
         }
     }
 }

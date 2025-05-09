@@ -134,66 +134,101 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 viewConsultationLogs(appointment)
             }
         }
-
-        // Remove this section that sets up the view transcript button
-        /*
-        btnViewFullTranscript.setOnClickListener {
-            if (lawyerClientConversationId != null) {
-                openLawyerClientConversation(lawyerClientConversationId!!)
-            } else {
-                currentAppointment?.let { appointment ->
-                    findLawyerClientConversation(appointment)
-                }
-            }
-        }
-        */
     }
-
     private fun viewConsultationLogs(appointment: Appointment) {
         showLoading(true)
 
-        // Query consultations for this appointment
+        // Query consultations for this specific appointment ONLY
         val consultationsRef = database.child("consultations")
-        consultationsRef.orderByChild("appointmentId").equalTo(appointment.appointmentId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    showLoading(false)
+        Log.d("ConsultationView", "Looking for logs with appointmentId: ${appointment.appointmentId}")
 
-                    if (snapshot.exists()) {
-                        val consultations = mutableListOf<Consultation>()
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                showLoading(false)
+                val consultations = mutableListOf<Consultation>()
 
-                        for (consultationSnapshot in snapshot.children) {
-                            val consultation = consultationSnapshot.getValue(Consultation::class.java)
-                            if (consultation != null) {
-                                consultations.add(consultation)
-                            }
+                // Look through all client nodes
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                        val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+
+                        // Only add if appointment ID matches exactly
+                        if (consultation != null && storedAppointmentId == appointment.appointmentId) {
+                            consultations.add(consultation)
                         }
-
-                        if (consultations.isNotEmpty()) {
-                            showConsultationLogsDialog(consultations)
-                        } else {
-                            Snackbar.make(
-                                findViewById(android.R.id.content),
-                                "No consultation logs found for this appointment",
-                                Snackbar.LENGTH_SHORT
-                            ).show()
-                        }
-                    } else {
-                        // Try checking if there are any consultations by lawyer ID and client name
-                        checkConsultationsByLawyerAndClient(appointment)
                     }
                 }
 
-                override fun onCancelled(error: DatabaseError) {
-                    showLoading(false)
-                    Log.e("SecretaryAppointment", "Error fetching consultation logs: ${error.message}")
+                if (consultations.isNotEmpty()) {
+                    showConsultationLogsDialog(consultations)
+                } else {
                     Snackbar.make(
                         findViewById(android.R.id.content),
-                        "Failed to load consultation logs",
+                        "No consultation logs found for this specific appointment",
                         Snackbar.LENGTH_SHORT
                     ).show()
                 }
-            })
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                showLoading(false)
+                Log.e("SecretaryAppointment", "Error fetching consultation logs: ${error.message}")
+                Snackbar.make(
+                    findViewById(android.R.id.content),
+                    "Failed to load consultation logs",
+                    Snackbar.LENGTH_SHORT
+                ).show()
+            }
+        })
+    }
+
+    private fun checkConsultationLogs(appointment: Appointment) {
+        // Query consultations for this specific appointment only
+        val consultationsRef = database.child("consultations")
+
+        // Log the appointment ID we're looking for
+        Log.d("ConsultationCheck", "Looking for logs with appointmentId: ${appointment.appointmentId}")
+
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val consultations = mutableListOf<Consultation>()
+
+                // Look through all consultation entries across all clients
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                        val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+
+                        // Only add consultations that match this specific appointment ID
+                        if (consultation != null && storedAppointmentId == appointment.appointmentId) {
+                            consultations.add(consultation)
+                            Log.d("ConsultationCheck", "Found matching consultation log")
+                        }
+                    }
+                }
+
+                // Update UI based on what we found
+                if (consultations.isNotEmpty()) {
+                    tvNoLogs.visibility = View.GONE
+                    tvLogs.visibility = View.VISIBLE
+
+                    if (consultations.size == 1) {
+                        tvLogs.text = "1 consultation log for this appointment"
+                    } else {
+                        tvLogs.text = "${consultations.size} consultation logs for this appointment"
+                    }
+                } else {
+                    tvNoLogs.visibility = View.VISIBLE
+                    tvLogs.visibility = View.GONE
+                    tvNoLogs.text = "No consultation logs for this appointment"
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error checking consultation logs: ${error.message}")
+            }
+        })
     }
 
     private fun checkConsultationsByLawyerAndClient(appointment: Appointment) {
@@ -243,8 +278,22 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     }
 
     private fun showConsultationLogsDialog(consultations: List<Consultation>) {
+        // Filter consultations to only include those that exactly match this appointment ID
+        val currentAppointmentId = currentAppointment?.appointmentId ?: ""
+        val filteredConsultations = consultations.filter { it.appointmentId == currentAppointmentId }
+
+        // If we don't have any exact matches, show an appropriate message
+        if (filteredConsultations.isEmpty()) {
+            Snackbar.make(
+                findViewById(android.R.id.content),
+                "No consultation logs found for this specific appointment",
+                Snackbar.LENGTH_SHORT
+            ).show()
+            return
+        }
+
         // Sort consultations by date (newest first)
-        val sortedConsultations = consultations.sortedByDescending {
+        val sortedConsultations = filteredConsultations.sortedByDescending {
             try {
                 val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
                 formatter.parse(it.consultationDate)?.time ?: 0L
@@ -276,10 +325,10 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Update UI to show summary
         tvNoLogs.visibility = View.GONE
         tvLogs.visibility = View.VISIBLE
-        if (consultations.size == 1) {
-            tvLogs.text = "1 consultation log available"
+        if (sortedConsultations.size == 1) {
+            tvLogs.text = "1 consultation log for this appointment"
         } else {
-            tvLogs.text = "${consultations.size} consultation logs available"
+            tvLogs.text = "${sortedConsultations.size} consultation logs for this appointment"
         }
     }
 
@@ -1080,65 +1129,91 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     }
 
     private fun checkForConsultationLogs(appointment: Appointment) {
-        // Query consultations for this appointment
+        // Query consultations for this specific appointment ONLY
         val consultationsRef = database.child("consultations")
-        consultationsRef.orderByChild("appointmentId").equalTo(appointment.appointmentId)
-            .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val consultationCount = snapshot.childrenCount.toInt()
-                        tvNoLogs.visibility = View.GONE
-                        tvLogs.visibility = View.VISIBLE
+        val appointmentId = appointment.appointmentId
 
-                        if (consultationCount == 1) {
-                            tvLogs.text = "1 consultation log available"
-                        } else {
-                            tvLogs.text = "$consultationCount consultation logs available"
-                        }
+        Log.d("ConsultationCheck", "Initial UI check for logs with appointmentId: $appointmentId")
 
-                        // REMOVE THIS - Don't show dialog here
-                        // showConsultationLogsDialog(consultations)
-                    } else {
-                        // Try checking if there are any consultations by lawyer ID and client name
-                        // But only to update the UI text, not to show dialog
-                        checkConsultationsByLawyerAndClientForUI(appointment)
-                    }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    Log.e("SecretaryAppointment", "Error checking consultation logs: ${error.message}")
-                }
-            })
-    }
-
-    // Create a new method that only updates UI, doesn't show dialog
-    private fun checkConsultationsByLawyerAndClientForUI(appointment: Appointment) {
-        val consultationsRef = database.child("consultations")
         consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val consultations = mutableListOf<Consultation>()
 
+                // Look through all consultation entries
                 for (clientSnapshot in snapshot.children) {
                     for (consultationSnapshot in clientSnapshot.children) {
-                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
-                        if (consultation != null &&
-                            consultation.lawyerId == appointment.lawyerId &&
-                            consultation.clientName == appointment.fullName) {
-                            consultations.add(consultation)
+                        val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+
+                        // Only match exact appointment ID
+                        if (storedAppointmentId == appointmentId) {
+                            val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                            if (consultation != null) {
+                                consultations.add(consultation)
+                            }
                         }
                     }
                 }
 
                 if (consultations.isNotEmpty()) {
-                    // Update UI to show logs summary, but DON'T show dialog
+                    val consultationCount = consultations.size
+                    tvNoLogs.visibility = View.GONE
+                    tvLogs.visibility = View.VISIBLE
+
+                    if (consultationCount == 1) {
+                        tvLogs.text = "1 consultation log available for this appointment"
+                    } else {
+                        tvLogs.text = "$consultationCount consultation logs available for this appointment"
+                    }
+                } else {
+                    // No consultation logs found for this appointment, don't use the fallback
+                    tvNoLogs.visibility = View.VISIBLE
+                    tvLogs.visibility = View.GONE
+                    tvNoLogs.text = "No consultation logs for this appointment"
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error checking consultation logs: ${error.message}")
+            }
+        })
+    }
+
+    // Create a new method that only updates UI, doesn't show dialog
+    private fun checkConsultationsByLawyerAndClientForUI(appointment: Appointment) {
+        // Only show logs for this specific appointment ID
+        val appointmentId = appointment.appointmentId
+        Log.d("ConsultationCheck", "Checking UI display for logs with appointmentId: $appointmentId")
+
+        val consultationsRef = database.child("consultations")
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val consultations = mutableListOf<Consultation>()
+
+                // Look through all consultation entries
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val storedAppointmentId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+
+                        // Only match exact appointment ID - no more lawyer+client matching
+                        if (storedAppointmentId == appointmentId) {
+                            val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                            if (consultation != null) {
+                                consultations.add(consultation)
+                            }
+                        }
+                    }
+                }
+
+                // Update UI to show logs summary, but DON'T show dialog
+                if (consultations.isNotEmpty()) {
                     if (consultations.size == 1) {
                         tvNoLogs.visibility = View.GONE
                         tvLogs.visibility = View.VISIBLE
-                        tvLogs.text = "1 consultation log found with client ${appointment.fullName}"
+                        tvLogs.text = "1 consultation log for this appointment"
                     } else {
                         tvNoLogs.visibility = View.GONE
                         tvLogs.visibility = View.VISIBLE
-                        tvLogs.text = "${consultations.size} consultation logs found with client ${appointment.fullName}"
+                        tvLogs.text = "${consultations.size} consultation logs for this appointment"
                     }
                 } else {
                     // No logs found, just update UI
