@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
@@ -60,7 +61,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var btnAddLog: Button
     private lateinit var tvNoTranscript: TextView
     private lateinit var tvTranscript: TextView
-    private lateinit var btnViewFullTranscript: Button
+
 
     private lateinit var cardViewFiles: CardView
     private lateinit var tvNoFiles: TextView
@@ -71,6 +72,8 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private var currentSecretaryName: String = "Secretary"
     private var currentAppointment: Appointment? = null
     private var lawyerClientConversationId: String? = null
+    private lateinit var btnViewFullTranscript: MaterialButton
+    private var isTranscriptExpanded = false
 
 
 
@@ -115,6 +118,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         btnAddLog = findViewById(R.id.btnAddLog)
         tvNoTranscript = findViewById(R.id.tvNoTranscript)
         tvTranscript = findViewById(R.id.tvTranscript)
+        btnViewFullTranscript = findViewById(R.id.btnViewFullTranscript)
 
         // Remove this line
         // btnViewFullTranscript = findViewById(R.id.btnViewFullTranscript)
@@ -496,9 +500,10 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                             // Take only the last 5 non-system messages for preview
                             val previewMessages = nonSystemMessages.takeLast(5)
 
-                            // Update UI
+                            // Initially hide transcript but show button
                             tvNoTranscript.visibility = View.GONE
-                            tvTranscript.visibility = View.VISIBLE
+                            tvTranscript.visibility = View.GONE  // Initially hidden
+                            btnViewFullTranscript.visibility = View.VISIBLE
 
                             // Format preview
                             val preview = StringBuilder()
@@ -521,18 +526,27 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                             }
 
                             tvTranscript.text = preview.toString()
+
+                            // Set up the toggle button
+                            setupTranscriptToggle()
                         } else if (allMessages.isNotEmpty()) {
                             // If we have messages but they're all system messages
                             tvNoTranscript.visibility = View.GONE
-                            tvTranscript.visibility = View.VISIBLE
+                            tvTranscript.visibility = View.GONE  // Initially hidden
+                            btnViewFullTranscript.visibility = View.VISIBLE
                             tvTranscript.text = "Conversation exists but only contains system messages."
+
+                            // Set up the toggle button
+                            setupTranscriptToggle()
                         } else {
                             tvNoTranscript.visibility = View.VISIBLE
                             tvTranscript.visibility = View.GONE
+                            btnViewFullTranscript.visibility = View.GONE
                         }
                     } else {
                         tvNoTranscript.visibility = View.VISIBLE
                         tvTranscript.visibility = View.GONE
+                        btnViewFullTranscript.visibility = View.GONE
                     }
                 }
 
@@ -541,6 +555,28 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                     Log.e("SecretaryAppointment", "Error loading conversation preview: ${error.message}")
                 }
             })
+    }
+
+    private fun setupTranscriptToggle() {
+        isTranscriptExpanded = false
+        btnViewFullTranscript.text = "View Conversation"
+        btnViewFullTranscript.setIconResource(R.drawable.arrow) // Make sure you have this drawable
+
+        btnViewFullTranscript.setOnClickListener {
+            isTranscriptExpanded = !isTranscriptExpanded
+
+            if (isTranscriptExpanded) {
+                // Expand the transcript
+                tvTranscript.visibility = View.VISIBLE
+                btnViewFullTranscript.text = "Hide Conversation"
+                btnViewFullTranscript.setIconResource(R.drawable.arrow) // Make sure you have this drawable
+            } else {
+                // Collapse the transcript
+                tvTranscript.visibility = View.GONE
+                btnViewFullTranscript.text = "View Conversation"
+                btnViewFullTranscript.setIconResource(R.drawable.arrow)
+            }
+        }
     }
 
     private fun openLawyerClientConversation(conversationId: String) {
