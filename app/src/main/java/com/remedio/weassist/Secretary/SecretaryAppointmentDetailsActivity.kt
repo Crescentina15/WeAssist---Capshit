@@ -1,8 +1,10 @@
 package com.remedio.weassist.Secretary
 
+import android.app.DownloadManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -217,11 +219,35 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     // Method to open files
     private fun openFile(url: String) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setDataAndType(Uri.parse(url), getMimeType(url))
-            startActivity(intent)
+            val extension = url.substringAfterLast('.', "").lowercase()
+            if (extension == "pdf" || extension == "doc" || extension == "docx") {
+                downloadFile(url)
+            } else {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(Uri.parse(url), getMimeType(url))
+                startActivity(intent)
+            }
         } catch (e: Exception) {
             Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
+        }
+    }
+    // Method to download files using DownloadManager
+    private fun downloadFile(url: String) {
+        try {
+            val fileName = getFileNameFromUrl(url)
+            val request = DownloadManager.Request(Uri.parse(url))
+            request.setTitle(fileName)
+            request.setDescription("Downloading $fileName")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+
+            val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.enqueue(request)
+
+            Toast.makeText(this, "Downloading $fileName", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("DownloadError", "Error downloading file: ${e.message}")
+            Toast.makeText(this, "Failed to download file", Toast.LENGTH_SHORT).show()
         }
     }
 
