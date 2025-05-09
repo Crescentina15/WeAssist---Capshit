@@ -641,7 +641,13 @@ class SetAppointmentActivity : AppCompatActivity() {
         successfullyUploadedFiles.set(0)
 
         attachedFiles.forEach { fileAttachment ->
+            // Generate a unique filename to prevent overwriting files with same name
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val fileName = fileAttachment.fileName.replace("\\s+".toRegex(), "_") // Replace spaces with underscores
+            val uniqueFileName = "${timeStamp}_${fileName}"
+
             val requestId = MediaManager.get().upload(fileAttachment.uri)
+                .option("public_id", uniqueFileName) // Set the file name in Cloudinary
                 .option("resource_type", "auto") // Handles both images and other file types
                 .callback(object : UploadCallback {
                     override fun onStart(requestId: String) {
