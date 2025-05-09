@@ -16,6 +16,7 @@ import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.remedio.weassist.Models.ClientAdapter
 import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.Models.ConsultationAdapter
 import com.remedio.weassist.R
@@ -25,13 +26,18 @@ import java.util.*
 class LawyerAppointmentHistory : Fragment() {
 
     private lateinit var database: DatabaseReference
-    private lateinit var recyclerView: RecyclerView
+    private lateinit var clientRecyclerView: RecyclerView
+    private lateinit var consultationRecyclerView: RecyclerView
     private lateinit var emptyStateLayout: LinearLayout
     private lateinit var progressIndicator: CircularProgressIndicator
     private lateinit var consultationList: ArrayList<Consultation>
+    private lateinit var clientList: ArrayList<Pair<String, List<Consultation>>>
     private lateinit var adapter: ConsultationAdapter
+    private lateinit var clientAdapter: ClientAdapter
     private var profileSection: View? = null
     private lateinit var auth: FirebaseAuth
+    private var isShowingClientList = true
+    private lateinit var rootView: View
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -41,17 +47,57 @@ class LawyerAppointmentHistory : Fragment() {
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val view = inflater.inflate(R.layout.fragment_appointment_history, container, false)
+        rootView = inflater.inflate(R.layout.fragment_client_list, container, false)
+        initializeClientListView(rootView)
+        return rootView
+    }
 
+    private fun initializeClientListView(view: View) {
         auth = FirebaseAuth.getInstance()
-        recyclerView = view.findViewById(R.id.recyclerViewAppointments)
+        clientRecyclerView = view.findViewById(R.id.recyclerViewClients)
         emptyStateLayout = view.findViewById(R.id.empty_state_layout)
         progressIndicator = view.findViewById(R.id.progressIndicator)
 
-        recyclerView.layoutManager = LinearLayoutManager(requireContext())
+        clientRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        clientList = ArrayList()
+        clientAdapter = ClientAdapter(clientList)
+        clientRecyclerView.adapter = clientAdapter
+
+        // Initialize consultation list (but don't set up the view yet)
         consultationList = ArrayList()
         adapter = ConsultationAdapter(consultationList)
-        recyclerView.adapter = adapter
+
+        // Set up client click listener
+        clientAdapter.onItemClick = { consultations ->
+            showConsultationsForClient(consultations)
+        }
+
+        showLoading()
+        loadClients()
+    }
+
+    private fun showConsultationsForClient(consultations: List<Consultation>) {
+        isShowingClientList = false
+
+        // Inflate the consultation list view
+        val consultationView = layoutInflater.inflate(R.layout.fragment_appointment_history, null)
+        initializeConsultationListView(consultationView, consultations)
+
+        // Replace the current view
+        (rootView as ViewGroup).removeAllViews()
+        (rootView as ViewGroup).addView(consultationView)
+    }
+
+    private fun initializeConsultationListView(view: View, consultations: List<Consultation>) {
+        consultationRecyclerView = view.findViewById(R.id.recyclerViewAppointments)
+        emptyStateLayout = view.findViewById(R.id.empty_state_layout)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+
+        consultationRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        consultationList.clear()
+        consultationList.addAll(consultations)
+        adapter = ConsultationAdapter(consultationList)
+        consultationRecyclerView.adapter = adapter
 
         // Set up swipe to delete
         setupSwipeToDelete()
@@ -61,29 +107,65 @@ class LawyerAppointmentHistory : Fragment() {
             updateConsultationNotes(consultation, newNotes, position)
         }
 
-
         // Set up details button click listener
         adapter.onItemDetailsClick = { consultation ->
             showConsultationDetails(consultation)
         }
 
-        // Show loading state initially
-        showLoading()
+        if (consultationList.isEmpty()) {
+            showEmptyState()
+        } else {
+            showContent()
+        }
+    }
 
-        loadConsultations()
+    private fun loadClients() {
+        database = FirebaseDatabase.getInstance().reference.child("consultations")
+        val currentLawyerId = auth.currentUser?.uid ?: ""
 
-        return view
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val tempMap = mutableMapOf<String, MutableList<Consultation>>()
+
+                for (clientSnapshot in snapshot.children) {
+                    for (consultation in clientSnapshot.children) {
+                        val consultationData = consultation.getValue(Consultation::class.java)
+                        if (consultationData != null && consultationData.lawyerId == currentLawyerId) {
+                            val clientName = consultationData.clientName
+                            if (!tempMap.containsKey(clientName)) {
+                                tempMap[clientName] = mutableListOf()
+                            }
+                            tempMap[clientName]?.add(consultationData)
+                        }
+                    }
+                }
+
+                // Convert map to sorted list of pairs
+                clientList.clear()
+                clientList.addAll(tempMap.toList().sortedBy { it.first })
+
+                if (clientList.isEmpty()) {
+                    showEmptyState()
+                } else {
+                    showContent()
+                }
+
+                clientAdapter.notifyDataSetChanged()
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                showEmptyState()
+            }
+        })
     }
 
     private fun showConsultationDetails(consultation: Consultation) {
         val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_consultation_details, null)
 
-        // Set the consultation details to the dialog views
         dialogView.findViewById<TextView>(R.id.tvClientName).text = "Client: ${consultation.clientName}"
         dialogView.findViewById<TextView>(R.id.tvConsultationDate).text = "Date: ${consultation.consultationDate}"
         dialogView.findViewById<TextView>(R.id.tvConsultationTime).text = "Time: ${consultation.consultationTime}"
         dialogView.findViewById<TextView>(R.id.tvNotes).text = "Notes: ${consultation.notes}"
-
 
         AlertDialog.Builder(requireContext())
             .setTitle("Consultation Details")
@@ -108,31 +190,28 @@ class LawyerAppointmentHistory : Fragment() {
 
             override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
                 val position = viewHolder.adapterPosition
-                adapter.deleteItem(position)
+                val consultation = consultationList[position]
+                consultationList.removeAt(position)
+                adapter.notifyItemRemoved(position)
 
-                // Show undo snackbar
-                Snackbar.make(recyclerView, "Consultation deleted", Snackbar.LENGTH_LONG)
+                Snackbar.make(consultationRecyclerView, "Consultation deleted", Snackbar.LENGTH_LONG)
                     .setAction("UNDO") {
-                        // Undo the deletion by reloading the data from Firebase
-                        loadConsultations()
+                        consultationList.add(position, consultation)
+                        adapter.notifyItemInserted(position)
                     }
                     .show()
+
+                deleteConsultationFromFirebase(consultation)
             }
         }
 
         val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
-        itemTouchHelper.attachToRecyclerView(recyclerView)
-
-        // Handle the actual deletion from Firebase when confirmed
-        adapter.onItemDelete = { consultation, position ->
-            deleteConsultationFromFirebase(consultation)
-        }
+        itemTouchHelper.attachToRecyclerView(consultationRecyclerView)
     }
 
     private fun deleteConsultationFromFirebase(consultation: Consultation) {
         database = FirebaseDatabase.getInstance().reference.child("consultations")
 
-        // Find and remove the consultation from Firebase
         database.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 for (clientSnapshot in snapshot.children) {
@@ -147,8 +226,7 @@ class LawyerAppointmentHistory : Fragment() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                // Handle error
-                Snackbar.make(recyclerView, "Failed to delete consultation", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(consultationRecyclerView, "Failed to delete consultation", Snackbar.LENGTH_SHORT).show()
             }
         })
     }
@@ -162,15 +240,14 @@ class LawyerAppointmentHistory : Fragment() {
                     for (consultationSnapshot in clientSnapshot.children) {
                         val consultationData = consultationSnapshot.getValue(Consultation::class.java)
                         if (consultationData == consultation) {
-                            // Update the notes in Firebase
                             consultationSnapshot.ref.child("notes").setValue(newNotes)
                                 .addOnSuccessListener {
-                                    // Update local list and UI
-                                    adapter.updateItem(position, newNotes)
-                                    Snackbar.make(recyclerView, "Notes updated successfully", Snackbar.LENGTH_SHORT).show()
+                                    consultationList[position].notes = newNotes
+                                    adapter.notifyItemChanged(position)
+                                    Snackbar.make(consultationRecyclerView, "Notes updated successfully", Snackbar.LENGTH_SHORT).show()
                                 }
                                 .addOnFailureListener {
-                                    Snackbar.make(recyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
+                                    Snackbar.make(consultationRecyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
                                 }
                             return
                         }
@@ -179,81 +256,49 @@ class LawyerAppointmentHistory : Fragment() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Snackbar.make(recyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(consultationRecyclerView, "Failed to update notes", Snackbar.LENGTH_SHORT).show()
             }
         })
     }
 
     private fun showLoading() {
         progressIndicator.visibility = View.VISIBLE
-        recyclerView.visibility = View.GONE
+        if (isShowingClientList) {
+            clientRecyclerView.visibility = View.GONE
+        } else {
+            consultationRecyclerView.visibility = View.GONE
+        }
         emptyStateLayout.visibility = View.GONE
     }
 
     private fun showEmptyState() {
         progressIndicator.visibility = View.GONE
-        recyclerView.visibility = View.GONE
+        if (isShowingClientList) {
+            clientRecyclerView.visibility = View.GONE
+        } else {
+            consultationRecyclerView.visibility = View.GONE
+        }
         emptyStateLayout.visibility = View.VISIBLE
     }
 
-    private fun showConsultations() {
+    private fun showContent() {
         progressIndicator.visibility = View.GONE
-        recyclerView.visibility = View.VISIBLE
         emptyStateLayout.visibility = View.GONE
-    }
-
-    private fun loadConsultations() {
-        database = FirebaseDatabase.getInstance().reference.child("consultations")
-        val currentLawyerId = auth.currentUser?.uid ?: ""
-
-        database.addValueEventListener(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                consultationList.clear()
-                val tempList = ArrayList<Consultation>()
-
-                for (clientSnapshot in snapshot.children) {
-                    for (consultation in clientSnapshot.children) {
-                        val consultationData = consultation.getValue(Consultation::class.java)
-                        if (consultationData != null && consultationData.lawyerId == currentLawyerId) {
-                            tempList.add(consultationData)
-                        }
-                    }
-                }
-
-                // Sort consultations by date and time (newest first)
-                val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                consultationList.addAll(tempList.sortedWith(compareByDescending { consult ->
-                    try {
-                        dateFormat.parse("${consult.consultationDate} ${consult.consultationTime}")
-                    } catch (e: Exception) {
-                        Date(0) // Default to oldest date if parsing fails
-                    }
-                }))
-
-                // Update UI based on data
-                if (consultationList.isEmpty()) {
-                    showEmptyState()
-                } else {
-                    showConsultations()
-                }
-
-                adapter.notifyDataSetChanged()
-            }
-
-            override fun onCancelled(error: DatabaseError) {
-                // Show empty state in case of error
-                showEmptyState()
-            }
-        })
+        if (isShowingClientList) {
+            clientRecyclerView.visibility = View.VISIBLE
+        } else {
+            consultationRecyclerView.visibility = View.VISIBLE
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        profileSection?.visibility = View.GONE // Hide profile section
+        profileSection?.visibility = View.GONE
     }
 
     override fun onPause() {
         super.onPause()
-        profileSection?.visibility = View.VISIBLE // Show profile section when leaving
+        profileSection?.visibility = View.VISIBLE
     }
+
 }
