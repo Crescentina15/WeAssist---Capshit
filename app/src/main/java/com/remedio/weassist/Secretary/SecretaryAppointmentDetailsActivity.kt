@@ -1,9 +1,12 @@
 package com.remedio.weassist.Secretary
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageButton
 import android.widget.ProgressBar
@@ -12,12 +15,15 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.GenericTypeIndicator
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
 import com.remedio.weassist.Clients.Message
@@ -54,14 +60,31 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var tvTranscript: TextView
     private lateinit var btnViewFullTranscript: Button
 
+    private lateinit var cardViewFiles: CardView
+    private lateinit var tvNoFiles: TextView
+    private lateinit var recyclerViewFiles: RecyclerView
+    private lateinit var filesAdapter: FilesAdapter
+
     private lateinit var database: DatabaseReference
     private var currentSecretaryName: String = "Secretary"
     private var currentAppointment: Appointment? = null
     private var lawyerClientConversationId: String? = null
 
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_secretary_appointment_details)
+
+        // Initialize file attachment views
+        cardViewFiles = findViewById(R.id.cardViewFiles)
+        tvNoFiles = findViewById(R.id.tvNoFiles)
+        recyclerViewFiles = findViewById(R.id.recyclerViewFiles)
+
+// Setup RecyclerView for files
+        recyclerViewFiles.layoutManager = LinearLayoutManager(this)
+        filesAdapter = FilesAdapter(emptyList()) { url -> openFile(url) }
+        recyclerViewFiles.adapter = filesAdapter
 
         // Initialize database
         database = FirebaseDatabase.getInstance().reference
@@ -78,6 +101,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         btnAccept = findViewById(R.id.btnAccept)
         btnDecline = findViewById(R.id.btnDecline)
         cardViewActions = findViewById(R.id.cardViewActions)
+
 
         // Initialize forward button and card
         btnForwardToLawyer = findViewById(R.id.btnForwardToLawyer)
@@ -149,6 +173,89 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         */
     }
 
+    internal fun getFileNameFromUrl(url: String): String {
+        return try {
+            url.substring(url.lastIndexOf('/') + 1)
+        } catch (e: Exception) {
+            "Attachment"
+        }
+    }
+
+
+    // File Adapter class
+    private class FilesAdapter(
+        private var files: List<String>,
+        private val onItemClick: (String) -> Unit
+    ) : RecyclerView.Adapter<FilesAdapter.FileViewHolder>() {
+
+        fun updateFiles(newFiles: List<String>) {
+            files = newFiles
+            notifyDataSetChanged()
+        }
+
+        class FileViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val fileName: TextView = view.findViewById(R.id.tvFileName)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_file, parent, false)
+            return FileViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
+            val fileUrl = files[position]
+            holder.fileName.text = (holder.itemView.context as? SecretaryAppointmentDetailsActivity)?.getFileNameFromUrl(fileUrl) ?: "Attachment"
+            holder.itemView.setOnClickListener { onItemClick(fileUrl) }
+        }
+
+        override fun getItemCount() = files.size
+    }
+
+
+
+    // Method to open files
+    private fun openFile(url: String) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(Uri.parse(url), getMimeType(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Helper method to get MIME type
+    private fun getMimeType(url: String): String {
+        val extension = url.substringAfterLast('.', "").lowercase()
+        return when (extension) {
+            "pdf" -> "application/pdf"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "doc", "docx" -> "application/msword"
+            "xls", "xlsx" -> "application/vnd.ms-excel"
+            "ppt", "pptx" -> "application/vnd.ms-powerpoint"
+            "txt" -> "text/plain"
+            else -> "*/*"
+        }
+    }
+
+    private fun showAttachmentsDialog(attachments: List<String>) {
+        val items = attachments.mapIndexed { index, url ->
+            "Attachment ${index + 1}: ${getFileNameFromUrl(url)}"
+        }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("View Attachments")
+            .setItems(items) { _, which ->
+                // Open the selected attachment in a browser or appropriate viewer
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(attachments[which]))
+                startActivity(intent)
+            }
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
     private fun viewConsultationLogs(appointment: Appointment) {
         showLoading(true)
 
@@ -195,6 +302,8 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 }
             })
     }
+
+
 
     private fun checkConsultationsByLawyerAndClient(appointment: Appointment) {
         val consultationsRef = database.child("consultations")
@@ -1033,6 +1142,16 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
                         // Check for conversation transcripts
                         checkForConversationTranscripts(it)
+                        // Load attachments
+                        val attachments = snapshot.child("attachments").getValue(object : GenericTypeIndicator<List<String>>() {})
+                        if (attachments != null && attachments.isNotEmpty()) {
+                            tvNoFiles.visibility = View.GONE
+                            recyclerViewFiles.visibility = View.VISIBLE
+                            filesAdapter.updateFiles(attachments)
+                        } else {
+                            tvNoFiles.visibility = View.VISIBLE
+                            recyclerViewFiles.visibility = View.GONE
+                        }
 
                         // Show or hide action buttons based on status
                         when (it.status?.lowercase()) {
@@ -1220,6 +1339,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             })
     }
 
+    // Update the displayAppointmentDetails function to include attachments
     private fun displayAppointmentDetails(appointment: Appointment) {
         tvAppointmentTitle.text = "Appointment with ${appointment.fullName}"
         tvStatus.text = "Status: ${appointment.status}"
@@ -1229,7 +1349,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Clear the problem description to avoid showing stale data
         tvProblemDescription.text = ""
 
-        // Fetch the original problem description for this appointment
+
+
+        // Rest of the existing function remains the same...
         fetchOriginalProblem(appointment.appointmentId) { originalProblem ->
             tvProblemDescription.text = originalProblem ?: "No problem description available."
         }

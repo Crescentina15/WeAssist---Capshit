@@ -16,7 +16,7 @@ data class Appointment(
     var status: String? = "pending", // Default to pending
     var clientId: String = "",
     var secretaryId: String = "",
-
+    var attachments: List<String> = emptyList(), // Add this line
     var sessionStarted: Boolean = false
     //val clientUid: String = ""
     //var problemDescription: String = "" // Add this property
