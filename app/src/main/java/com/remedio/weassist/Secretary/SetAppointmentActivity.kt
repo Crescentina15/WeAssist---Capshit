@@ -11,6 +11,9 @@ import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -22,6 +25,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicInteger
+import com.remedio.weassist.CloudinaryManager
+
 
 class SetAppointmentActivity : AppCompatActivity() {
 
@@ -32,6 +38,10 @@ class SetAppointmentActivity : AppCompatActivity() {
     private lateinit var editProblem: TextInputEditText
     private lateinit var btnSetAppointment: MaterialButton
     private lateinit var backArrow: ImageButton
+
+    private val uploadedFileUrls = mutableListOf<String>()
+    private var filesToUploadCount = AtomicInteger(0)
+    private var successfullyUploadedFiles = AtomicInteger(0)
 
     private lateinit var btnAddFile: MaterialButton
     private lateinit var fileAttachmentRecyclerView: RecyclerView
@@ -72,6 +82,13 @@ class SetAppointmentActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_set_appointment)
+
+        // Initialize Cloudinary if not already done
+        try {
+            MediaManager.get()
+        } catch (e: IllegalStateException) {
+            CloudinaryManager.initialize(this)
+        }
 
         lawyerId = intent.getStringExtra("LAWYER_ID")
 
@@ -609,11 +626,82 @@ class SetAppointmentActivity : AppCompatActivity() {
             return
         }
 
+        btnSetAppointment.isEnabled = false
+
+        if (attachedFiles.isNotEmpty()) {
+            uploadFilesThenCreateAppointment(fullName, problem)
+        } else {
+            createAppointment(fullName, problem, emptyList())
+        }
+    }
+
+    private fun uploadFilesThenCreateAppointment(fullName: String, problem: String) {
+        uploadedFileUrls.clear()
+        filesToUploadCount.set(attachedFiles.size)
+        successfullyUploadedFiles.set(0)
+
+        attachedFiles.forEach { fileAttachment ->
+            val requestId = MediaManager.get().upload(fileAttachment.uri)
+                .option("resource_type", "auto") // Handles both images and other file types
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {
+                        Log.d("Cloudinary", "Upload started for ${fileAttachment.fileName}")
+                    }
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                        // You could show progress if needed
+                    }
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                        val secureUrl = resultData["secure_url"] as? String
+                        if (secureUrl != null) {
+                            uploadedFileUrls.add(secureUrl)
+                            successfullyUploadedFiles.incrementAndGet()
+                        }
+
+                        // Check if all files are processed
+                        if (successfullyUploadedFiles.get() + (filesToUploadCount.get() - successfullyUploadedFiles.get()) == filesToUploadCount.get()) {
+                            if (successfullyUploadedFiles.get() > 0) {
+                                createAppointment(fullName, problem, uploadedFileUrls)
+                            } else {
+                                runOnUiThread {
+                                    btnSetAppointment.isEnabled = true
+                                    Toast.makeText(this@SetAppointmentActivity, "Failed to upload files. Please try again.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        Log.e("Cloudinary", "Upload error for ${fileAttachment.fileName}: ${error.description}")
+
+                        // Check if all files are processed
+                        if (successfullyUploadedFiles.get() + (filesToUploadCount.get() - successfullyUploadedFiles.get()) == filesToUploadCount.get()) {
+                            if (successfullyUploadedFiles.get() > 0) {
+                                createAppointment(fullName, problem, uploadedFileUrls)
+                            } else {
+                                runOnUiThread {
+                                    btnSetAppointment.isEnabled = true
+                                    Toast.makeText(this@SetAppointmentActivity, "Failed to upload files. Please try again.", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {
+                        Log.d("Cloudinary", "Upload rescheduled for ${fileAttachment.fileName}")
+                    }
+                })
+                .dispatch()
+        }
+    }
+
+    private fun createAppointment(fullName: String, problem: String, fileUrls: List<String>) {
         val appointmentRef = FirebaseDatabase.getInstance().getReference("appointments")
         val appointmentId = appointmentRef.push().key
 
         if (appointmentId != null) {
-            val appointmentData = mapOf(
+            val appointmentData = hashMapOf(
                 "appointmentId" to appointmentId,
                 "clientId" to clientId,
                 "lawyerId" to lawyerId,
@@ -621,10 +709,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                 "time" to selectedTime,
                 "fullName" to fullName,
                 "problem" to problem,
-                "status" to "Pending"
+                "status" to "Pending",
+                "attachments" to fileUrls
             )
-
-            btnSetAppointment.isEnabled = false
 
             appointmentRef.child(appointmentId).setValue(appointmentData)
                 .addOnSuccessListener {
@@ -647,6 +734,9 @@ class SetAppointmentActivity : AppCompatActivity() {
                     btnSetAppointment.isEnabled = true
                     Toast.makeText(this, "Failed to set appointment", Toast.LENGTH_SHORT).show()
                 }
+        } else {
+            btnSetAppointment.isEnabled = true
+            Toast.makeText(this, "Failed to generate appointment ID", Toast.LENGTH_SHORT).show()
         }
     }
 
