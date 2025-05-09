@@ -115,6 +115,9 @@ class ClientAppointmentsFragment : Fragment() {
                                 // Store the appointment ID from Firebase
                                 appointment.appointmentId = child.key ?: ""
 
+                                // Ensure client ID is set
+                                appointment.clientId = clientId
+
                                 Log.d("ClientCheck", "Found appointment: ${appointment.fullName}, status=${appointment.status}")
 
                                 // Fetch the lawyer's details if not already set
@@ -254,15 +257,23 @@ class ClientAppointmentsFragment : Fragment() {
         // Start the ClientAppointmentDetailsActivity
         val intent = Intent(requireContext(), ClientAppointmentDetailsActivity::class.java)
 
-        // Pass appointment ID and other relevant details
+        // Pass ALL available appointment data to ensure we have everything needed
+        // for fallback scenarios in case database lookup fails
         intent.putExtra("APPOINTMENT_ID", appointment.appointmentId)
+        intent.putExtra("LAWYER_ID", appointment.lawyerId)
         intent.putExtra("LAWYER_NAME", appointment.lawyerName)
         intent.putExtra("DATE", appointment.date)
         intent.putExtra("TIME", appointment.time)
         intent.putExtra("PROBLEM", appointment.problem)
         intent.putExtra("STATUS", appointment.status)
         intent.putExtra("FULL_NAME", appointment.fullName)
+        intent.putExtra("CLIENT_ID", appointment.clientId)
         intent.putExtra("LAWYER_PROFILE_IMAGE", appointment.lawyerProfileImage)
+        intent.putExtra("SECRETARY_ID", appointment.secretaryId)
+
+        // Log to help with debugging
+        Log.d("AppointmentDetails", "Opening details for appointment: ${appointment.appointmentId}")
+        Log.d("AppointmentDetails", "LawyerId: ${appointment.lawyerId}, ClientId: ${appointment.clientId}")
 
         startActivity(intent)
     }
