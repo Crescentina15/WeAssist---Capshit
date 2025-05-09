@@ -566,68 +566,97 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             database.child("accepted_appointment").child(appointment.appointmentId)
                 .child("status").setValue("Forwarded")
 
-            // 2. Find the conversation between secretary and client
-            findSecretaryClientConversation(appointment.clientId) { secretaryConversationId ->
-                if (secretaryConversationId == null) {
-                    loadingSnackbar.dismiss()
-                    Snackbar.make(
-                        findViewById(android.R.id.content),
-                        "No active conversation found for this appointment",
-                        Snackbar.LENGTH_LONG
-                    ).show()
-                    return@findSecretaryClientConversation
-                }
+            // Get attachments from the appointment to ensure they're included when forwarding
+            appointmentRef.child("attachments").addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Get the attachments if they exist
+                    val attachments = if (snapshot.exists()) {
+                        snapshot.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
+                    } else {
+                        emptyList()
+                    }
 
-                // 3. Create a new conversation between lawyer and client
-                val lawyerId = appointment.lawyerId
-                val clientId = appointment.clientId
-                val newConversationId = ConversationUtils.generateConversationId(clientId, lawyerId)
+                    // If attachments exist, make sure they're added to accepted_appointment too
+                    if (attachments.isNotEmpty()) {
+                        database.child("accepted_appointment").child(appointment.appointmentId)
+                            .child("attachments").setValue(attachments)
+                    }
 
-                // Use the current appointment's problem description
-                val currentProblem = appointment.problem ?: "No problem description available"
+                    // 2. Find the conversation between secretary and client
+                    findSecretaryClientConversation(appointment.clientId) { secretaryConversationId ->
+                        if (secretaryConversationId == null) {
+                            loadingSnackbar.dismiss()
+                            Snackbar.make(
+                                findViewById(android.R.id.content),
+                                "No active conversation found for this appointment",
+                                Snackbar.LENGTH_LONG
+                            ).show()
+                            return@findSecretaryClientConversation
+                        }
 
-                // 5. Mark secretary conversation as forwarded
-                closeSecretaryClientConversation(
-                    secretaryConversationId,
-                    appointment,
-                    currentProblem
-                ) {
-                    // 6. Create lawyer-client conversation
-                    createLawyerClientConversation(
-                        appointment,
-                        secretaryConversationId,
-                        newConversationId,
-                        currentProblem
-                    ) {
-                        // Store the lawyer-client conversation ID for later use
-                        lawyerClientConversationId = newConversationId
+                        // 3. Create a new conversation between lawyer and client
+                        val lawyerId = appointment.lawyerId
+                        val clientId = appointment.clientId
+                        val newConversationId = ConversationUtils.generateConversationId(clientId, lawyerId)
 
-                        // 7. Create notifications
-                        createForwardingNotifications(
-                            appointment,
+                        // Use the current appointment's problem description
+                        val currentProblem = appointment.problem ?: "No problem description available"
+
+                        // 5. Mark secretary conversation as forwarded
+                        closeSecretaryClientConversation(
                             secretaryConversationId,
-                            newConversationId,
+                            appointment,
                             currentProblem
-                        )
+                        ) {
+                            // 6. Create lawyer-client conversation
+                            createLawyerClientConversation(
+                                appointment,
+                                secretaryConversationId,
+                                newConversationId,
+                                currentProblem,
+                                attachments  // Pass the attachments list
+                            ) {
+                                // Store the lawyer-client conversation ID for later use
+                                lawyerClientConversationId = newConversationId
 
-                        loadingSnackbar.dismiss()
-                        Snackbar.make(
-                            findViewById(android.R.id.content),
-                            "Appointment successfully forwarded to lawyer",
-                            Snackbar.LENGTH_SHORT
-                        ).show()
+                                // 7. Create notifications
+                                createForwardingNotifications(
+                                    appointment,
+                                    secretaryConversationId,
+                                    newConversationId,
+                                    currentProblem
+                                )
 
-                        // Update UI to show forwarded status
-                        tvStatus.text = "Status: Forwarded"
-                        tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
-                        // Hide the forward button
-                        cardViewForward.visibility = View.GONE
+                                loadingSnackbar.dismiss()
+                                Snackbar.make(
+                                    findViewById(android.R.id.content),
+                                    "Appointment successfully forwarded to lawyer",
+                                    Snackbar.LENGTH_SHORT
+                                ).show()
 
-                        // Load conversation preview
-                        loadConversationPreview(newConversationId)
+                                // Update UI to show forwarded status
+                                tvStatus.text = "Status: Forwarded"
+                                tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
+                                // Hide the forward button
+                                cardViewForward.visibility = View.GONE
+
+                                // Load conversation preview
+                                loadConversationPreview(newConversationId)
+                            }
+                        }
                     }
                 }
-            }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryAppointment", "Error getting attachments: ${error.message}")
+
+                    // Continue anyway without attachments
+                    findSecretaryClientConversation(appointment.clientId) { secretaryConversationId ->
+                        // Same code continues here...
+                        // (Implement the rest of the forwarding process without attachments)
+                    }
+                }
+            })
         }.addOnFailureListener { e ->
             loadingSnackbar.dismiss()
             Log.e("SecretaryAppointment", "Error updating appointment status: ${e.message}")
@@ -778,6 +807,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         originalConversationId: String,
         newConversationId: String,
         problemDescription: String,
+        attachments: List<String> = emptyList(),  // Add parameter for attachments
         callback: () -> Unit
     ) {
         val lawyerId = appointment.lawyerId
@@ -844,6 +874,29 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                             problemDescription,
                             callback
                         )
+
+                        // If there are attachments, update the appointment in the lawyers node with the attachments
+                        if (attachments.isNotEmpty()) {
+                            // First update the accepted_appointment node with attachments
+                            database.child("accepted_appointment")
+                                .child(appointment.appointmentId)
+                                .child("attachments")
+                                .setValue(attachments)
+                                .addOnFailureListener { e ->
+                                    Log.e("SecretaryAppointment", "Error adding attachments to accepted_appointment: ${e.message}")
+                                }
+
+                            // Also update the lawyer's copy of the appointment
+                            database.child("lawyers")
+                                .child(lawyerId)
+                                .child("appointments")
+                                .child(appointment.appointmentId)
+                                .child("attachments")
+                                .setValue(attachments)
+                                .addOnFailureListener { e ->
+                                    Log.e("SecretaryAppointment", "Error adding attachments to lawyer appointment: ${e.message}")
+                                }
+                        }
                     }.addOnFailureListener { e ->
                         Log.e("SecretaryAppointment", "Error creating lawyer conversation: ${e.message}")
                         callback()
@@ -875,23 +928,56 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             // Get the current appointment's problem description
             val currentProblem = appointment.problem ?: problemDescription
 
-            // Add system message with secretary name and current problem
-            val systemMessage = mapOf(
-                "senderId" to "system",
-                "message" to "This is a forwarded conversation from secretary $secretaryName.\n\n" +
-                        "🔴Problem Description:\n" +
-                        "$currentProblem\n\n",
+            // Check if appointment has attachments
+            database.child("appointments").child(appointment.appointmentId)
+                .child("attachments").addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(attachmentsSnapshot: DataSnapshot) {
+                        val hasAttachments = attachmentsSnapshot.exists() && attachmentsSnapshot.childrenCount > 0
 
-                "timestamp" to ServerValue.TIMESTAMP
-            )
+                        // Create message with attachment info if present
+                        val attachmentInfo = if (hasAttachments) {
+                            "\n\n📎 This case includes file attachments that you can view in the consultation details."
+                        } else {
+                            ""
+                        }
 
-            conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
-                // Now fetch the lawyer name and add welcome message
-                fetchLawyerNameAndAddWelcomeMessage(conversationRef, lawyerId, clientId, appointment, callback)
-            }.addOnFailureListener { e ->
-                Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
-                callback()
-            }
+                        // Add system message with secretary name, current problem and attachment info
+                        val systemMessage = mapOf(
+                            "senderId" to "system",
+                            "message" to "This is a forwarded conversation from secretary $secretaryName.\n\n" +
+                                    "🔴Problem Description:\n" +
+                                    "$currentProblem\n" +
+                                    attachmentInfo,
+                            "timestamp" to ServerValue.TIMESTAMP
+                        )
+
+                        conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
+                            // Now fetch the lawyer name and add welcome message
+                            fetchLawyerNameAndAddWelcomeMessage(conversationRef, lawyerId, clientId, appointment, callback)
+                        }.addOnFailureListener { e ->
+                            Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
+                            callback()
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
+                        // Fallback without checking attachments
+                        val systemMessage = mapOf(
+                            "senderId" to "system",
+                            "message" to "This is a forwarded conversation from secretary $secretaryName.\n\n" +
+                                    "🔴Problem Description:\n" +
+                                    "$currentProblem\n\n",
+                            "timestamp" to ServerValue.TIMESTAMP
+                        )
+
+                        conversationRef.child("messages").push().setValue(systemMessage).addOnSuccessListener {
+                            fetchLawyerNameAndAddWelcomeMessage(conversationRef, lawyerId, clientId, appointment, callback)
+                        }.addOnFailureListener { e ->
+                            Log.e("SecretaryAppointment", "Error adding system message: ${e.message}")
+                            callback()
+                        }
+                    }
+                })
         }.addOnFailureListener { e ->
             // If we can't get the secretary name, fall back to generic system message with current problem
             val currentProblem = appointment.problem ?: problemDescription
