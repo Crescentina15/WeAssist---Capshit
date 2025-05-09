@@ -201,8 +201,8 @@ class ClientAppointmentsFragment : Fragment() {
     private fun updateAdapter() {
         if (!::adapter.isInitialized) {
             adapter = AppointmentAdapter(appointmentList, true, true) { selectedAppointment ->
-                // Only allow clicking on non-completed appointments
-                if (selectedAppointment.status != "Complete") {
+                // Now only allow clicking on completed appointments, not on "Accepted" or "Forwarded"
+                if (selectedAppointment.status == "Complete") {
                     showAppointmentDetails(selectedAppointment)
                 }
             }

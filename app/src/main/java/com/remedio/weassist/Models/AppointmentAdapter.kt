@@ -49,8 +49,27 @@ class AppointmentAdapter(
         }
 
         if (isClickable) {
-            holder.itemView.setOnClickListener {
-                onItemClickListener?.invoke(appointment)
+            // Check if the appointment is clickable based on status
+            val appointmentClickable = if (isClientView) {
+                // For client view, only "Complete" status is clickable now
+                appointment.status == "Complete"
+            } else {
+                // Keep the original behavior for secretary view
+                true
+            }
+
+            if (appointmentClickable) {
+                holder.itemView.setOnClickListener {
+                    onItemClickListener?.invoke(appointment)
+                }
+                holder.itemView.isClickable = true
+                holder.itemView.isFocusable = true
+                holder.itemView.alpha = 1.0f
+            } else {
+                holder.itemView.setOnClickListener(null)
+                holder.itemView.isClickable = false
+                holder.itemView.isFocusable = false
+                holder.itemView.alpha = 0.6f
             }
         } else {
             holder.itemView.isClickable = false
@@ -87,12 +106,12 @@ class AppointmentAdapter(
                 holder.appointmentTitle?.text = "Completed session with Atty. ${appointment.lawyerName ?: "Unknown"}"
                 holder.appointmentStatus?.text = "Complete"
                 holder.appointmentStatus?.setTextColor(holder.itemView.context.getColor(R.color.completed_status))
-                holder.itemView.alpha = 0.7f  // Slightly dim completed appointments
+                // Don't dim completed appointments anymore since they are now clickable
             }
             else -> {
                 holder.appointmentTitle?.text = "Atty. ${appointment.lawyerName ?: "Unknown"} accepted your appointment"
                 holder.appointmentStatus?.text = appointment.status ?: "Pending"
-                holder.itemView.alpha = 1.0f
+                // Non-complete appointments remain at full opacity as before
             }
         }
 
