@@ -8,12 +8,11 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.cardview.widget.CardView
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
+import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.R
 
 class ClientAppointmentDetailsActivity : AppCompatActivity() {
@@ -28,8 +27,17 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var btnBack: ImageButton
 
+    // UI elements for consultation logs
+    private lateinit var cardViewConsultationLogs: CardView
+    private lateinit var tvConsultationLogsTitle: TextView
+    private lateinit var tvConsultationLogsContent: TextView
+    private lateinit var tvNoConsultationLogs: TextView
+
     private lateinit var auth: FirebaseAuth
     private lateinit var appointmentId: String
+    private var foundClientId: String? = null
+    private var lawyerId: String? = null
+    private var clientName: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,25 +62,55 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
             finish()
         }
 
-        // Display intent extras if available while loading full details
-        intent.getStringExtra("LAWYER_NAME")?.let { name ->
-            tvLawyerName.text = "Lawyer: $name"
-        }
-        intent.getStringExtra("DATE")?.let { date ->
-            tvAppointmentDate.text = "Date: $date"
-        }
-        intent.getStringExtra("TIME")?.let { time ->
-            tvAppointmentTime.text = "Time: $time"
-        }
-        intent.getStringExtra("PROBLEM")?.let { problem ->
-            tvProblem.text = problem
-        }
-        intent.getStringExtra("STATUS")?.let { status ->
-            tvStatus.text = "Status: $status"
-        }
+        // Immediately display intent extras while waiting for full data
+        displayIntentData()
+
+        // Show loading indicator
+        progressBar.visibility = View.VISIBLE
+
+        // Initially show loading for consultation logs
+        tvNoConsultationLogs.visibility = View.VISIBLE
+        tvNoConsultationLogs.text = "Loading consultation logs..."
 
         // Load complete appointment details
         loadAppointmentDetails()
+    }
+
+    private fun displayIntentData() {
+        intent.getStringExtra("LAWYER_NAME")?.let { name ->
+            tvLawyerName.text = "Lawyer: $name"
+            // Save for potential fallback use
+            lawyerId = intent.getStringExtra("LAWYER_ID")
+        }
+
+        intent.getStringExtra("DATE")?.let { date ->
+            tvAppointmentDate.text = "Date: $date"
+        }
+
+        intent.getStringExtra("TIME")?.let { time ->
+            tvAppointmentTime.text = "Time: $time"
+        }
+
+        intent.getStringExtra("PROBLEM")?.let { problem ->
+            tvProblem.text = problem
+        }
+
+        intent.getStringExtra("STATUS")?.let { status ->
+            tvStatus.text = "Status: $status"
+
+            // Set status color
+            when (status.lowercase()) {
+                "complete" -> tvStatus.setTextColor(resources.getColor(R.color.completed_status, theme))
+                "accepted" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark, theme))
+                "pending" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_orange_dark, theme))
+                else -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark, theme))
+            }
+        }
+
+        intent.getStringExtra("FULL_NAME")?.let { name ->
+            // Save for potential fallback use
+            clientName = name
+        }
     }
 
     private fun initializeViews() {
@@ -85,64 +123,111 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
         tvProblem = findViewById(R.id.tvProblemDescription)
         progressBar = findViewById(R.id.progressBar)
         btnBack = findViewById(R.id.btnBack)
+
+        // Initialize consultation logs views
+        cardViewConsultationLogs = findViewById(R.id.cardViewConsultationLogs)
+        tvConsultationLogsTitle = findViewById(R.id.tvConsultationLogsTitle)
+        tvConsultationLogsContent = findViewById(R.id.tvConsultationLogsContent)
+        tvNoConsultationLogs = findViewById(R.id.tvNoConsultationLogs)
+
+        // Always show the consultation logs card, but with loading state initially
+        cardViewConsultationLogs.visibility = View.VISIBLE
+
+        // Set initial value
+        tvAppointmentTitle.text = "Appointment Details"
     }
 
     private fun loadAppointmentDetails() {
-        progressBar.visibility = View.VISIBLE
-
         // Get the current user ID
         val userId = auth.currentUser?.uid ?: return
+        foundClientId = userId // Save client ID for consultation lookup
 
-        // Reference to the appointment in the user's appointments
-        val appointmentRef = FirebaseDatabase.getInstance().reference
-            .child("users")
-            .child(userId)
-            .child("appointments")
-            .child(appointmentId)
+        // First try direct lookup by appointmentId - using all valid DB paths
+        val appointmentRefs = listOf(
+            FirebaseDatabase.getInstance().reference.child("appointments").child(appointmentId),
+            FirebaseDatabase.getInstance().reference.child("accepted_appointment").child(appointmentId),
+            FirebaseDatabase.getInstance().reference.child("users").child(userId).child("appointments").child(appointmentId)
+        )
 
-        appointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (snapshot.exists()) {
-                    progressBar.visibility = View.GONE
-                    // Parse appointment data
-                    val appointment = snapshot.getValue(Appointment::class.java)
-                    appointment?.let { displayAppointmentDetails(it) }
-                } else {
-                    // If not found in user's appointments, try accepted_appointment collection
-                    val acceptedAppointmentRef = FirebaseDatabase.getInstance().reference
-                        .child("accepted_appointment")
-                        .child(appointmentId)
+        var appointmentFound = false
+        var attemptCount = 0
 
-                    acceptedAppointmentRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                        override fun onDataChange(acceptedSnapshot: DataSnapshot) {
-                            progressBar.visibility = View.GONE
-                            if (acceptedSnapshot.exists()) {
-                                val appointment = acceptedSnapshot.getValue(Appointment::class.java)
-                                appointment?.let { displayAppointmentDetails(it) }
-                            } else {
-                                Log.w("AppointmentDetails", "Appointment not found in either location. Using intent data only.")
-                                // Don't finish the activity - we can still show the intent data
-                                // Just hide the progress bar and use whatever data we have from intent
+        for (ref in appointmentRefs) {
+            ref.addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    attemptCount++
+
+                    if (snapshot.exists() && !appointmentFound) {
+                        appointmentFound = true
+                        progressBar.visibility = View.GONE
+
+                        // Parse appointment data
+                        val appointment = snapshot.getValue(Appointment::class.java)
+                        appointment?.let {
+                            appointment.appointmentId = appointmentId
+
+                            // Try to get clientId if it's in the data
+                            val clientId = snapshot.child("clientId").getValue(String::class.java)
+                            if (!clientId.isNullOrEmpty()) {
+                                foundClientId = clientId
                             }
-                        }
 
-                        override fun onCancelled(error: DatabaseError) {
-                            progressBar.visibility = View.GONE
-                            Toast.makeText(this@ClientAppointmentDetailsActivity,
-                                "Error loading appointment details: ${error.message}", Toast.LENGTH_SHORT).show()
-                            Log.e("AppointmentDetails", "Database error: ${error.message}")
+                            // Try to get lawyerId if it's in the data
+                            val foundLawyerId = snapshot.child("lawyerId").getValue(String::class.java)
+                            if (!foundLawyerId.isNullOrEmpty()) {
+                                lawyerId = foundLawyerId
+                            }
+
+                            displayAppointmentDetails(appointment)
+                            loadConsultationLogs(appointment)
                         }
-                    })
+                    } else if (attemptCount >= appointmentRefs.size && !appointmentFound) {
+                        // All attempts failed, use intent data
+                        progressBar.visibility = View.GONE
+                        Log.w("AppointmentDetails", "Appointment not found in any location. Using intent data only.")
+
+                        // Create a fallback appointment from intent data
+                        createFallbackAppointmentFromIntent()
+                    }
                 }
-            }
 
-            override fun onCancelled(error: DatabaseError) {
-                progressBar.visibility = View.GONE
-                Toast.makeText(this@ClientAppointmentDetailsActivity,
-                    "Error loading appointment details: ${error.message}", Toast.LENGTH_SHORT).show()
-                Log.e("AppointmentDetails", "Database error: ${error.message}")
-            }
-        })
+                override fun onCancelled(error: DatabaseError) {
+                    attemptCount++
+                    handleDatabaseError(error, "checking appointment locations")
+
+                    // If all attempts failed, fall back to intent data
+                    if (attemptCount >= appointmentRefs.size && !appointmentFound) {
+                        progressBar.visibility = View.GONE
+                        createFallbackAppointmentFromIntent()
+                    }
+                }
+            })
+        }
+    }
+
+    private fun createFallbackAppointmentFromIntent() {
+        // Create a fallback appointment using all intent data
+        val fallbackAppointment = Appointment(
+            appointmentId = appointmentId,
+            lawyerId = intent.getStringExtra("LAWYER_ID") ?: lawyerId ?: "",
+            lawyerName = intent.getStringExtra("LAWYER_NAME") ?: "",
+            fullName = intent.getStringExtra("FULL_NAME") ?: clientName ?: "",
+            date = intent.getStringExtra("DATE") ?: "",
+            time = intent.getStringExtra("TIME") ?: "",
+            problem = intent.getStringExtra("PROBLEM") ?: "",
+            status = intent.getStringExtra("STATUS") ?: "Complete",
+            clientId = foundClientId ?: auth.currentUser?.uid ?: "",
+            lawyerProfileImage = intent.getStringExtra("LAWYER_PROFILE_IMAGE") ?: ""
+        )
+
+        // Use what we have to find the secretary
+        findSecretaryByLawyer(fallbackAppointment.lawyerId)
+
+        // Try to load consultation logs based on this fallback data
+        loadConsultationLogsByLawyerAndName(
+            fallbackAppointment.lawyerId,
+            fallbackAppointment.fullName
+        )
     }
 
     private fun displayAppointmentDetails(appointment: Appointment) {
@@ -153,46 +238,251 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
         tvProblem.text = appointment.problem ?: "No problem description provided"
         tvStatus.text = "Status: ${appointment.status ?: "Pending"}"
 
-        // Load lawyer name
-        appointment.lawyerId?.let { lawyerId ->
-            val lawyerRef = FirebaseDatabase.getInstance().reference.child("lawyers").child(lawyerId)
-            lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists()) {
-                        val name = snapshot.child("name").getValue(String::class.java) ?: ""
-                        tvLawyerName.text = "Lawyer: $name"
-                    } else {
+        // Set status color based on status
+        when (appointment.status?.lowercase()) {
+            "complete" -> tvStatus.setTextColor(resources.getColor(R.color.completed_status, theme))
+            "accepted" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_green_dark, theme))
+            "pending" -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_orange_dark, theme))
+            else -> tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark, theme))
+        }
+
+        // Load lawyer name if needed
+        if (appointment.lawyerName.isNotEmpty()) {
+            tvLawyerName.text = "Lawyer: ${appointment.lawyerName}"
+        } else {
+            // We need to load the lawyer info
+            appointment.lawyerId?.let { lawyerId ->
+                val lawyerRef = FirebaseDatabase.getInstance().reference.child("lawyers").child(lawyerId)
+                lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onDataChange(snapshot: DataSnapshot) {
+                        if (snapshot.exists()) {
+                            val name = snapshot.child("name").getValue(String::class.java) ?: ""
+                            tvLawyerName.text = "Lawyer: $name"
+                        } else {
+                            tvLawyerName.text = "Lawyer: Not available"
+                        }
+                    }
+
+                    override fun onCancelled(error: DatabaseError) {
                         tvLawyerName.text = "Lawyer: Not available"
                     }
-                }
-
-                override fun onCancelled(error: DatabaseError) {
-                    tvLawyerName.text = "Lawyer: Not available"
-                }
-            })
-        } ?: run {
-            tvLawyerName.text = "Lawyer: Not assigned"
+                })
+            } ?: run {
+                tvLawyerName.text = "Lawyer: Not assigned"
+            }
         }
 
         // Load secretary name if available
-        appointment.secretaryId?.let { secretaryId ->
-            val secretaryRef = FirebaseDatabase.getInstance().reference.child("secretaries").child(secretaryId)
+        // Check if secretaryId exists and is not empty
+        if (!appointment.secretaryId.isNullOrEmpty()) {
+            val secretaryRef = FirebaseDatabase.getInstance().reference
+                .child("secretaries")
+                .child(appointment.secretaryId)
+
             secretaryRef.addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (snapshot.exists()) {
                         val name = snapshot.child("name").getValue(String::class.java) ?: ""
                         tvSecretaryName.text = "Secretary: $name"
+                        tvSecretaryName.visibility = View.VISIBLE
                     } else {
                         tvSecretaryName.text = "Secretary: Not available"
+                        tvSecretaryName.visibility = View.VISIBLE
                     }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     tvSecretaryName.text = "Secretary: Not available"
+                    tvSecretaryName.visibility = View.VISIBLE
+                    Log.e("AppointmentDetails", "Error loading secretary: ${error.message}")
                 }
             })
-        } ?: run {
-            tvSecretaryName.text = "Secretary: Not assigned"
+        } else {
+            // If no secretaryId, check all secretaries to find one matching the law firm
+            findSecretaryByLawyer(appointment.lawyerId)
         }
+    }
+
+    private fun findSecretaryByLawyer(lawyerId: String) {
+        if (lawyerId.isNullOrEmpty()) {
+            tvSecretaryName.text = "Secretary: Not assigned"
+            tvSecretaryName.visibility = View.VISIBLE
+            return
+        }
+
+        // First get the lawyer's law firm
+        val lawyerRef = FirebaseDatabase.getInstance().reference
+            .child("lawyers")
+            .child(lawyerId)
+
+        lawyerRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                if (snapshot.exists()) {
+                    val lawFirm = snapshot.child("lawFirm").getValue(String::class.java)
+
+                    if (!lawFirm.isNullOrEmpty()) {
+                        // Now find secretaries in this law firm
+                        val secretariesRef = FirebaseDatabase.getInstance().reference
+                            .child("secretaries")
+
+                        secretariesRef.orderByChild("lawFirm").equalTo(lawFirm)
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(secretariesSnapshot: DataSnapshot) {
+                                    if (secretariesSnapshot.exists() && secretariesSnapshot.childrenCount > 0) {
+                                        // Get first secretary found
+                                        val secretarySnapshot = secretariesSnapshot.children.first()
+                                        val secretaryName = secretarySnapshot.child("name").getValue(String::class.java) ?: ""
+
+                                        tvSecretaryName.text = "Secretary: $secretaryName"
+                                        tvSecretaryName.visibility = View.VISIBLE
+                                    } else {
+                                        tvSecretaryName.text = "Secretary: None assigned"
+                                        tvSecretaryName.visibility = View.VISIBLE
+                                    }
+                                }
+
+                                override fun onCancelled(error: DatabaseError) {
+                                    Log.e("AppointmentDetails", "Error finding secretaries: ${error.message}")
+                                    tvSecretaryName.text = "Secretary: Information unavailable"
+                                    tvSecretaryName.visibility = View.VISIBLE
+                                }
+                            })
+                    } else {
+                        tvSecretaryName.text = "Secretary: Not assigned"
+                        tvSecretaryName.visibility = View.VISIBLE
+                    }
+                } else {
+                    tvSecretaryName.text = "Secretary: Not assigned"
+                    tvSecretaryName.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("AppointmentDetails", "Error finding lawyer's law firm: ${error.message}")
+                tvSecretaryName.text = "Secretary: Information unavailable"
+                tvSecretaryName.visibility = View.VISIBLE
+            }
+        })
+    }
+
+    private fun loadConsultationLogs(appointment: Appointment) {
+        loadConsultationLogsByLawyerAndName(appointment.lawyerId, appointment.fullName)
+    }
+
+    private fun loadConsultationLogsByLawyerAndName(lawyerId: String, clientName: String) {
+        // Log request details to help debug
+        Log.d("ConsultationLogs", "Searching for logs with lawyerId=$lawyerId, clientName=$clientName")
+
+        // Directly check all consultations nodes
+        val consultationsRef = FirebaseDatabase.getInstance().reference.child("consultations")
+
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val consultations = mutableListOf<Consultation>()
+
+                // Look through all consultation entries
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
+
+                        if (consultation != null) {
+                            // Match by appointment ID if available
+                            val appId = consultationSnapshot.child("appointmentId").getValue(String::class.java)
+                            if (appId == appointmentId) {
+                                consultations.add(consultation)
+                                Log.d("ConsultationLogs", "Found consultation by appointmentId")
+                            }
+                            // Also match by lawyer ID and client name as a fallback
+                            else if (consultation.lawyerId == lawyerId && matchesClientName(consultation.clientName, clientName)) {
+                                consultations.add(consultation)
+                                Log.d("ConsultationLogs", "Found consultation by lawyer ID and client name match")
+                            }
+                        }
+                    }
+                }
+
+                Log.d("ConsultationLogs", "Total consultations found: ${consultations.size}")
+
+                // Display what we found
+                displayConsultationsList(consultations)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                handleDatabaseError(error, "loading consultation logs")
+                // Show error in logs view
+                tvNoConsultationLogs.visibility = View.VISIBLE
+                tvNoConsultationLogs.text = "Could not load consultation logs"
+                tvConsultationLogsContent.visibility = View.GONE
+            }
+        })
+    }
+
+    private fun matchesClientName(dbName: String, searchName: String): Boolean {
+        if (dbName.isEmpty() || searchName.isEmpty()) return false
+
+        // Case 1: Exact match
+        if (dbName.equals(searchName, ignoreCase = true)) return true
+
+        // Case 2: One name contains the other
+        if (dbName.contains(searchName, ignoreCase = true) ||
+            searchName.contains(dbName, ignoreCase = true)) return true
+
+        // Case 3: Compare name parts (first/last name matches)
+        val dbParts = dbName.split(" ").filter { it.isNotEmpty() }
+        val searchParts = searchName.split(" ").filter { it.isNotEmpty() }
+
+        for (dbPart in dbParts) {
+            for (searchPart in searchParts) {
+                if (dbPart.equals(searchPart, ignoreCase = true) &&
+                    dbPart.length > 2) { // At least 3 chars to avoid matching common words
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
+
+    private fun displayConsultationsList(consultations: List<Consultation>) {
+        Log.d("ConsultationLogs", "Displaying ${consultations.size} consultation logs")
+
+        if (consultations.isEmpty()) {
+            tvNoConsultationLogs.visibility = View.VISIBLE
+            tvNoConsultationLogs.text = "No consultation logs available"
+            tvConsultationLogsContent.visibility = View.GONE
+            return
+        }
+
+        // Sort consultations by date (newest first)
+        val sortedConsultations = consultations.sortedByDescending {
+            try {
+                val formatter = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+                formatter.parse(it.consultationDate)?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+        }
+
+        // Build the consultation logs text
+        val logsBuilder = StringBuilder()
+        for (consultation in sortedConsultations) {
+            logsBuilder.append("Date: ${consultation.consultationDate}\n")
+            logsBuilder.append("Time: ${consultation.consultationTime}\n")
+            if (!consultation.consultationType.isNullOrEmpty()) {
+                logsBuilder.append("Type: ${consultation.consultationType}\n")
+            }
+            logsBuilder.append("Notes: ${consultation.notes}\n")
+            logsBuilder.append("\n--------------------\n\n")
+        }
+
+        // Update UI
+        tvConsultationLogsTitle.text = "Consultation Logs (${consultations.size})"
+        tvConsultationLogsContent.text = logsBuilder.toString()
+        tvNoConsultationLogs.visibility = View.GONE
+        tvConsultationLogsContent.visibility = View.VISIBLE
+    }
+
+    private fun handleDatabaseError(error: DatabaseError, operation: String) {
+        Log.e("AppointmentDetails", "Error $operation: ${error.message}")
     }
 }
