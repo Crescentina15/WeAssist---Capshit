@@ -70,7 +70,7 @@ class ChatbotActivity : AppCompatActivity() {
     private val mapsApiKey = "AIzaSyBceN-dLuvJXdpGVpgZ1ckhfm4kCzuIjhM"
 
 
-    private val apiKey = "AIzaSyCBW1bOCten1GbAoRqcAuhRePWj7O12qtM"  // Replace with your Google Gemini API key
+    private val apiKey = "AIzaSyDb53yO_vqdfA_o4e5zUV2QUWgs-JhV54Y"  // Replace with your Google Gemini API key
     private lateinit var generativeModel: GenerativeModel
 
     // Location-related fields
