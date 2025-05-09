@@ -476,7 +476,71 @@ class ConsultationActivity : AppCompatActivity() {
         val currentDate = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault()).format(Date())
         val currentTime = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
 
-        // Create consultation object
+        // Show progress while we get attachments and save
+        progressBar.visibility = View.VISIBLE
+
+        // First, get any attachments from the appointment
+        database.child("appointments").child(appointmentId!!)
+            .child("attachments")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Get attachments if they exist
+                    val attachments = if (snapshot.exists()) {
+                        try {
+                            snapshot.getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
+                        } catch (e: Exception) {
+                            Log.e("ConsultationActivity", "Error parsing attachments: ${e.message}")
+                            emptyList<String>()
+                        }
+                    } else {
+                        emptyList<String>()
+                    }
+
+                    // Create consultation object WITH attachments
+                    val consultation = Consultation(
+                        clientName = clientName!!,
+                        consultationTime = consultationTime.text.toString(),
+                        notes = notes,
+                        lawyerId = lawyerId,
+                        consultationDate = currentDate,
+                        consultationType = "Legal Consultation",
+                        status = "Completed",
+                        problem = problemDescription ?: "",
+                        appointmentId = appointmentId!!,
+                        attachments = attachments  // Add attachments here
+                    )
+
+                    // Save to Firebase (keeping your existing path structure)
+                    val clientKey = clientName!!.replace(" ", "_").lowercase()
+                    val consultationKey = database.child("consultations").child(clientKey).push().key ?: return
+                    database.child("consultations").child(clientKey).child(consultationKey)
+                        .setValue(consultation)
+                        .addOnSuccessListener {
+                            progressBar.visibility = View.GONE
+                            Toast.makeText(this@ConsultationActivity, "Consultation notes saved", Toast.LENGTH_SHORT).show()
+
+                            // Log whether attachments were included
+                            Log.d("ConsultationActivity", "Saved consultation with ${attachments.size} attachments")
+                        }
+                        .addOnFailureListener { e ->
+                            progressBar.visibility = View.GONE
+                            Log.e("ConsultationActivity", "Error saving consultation: ${e.message}")
+                            Toast.makeText(this@ConsultationActivity, "Failed to save consultation notes", Toast.LENGTH_SHORT).show()
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("ConsultationActivity", "Error fetching attachments: ${error.message}")
+
+                    // Fall back to saving without attachments
+                    saveConsultationWithoutAttachments(notes, lawyerId, currentDate, currentTime)
+                }
+            })
+    }
+
+    // Fallback method to save without attachments
+    private fun saveConsultationWithoutAttachments(notes: String, lawyerId: String, currentDate: String, currentTime: String) {
+        // Create consultation object without attachments
         val consultation = Consultation(
             clientName = clientName!!,
             consultationTime = consultationTime.text.toString(),
@@ -486,10 +550,9 @@ class ConsultationActivity : AppCompatActivity() {
             consultationType = "Legal Consultation",
             status = "Completed",
             problem = problemDescription ?: "",
-            appointmentId = appointmentId!!
+            appointmentId = appointmentId!!,
+            attachments = emptyList()  // Empty attachments list
         )
-
-        progressBar.visibility = View.VISIBLE
 
         // Save to Firebase
         val clientKey = clientName!!.replace(" ", "_").lowercase()
@@ -498,7 +561,7 @@ class ConsultationActivity : AppCompatActivity() {
             .setValue(consultation)
             .addOnSuccessListener {
                 progressBar.visibility = View.GONE
-                Toast.makeText(this, "Consultation notes saved", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Consultation notes saved (without attachments)", Toast.LENGTH_SHORT).show()
             }
             .addOnFailureListener { e ->
                 progressBar.visibility = View.GONE

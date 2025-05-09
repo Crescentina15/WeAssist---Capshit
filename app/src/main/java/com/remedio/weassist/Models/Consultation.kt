@@ -9,5 +9,6 @@ data class Consultation(
     val consultationType: String = "",
     val status: String = "",
     val problem: String = "",
-    val appointmentId: String = "" // Ensure this is here
+    val appointmentId: String = "",
+    val attachments: List<String> = emptyList() // New field for attachments
 )

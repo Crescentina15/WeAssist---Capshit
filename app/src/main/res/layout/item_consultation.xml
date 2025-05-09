@@ -112,6 +112,43 @@
                     android:ellipsize="end"/>
             </LinearLayout>
 
+            <!-- NEW: Attachments section -->
+            <LinearLayout
+                android:id="@+id/attachmentsSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="#F5F7FA"
+                android:padding="12dp"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Attachments"
+                    android:textSize="15sp"
+                    android:textColor="#212121"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:id="@+id/tvNoAttachments"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No attachments available"
+                    android:textSize="14sp"
+                    android:textColor="#757575"
+                    android:textStyle="italic"
+                    android:visibility="visible"/>
+
+                <LinearLayout
+                    android:id="@+id/attachmentsContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"/>
+            </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

@@ -1,13 +1,20 @@
 package com.remedio.weassist.Lawyer
 
+import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -165,7 +172,40 @@ class LawyerAppointmentHistory : Fragment() {
         dialogView.findViewById<TextView>(R.id.tvClientName).text = "Client: ${consultation.clientName}"
         dialogView.findViewById<TextView>(R.id.tvConsultationDate).text = "Date: ${consultation.consultationDate}"
         dialogView.findViewById<TextView>(R.id.tvConsultationTime).text = "Time: ${consultation.consultationTime}"
-        dialogView.findViewById<TextView>(R.id.tvNotes).text = "Notes: ${consultation.notes}"
+        dialogView.findViewById<TextView>(R.id.tvNotes).text = consultation.notes
+
+        // Handle attachments if they exist in the dialog layout
+        val attachmentsTitle = dialogView.findViewById<TextView>(R.id.tvAttachmentsTitle)
+        val noAttachments = dialogView.findViewById<TextView>(R.id.tvNoAttachments)
+        val attachmentsContainer = dialogView.findViewById<LinearLayout>(R.id.attachmentsContainer)
+
+        if (consultation.attachments.isNotEmpty()) {
+            attachmentsTitle.visibility = View.VISIBLE
+            noAttachments.visibility = View.GONE
+            attachmentsContainer.visibility = View.VISIBLE
+
+            // Clear previous views
+            attachmentsContainer.removeAllViews()
+
+            // Add each attachment as a clickable text view
+            for (attachment in consultation.attachments) {
+                val attachmentView = TextView(requireContext())
+                attachmentView.text = getFileNameFromUrl(attachment)
+                attachmentView.setTextColor(ContextCompat.getColor(requireContext(), R.color.black))
+                attachmentView.setPadding(0, 8, 0, 8)
+
+                // Set click listener to open attachment
+                attachmentView.setOnClickListener {
+                    openAttachment(attachment)
+                }
+
+                attachmentsContainer.addView(attachmentView)
+            }
+        } else {
+            attachmentsTitle.visibility = View.VISIBLE
+            noAttachments.visibility = View.VISIBLE
+            attachmentsContainer.visibility = View.GONE
+        }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Consultation Details")
@@ -174,6 +214,63 @@ class LawyerAppointmentHistory : Fragment() {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    // Helper methods for attachment handling
+    private fun getFileNameFromUrl(url: String): String {
+        return try {
+            url.substring(url.lastIndexOf('/') + 1)
+        } catch (e: Exception) {
+            "Attachment"
+        }
+    }
+
+    private fun openAttachment(url: String) {
+        try {
+            val extension = url.substringAfterLast('.', "").lowercase()
+            if (extension == "pdf" || extension == "doc" || extension == "docx") {
+                downloadFile(url)
+            } else {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(Uri.parse(url), getMimeType(url))
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), "No app found to open this file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun getMimeType(url: String): String {
+        val extension = url.substringAfterLast('.', "").lowercase()
+        return when (extension) {
+            "pdf" -> "application/pdf"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "doc", "docx" -> "application/msword"
+            "xls", "xlsx" -> "application/vnd.ms-excel"
+            "ppt", "pptx" -> "application/vnd.ms-powerpoint"
+            "txt" -> "text/plain"
+            else -> "*/*"
+        }
+    }
+
+    private fun downloadFile(url: String) {
+        try {
+            val fileName = getFileNameFromUrl(url)
+            val request = DownloadManager.Request(Uri.parse(url))
+            request.setTitle(fileName)
+            request.setDescription("Downloading $fileName")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+
+            val downloadManager = requireContext().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.enqueue(request)
+
+            Toast.makeText(requireContext(), "Downloading $fileName", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("DownloadError", "Error downloading file: ${e.message}")
+            Toast.makeText(requireContext(), "Failed to download file", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setupSwipeToDelete() {

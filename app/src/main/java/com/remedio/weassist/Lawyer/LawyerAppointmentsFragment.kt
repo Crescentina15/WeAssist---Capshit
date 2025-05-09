@@ -292,31 +292,18 @@ class LawyerAppointmentsFragment : Fragment() {
                         "isRead" to false
                     )
 
-                    // Create a consultation record with details and files
-                    val consultationId = FirebaseDatabase.getInstance().reference
-                        .child("consultations")
-                        .child(appointment.clientId)
-                        .push().key ?: UUID.randomUUID().toString()
-
-                    val consultation = hashMapOf<String, Any>(
-                        "clientName" to appointment.fullName,
-                        "lawyerId" to lawyerId,
-                        "consultationDate" to appointment.date,
-                        "consultationTime" to appointment.time,
-                        "notes" to "Consultation completed",
-                        "problem" to (appointment.problem ?: ""),
-                        "status" to "Complete",
-                        "appointmentId" to appointment.appointmentId
-                    )
+                    // REMOVED: Do not create a consultation record here
 
                     // Prepare all database updates in a single transaction
                     val updates = hashMapOf<String, Any>(
-                        // Store consultation record
-                        "/consultations/${appointment.clientId}/$consultationId" to consultation,
+                        // REMOVED: Store consultation record
 
                         // Store rating notification
                         "/pending_ratings/${appointment.clientId}/${appointment.appointmentId}" to ratingNotification,
-                        "/notifications/${appointment.clientId}/${appointment.appointmentId}" to notificationData
+                        "/notifications/${appointment.clientId}/${appointment.appointmentId}" to notificationData,
+
+                        // Update appointment status to complete
+                        "/appointments/${appointment.appointmentId}/status" to "Complete"
                     )
 
                     // If we have attachments, add them to the completed appointment
@@ -357,15 +344,16 @@ class LawyerAppointmentsFragment : Fragment() {
                         }
                         .addOnFailureListener {
                             Toast.makeText(requireContext(),
-                                "Failed to create rating request",
+                                "Failed to end session",
                                 Toast.LENGTH_SHORT).show()
                         }
                 }
 
                 override fun onCancelled(error: DatabaseError) {
                     Log.e("EndSession", "Error fetching appointment attachments: ${error.message}")
-                    // Fallback to original behavior
-                    endSessionOriginal(appointment)
+                    Toast.makeText(requireContext(),
+                        "Failed to end session",
+                        Toast.LENGTH_SHORT).show()
                 }
             })
     }
