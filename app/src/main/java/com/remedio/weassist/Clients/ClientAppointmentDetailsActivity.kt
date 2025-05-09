@@ -1,14 +1,23 @@
 package com.remedio.weassist.Clients
 
+import android.app.DownloadManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
@@ -32,6 +41,12 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var tvConsultationLogsTitle: TextView
     private lateinit var tvConsultationLogsContent: TextView
     private lateinit var tvNoConsultationLogs: TextView
+
+    // UI elements for attachments
+    private lateinit var cardViewAttachments: CardView
+    private lateinit var tvNoAttachments: TextView
+    private lateinit var recyclerViewAttachments: RecyclerView
+    private lateinit var attachmentsAdapter: AttachmentsAdapter
 
     private lateinit var auth: FirebaseAuth
     private lateinit var appointmentId: String
@@ -136,6 +151,18 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
         tvConsultationLogsContent = findViewById(R.id.tvConsultationLogsContent)
         tvNoConsultationLogs = findViewById(R.id.tvNoConsultationLogs)
 
+        // Initialize attachment views
+        cardViewAttachments = findViewById(R.id.cardViewAttachments)
+        tvNoAttachments = findViewById(R.id.tvNoAttachments)
+        recyclerViewAttachments = findViewById(R.id.recyclerViewAttachments)
+
+        // Setup RecyclerView for attachments
+        recyclerViewAttachments.layoutManager = LinearLayoutManager(this)
+        attachmentsAdapter = AttachmentsAdapter(emptyList()) { fileUrl ->
+            openFile(fileUrl)
+        }
+        recyclerViewAttachments.adapter = attachmentsAdapter
+
         // Always show the consultation logs card, but with loading state initially
         cardViewConsultationLogs.visibility = View.VISIBLE
 
@@ -186,6 +213,9 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
                             displayAppointmentDetails(appointment)
                             loadConsultationLogs(appointment)
+
+                            // Load attachments
+                            loadAttachments(snapshot)
                         }
                     } else if (attemptCount >= appointmentRefs.size && !appointmentFound) {
                         // All attempts failed, use intent data
@@ -208,6 +238,26 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
                     }
                 }
             })
+        }
+    }
+
+    private fun loadAttachments(snapshot: DataSnapshot) {
+        try {
+            val attachments = snapshot.child("attachments").getValue(object : GenericTypeIndicator<List<String>>() {})
+            if (attachments != null && attachments.isNotEmpty()) {
+                tvNoAttachments.visibility = View.GONE
+                recyclerViewAttachments.visibility = View.VISIBLE
+                attachmentsAdapter.updateFiles(attachments)
+                Log.d("ClientAppointmentDetails", "Loaded ${attachments.size} attachments")
+            } else {
+                tvNoAttachments.visibility = View.VISIBLE
+                recyclerViewAttachments.visibility = View.GONE
+                Log.d("ClientAppointmentDetails", "No attachments found")
+            }
+        } catch (e: Exception) {
+            Log.e("ClientAppointmentDetails", "Error loading attachments: ${e.message}")
+            tvNoAttachments.visibility = View.VISIBLE
+            recyclerViewAttachments.visibility = View.GONE
         }
     }
 
@@ -485,5 +535,96 @@ class ClientAppointmentDetailsActivity : AppCompatActivity() {
 
     private fun handleDatabaseError(error: DatabaseError, operation: String) {
         Log.e("AppointmentDetails", "Error $operation: ${error.message}")
+    }
+
+    // Implementation for attachments adapter
+    private inner class AttachmentsAdapter(
+        private var files: List<String>,
+        private val onItemClick: (String) -> Unit
+    ) : RecyclerView.Adapter<AttachmentsAdapter.FileViewHolder>() {
+
+        fun updateFiles(newFiles: List<String>) {
+            files = newFiles
+            notifyDataSetChanged()
+        }
+
+        inner class FileViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val fileName: TextView = view.findViewById(R.id.tvFileName)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): FileViewHolder {
+            val view = LayoutInflater.from(parent.context)
+                .inflate(R.layout.item_file, parent, false)
+            return FileViewHolder(view)
+        }
+
+        override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
+            val fileUrl = files[position]
+            holder.fileName.text = getFileNameFromUrl(fileUrl)
+            holder.itemView.setOnClickListener { onItemClick(fileUrl) }
+        }
+
+        override fun getItemCount() = files.size
+    }
+
+    // Helper method to get file name from URL
+    private fun getFileNameFromUrl(url: String): String {
+        return try {
+            url.substring(url.lastIndexOf('/') + 1)
+        } catch (e: Exception) {
+            "Attachment"
+        }
+    }
+
+    // Method to open files
+    private fun openFile(url: String) {
+        try {
+            val extension = url.substringAfterLast('.', "").lowercase()
+            if (extension == "pdf" || extension == "doc" || extension == "docx") {
+                downloadFile(url)
+            } else {
+                val intent = Intent(Intent.ACTION_VIEW)
+                intent.setDataAndType(Uri.parse(url), getMimeType(url))
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "No app found to open this file", Toast.LENGTH_SHORT).show()
+            Log.e("ClientAppointmentDetails", "Error opening file: ${e.message}")
+        }
+    }
+
+    // Method to download files using DownloadManager
+    private fun downloadFile(url: String) {
+        try {
+            val fileName = getFileNameFromUrl(url)
+            val request = DownloadManager.Request(Uri.parse(url))
+            request.setTitle(fileName)
+            request.setDescription("Downloading $fileName")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+
+            val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.enqueue(request)
+
+            Toast.makeText(this, "Downloading $fileName", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Log.e("DownloadError", "Error downloading file: ${e.message}")
+            Toast.makeText(this, "Failed to download file", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    // Helper method to get MIME type
+    private fun getMimeType(url: String): String {
+        val extension = url.substringAfterLast('.', "").lowercase()
+        return when (extension) {
+            "pdf" -> "application/pdf"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "doc", "docx" -> "application/msword"
+            "xls", "xlsx" -> "application/vnd.ms-excel"
+            "ppt", "pptx" -> "application/vnd.ms-powerpoint"
+            "txt" -> "text/plain"
+            else -> "*/*"
+        }
     }
 }

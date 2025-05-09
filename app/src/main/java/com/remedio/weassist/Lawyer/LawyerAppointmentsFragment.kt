@@ -24,6 +24,7 @@ import com.google.firebase.database.*
 import com.remedio.weassist.Models.Appointment
 import com.remedio.weassist.Models.LawyerAppointmentAdapter
 import com.remedio.weassist.R
+import java.util.UUID
 
 class LawyerAppointmentsFragment : Fragment() {
 
@@ -256,6 +257,123 @@ class LawyerAppointmentsFragment : Fragment() {
         val currentUser = auth.currentUser ?: return
         val lawyerId = currentUser.uid
 
+        // First, fetch the appointment to get any attachments
+        FirebaseDatabase.getInstance().reference
+            .child("lawyers").child(lawyerId).child("appointments")
+            .child(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // Get the attachments list if it exists
+                    val attachments = if (snapshot.child("attachments").exists()) {
+                        try {
+                            snapshot.child("attachments").getValue(object : GenericTypeIndicator<List<String>>() {}) ?: emptyList()
+                        } catch (e: Exception) {
+                            Log.e("EndSession", "Error parsing attachments: ${e.message}")
+                            emptyList<String>()
+                        }
+                    } else {
+                        emptyList<String>()
+                    }
+
+                    // Create more detailed rating notification
+                    val ratingNotification = hashMapOf<String, Any>(
+                        "lawyerId" to lawyerId,
+                        "lawyerName" to (currentUser.displayName ?: "Lawyer"),
+                        "appointmentId" to appointment.appointmentId,
+                        "appointmentDate" to appointment.date,
+                        "timestamp" to ServerValue.TIMESTAMP,
+                        "clientId" to appointment.clientId
+                    )
+
+                    val notificationData = hashMapOf<String, Any>(
+                        "type" to "rating_request",
+                        "message" to "Please rate your recent consultation",
+                        "timestamp" to ServerValue.TIMESTAMP,
+                        "isRead" to false
+                    )
+
+                    // Create a consultation record with details and files
+                    val consultationId = FirebaseDatabase.getInstance().reference
+                        .child("consultations")
+                        .child(appointment.clientId)
+                        .push().key ?: UUID.randomUUID().toString()
+
+                    val consultation = hashMapOf<String, Any>(
+                        "clientName" to appointment.fullName,
+                        "lawyerId" to lawyerId,
+                        "consultationDate" to appointment.date,
+                        "consultationTime" to appointment.time,
+                        "notes" to "Consultation completed",
+                        "problem" to (appointment.problem ?: ""),
+                        "status" to "Complete",
+                        "appointmentId" to appointment.appointmentId
+                    )
+
+                    // Prepare all database updates in a single transaction
+                    val updates = hashMapOf<String, Any>(
+                        // Store consultation record
+                        "/consultations/${appointment.clientId}/$consultationId" to consultation,
+
+                        // Store rating notification
+                        "/pending_ratings/${appointment.clientId}/${appointment.appointmentId}" to ratingNotification,
+                        "/notifications/${appointment.clientId}/${appointment.appointmentId}" to notificationData
+                    )
+
+                    // If we have attachments, add them to the completed appointment
+                    if (attachments.isNotEmpty()) {
+                        // Add attachments to the client's completed appointment data
+                        updates["/appointments/${appointment.appointmentId}/attachments"] = attachments
+                    }
+
+                    // Perform all updates in one transaction
+                    FirebaseDatabase.getInstance().reference.updateChildren(updates)
+                        .addOnSuccessListener {
+                            // Proceed with ending the session
+                            FirebaseDatabase.getInstance().reference
+                                .child("lawyers").child(lawyerId).child("active_sessions")
+                                .child(appointment.appointmentId)
+                                .removeValue()
+                                .addOnSuccessListener {
+                                    val sessionUpdates = hashMapOf<String, Any?>(
+                                        "/lawyers/$lawyerId/appointments/${appointment.appointmentId}" to null,
+                                        "/accepted_appointment/${appointment.appointmentId}" to null
+                                    )
+
+                                    FirebaseDatabase.getInstance().reference.updateChildren(sessionUpdates)
+                                        .addOnSuccessListener {
+                                            Toast.makeText(requireContext(),
+                                                "Session ended successfully",
+                                                Toast.LENGTH_SHORT).show()
+
+                                            appointmentAdapter.removeAppointment(appointment.appointmentId)
+                                            appointmentList.removeAll { it.appointmentId == appointment.appointmentId }
+
+                                            // Check if we need to show empty state
+                                            if (appointmentList.isEmpty()) {
+                                                showEmptyState()
+                                            }
+                                        }
+                                }
+                        }
+                        .addOnFailureListener {
+                            Toast.makeText(requireContext(),
+                                "Failed to create rating request",
+                                Toast.LENGTH_SHORT).show()
+                        }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("EndSession", "Error fetching appointment attachments: ${error.message}")
+                    // Fallback to original behavior
+                    endSessionOriginal(appointment)
+                }
+            })
+    }
+
+    private fun endSessionOriginal(appointment: Appointment) {
+        val currentUser = auth.currentUser ?: return
+        val lawyerId = currentUser.uid
+
         // Create more detailed rating notification
         val ratingNotification = hashMapOf<String, Any>(
             "lawyerId" to lawyerId,
@@ -281,7 +399,7 @@ class LawyerAppointmentsFragment : Fragment() {
 
         FirebaseDatabase.getInstance().reference.updateChildren(updates)
             .addOnSuccessListener {
-                // Proceed with ending the session
+                // Original flow continues...
                 FirebaseDatabase.getInstance().reference
                     .child("lawyers").child(lawyerId).child("active_sessions")
                     .child(appointment.appointmentId)
