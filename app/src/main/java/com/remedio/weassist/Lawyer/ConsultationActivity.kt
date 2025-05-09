@@ -323,70 +323,109 @@ class ConsultationActivity : AppCompatActivity() {
     }
 
     private fun loadSecretaryConversation(conversationId: String) {
+        // First, get conversation metadata to find client name if available
         database.child("conversations").child(conversationId)
-            .child("messages")
-            .limitToLast(15) // Get last 15 messages
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    if (snapshot.exists() && snapshot.childrenCount > 0) {
-                        val messages = mutableListOf<MessagePreview>()
+                    // Try to get client name from conversation metadata
+                    val clientName = snapshot.child("clientName").getValue(String::class.java)
 
-                        for (messageSnapshot in snapshot.children) {
-                            val senderId =
-                                messageSnapshot.child("senderId").getValue(String::class.java) ?: ""
-                            val message =
-                                messageSnapshot.child("message").getValue(String::class.java) ?: ""
-                            val timestamp =
-                                messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
-                            val senderName =
-                                messageSnapshot.child("senderName").getValue(String::class.java)
+                    // Now query messages with proper query object
+                    val messagesQuery = database.child("conversations").child(conversationId)
+                        .child("messages")
+                        .limitToLast(15) // Get last 15 messages
 
-                            messages.add(MessagePreview(senderId, message, timestamp, senderName))
-                        }
+                    messagesQuery.addListenerForSingleValueEvent(object : ValueEventListener {
+                        override fun onDataChange(messagesSnapshot: DataSnapshot) {
+                            if (messagesSnapshot.exists() && messagesSnapshot.childrenCount > 0) {
+                                val messages = mutableListOf<MessagePreview>()
+                                val participants = mutableMapOf<String, String>()
 
-                        // Sort by timestamp
-                        messages.sortBy { it.timestamp }
+                                // Collect all non-system messages
+                                for (messageSnapshot in messagesSnapshot.children) {
+                                    val senderId = messageSnapshot.child("senderId").getValue(String::class.java) ?: ""
 
-                        // Format and display transcript
-                        val builder = StringBuilder()
-                        val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
+                                    // Skip system messages
+                                    if (senderId == "system") continue
 
-                        for (msg in messages) {
-                            val sender = when {
-                                msg.senderId == "system" -> "System"
-                                msg.senderName != null -> msg.senderName
-                                else -> "Unknown"
+                                    val message = messageSnapshot.child("message").getValue(String::class.java) ?: ""
+                                    val timestamp = messageSnapshot.child("timestamp").getValue(Long::class.java) ?: 0L
+                                    val senderName = messageSnapshot.child("senderName").getValue(String::class.java)
+
+                                    // Store participant info for later labeling
+                                    if (senderName != null && !participants.containsKey(senderId)) {
+                                        participants[senderId] = senderName
+                                    }
+
+                                    messages.add(MessagePreview(senderId, message, timestamp, senderName))
+                                }
+
+                                // Handle empty messages case
+                                if (messages.isEmpty()) {
+                                    noTranscriptText.visibility = View.VISIBLE
+                                    transcriptScroll.visibility = View.GONE
+                                    return
+                                }
+
+                                // Sort by timestamp
+                                messages.sortBy { it.timestamp }
+
+                                // Identify participants by role
+                                val clientId = messages.first().senderId
+                                var secretaryId = ""
+
+                                // Find secretary (different ID from client)
+                                for (msg in messages) {
+                                    if (msg.senderId != clientId) {
+                                        secretaryId = msg.senderId
+                                        break
+                                    }
+                                }
+
+                                // Format transcript
+                                val builder = StringBuilder()
+                                val dateFormat = SimpleDateFormat("MM/dd HH:mm", Locale.getDefault())
+
+                                for (msg in messages) {
+                                    // Label sender based on role
+                                    val sender = when(msg.senderId) {
+                                        clientId -> {
+                                            if (clientName != null) clientName
+                                            else participants[clientId] ?: "Client"
+                                        }
+                                        secretaryId -> participants[secretaryId] ?: "Secretary"
+                                        else -> msg.senderName ?: "Unknown"
+                                    }
+
+                                    val time = dateFormat.format(Date(msg.timestamp))
+                                    builder.append("[$time] $sender: ${msg.message}\n\n")
+                                }
+
+                                // Display transcript
+                                transcriptText.text = builder.toString()
+                                transcriptScroll.visibility = View.VISIBLE
+                                noTranscriptText.visibility = View.GONE
+                            } else {
+                                noTranscriptText.visibility = View.VISIBLE
+                                transcriptScroll.visibility = View.GONE
                             }
-
-                            val time = dateFormat.format(Date(msg.timestamp))
-                            builder.append("[$time] $sender: ${msg.message}\n\n")
                         }
 
-                        if (builder.isNotEmpty()) {
-                            transcriptText.text = builder.toString()
-                            transcriptScroll.visibility = View.VISIBLE
-                            noTranscriptText.visibility = View.GONE
-                        } else {
+                        override fun onCancelled(error: DatabaseError) {
+                            Log.e("ConsultationActivity", "Error loading messages: ${error.message}")
                             noTranscriptText.visibility = View.VISIBLE
                             transcriptScroll.visibility = View.GONE
                         }
-                    } else {
-                        noTranscriptText.visibility = View.VISIBLE
-                        transcriptScroll.visibility = View.GONE
-                    }
+                    })
                 }
 
                 override fun onCancelled(error: DatabaseError) {
-                    Log.e(
-                        "ConsultationActivity",
-                        "Error loading secretary conversation: ${error.message}"
-                    )
+                    Log.e("ConsultationActivity", "Error loading conversation: ${error.message}")
                     noTranscriptText.visibility = View.VISIBLE
                     transcriptScroll.visibility = View.GONE
                 }
             })
     }
-
     private data class MessagePreview(
         val senderId: String = "",
         val message: String = "",
