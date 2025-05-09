@@ -1,5 +1,6 @@
 package com.remedio.weassist.Secretary
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -8,6 +9,7 @@ import android.widget.ImageButton
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.cardview.widget.CardView
 import com.google.android.material.snackbar.Snackbar
@@ -18,9 +20,15 @@ import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 import com.google.firebase.database.ValueEventListener
+import com.remedio.weassist.Clients.Message
+import com.remedio.weassist.MessageConversation.ChatActivity
 import com.remedio.weassist.Models.Appointment
+import com.remedio.weassist.Models.Consultation
 import com.remedio.weassist.R
 import com.remedio.weassist.Utils.ConversationUtils
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
 
@@ -37,9 +45,19 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     private lateinit var btnForwardToLawyer: Button
     private lateinit var cardViewActions: CardView
     private lateinit var cardViewForward: CardView
+
+    // New UI elements
+    private lateinit var tvNoLogs: TextView
+    private lateinit var tvLogs: TextView
+    private lateinit var btnAddLog: Button
+    private lateinit var tvNoTranscript: TextView
+    private lateinit var tvTranscript: TextView
+    private lateinit var btnViewFullTranscript: Button
+
     private lateinit var database: DatabaseReference
     private var currentSecretaryName: String = "Secretary"
     private var currentAppointment: Appointment? = null
+    private var lawyerClientConversationId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +66,7 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Initialize database
         database = FirebaseDatabase.getInstance().reference
 
-        // Initialize views
+        // Initialize views (remove the btnViewFullTranscript reference)
         tvAppointmentTitle = findViewById(R.id.tvAppointmentTitle)
         tvStatus = findViewById(R.id.tvStatus)
         tvAppointmentDate = findViewById(R.id.tvAppointmentDate)
@@ -64,6 +82,16 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
         // Initialize forward button and card
         btnForwardToLawyer = findViewById(R.id.btnForwardToLawyer)
         cardViewForward = findViewById(R.id.cardViewForward)
+
+        // Initialize new UI elements (without btnViewFullTranscript)
+        tvNoLogs = findViewById(R.id.tvNoLogs)
+        tvLogs = findViewById(R.id.tvLogs)
+        btnAddLog = findViewById(R.id.btnAddLog)
+        tvNoTranscript = findViewById(R.id.tvNoTranscript)
+        tvTranscript = findViewById(R.id.tvTranscript)
+
+        // Remove this line
+        // btnViewFullTranscript = findViewById(R.id.btnViewFullTranscript)
 
         // Initially hide the forward option
         cardViewForward.visibility = View.GONE
@@ -93,12 +121,298 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
             appointmentId?.let { id -> updateAppointmentStatus(id, "Declined") }
         }
 
-        // Set up forward button - FIXED IMPLEMENTATION
+        // Set up forward button
         btnForwardToLawyer.setOnClickListener {
             currentAppointment?.let { appointment ->
                 forwardAppointmentToLawyer(appointment)
             }
         }
+
+        // Set up consultation logs button
+        btnAddLog.setOnClickListener {
+            currentAppointment?.let { appointment ->
+                viewConsultationLogs(appointment)
+            }
+        }
+
+        // Remove this section that sets up the view transcript button
+        /*
+        btnViewFullTranscript.setOnClickListener {
+            if (lawyerClientConversationId != null) {
+                openLawyerClientConversation(lawyerClientConversationId!!)
+            } else {
+                currentAppointment?.let { appointment ->
+                    findLawyerClientConversation(appointment)
+                }
+            }
+        }
+        */
+    }
+
+    private fun viewConsultationLogs(appointment: Appointment) {
+        showLoading(true)
+
+        // Query consultations for this appointment
+        val consultationsRef = database.child("consultations")
+        consultationsRef.orderByChild("appointmentId").equalTo(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    showLoading(false)
+
+                    if (snapshot.exists()) {
+                        val consultations = mutableListOf<Consultation>()
+
+                        for (consultationSnapshot in snapshot.children) {
+                            val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                            if (consultation != null) {
+                                consultations.add(consultation)
+                            }
+                        }
+
+                        if (consultations.isNotEmpty()) {
+                            showConsultationLogsDialog(consultations)
+                        } else {
+                            Snackbar.make(
+                                findViewById(android.R.id.content),
+                                "No consultation logs found for this appointment",
+                                Snackbar.LENGTH_SHORT
+                            ).show()
+                        }
+                    } else {
+                        // Try checking if there are any consultations by lawyer ID and client name
+                        checkConsultationsByLawyerAndClient(appointment)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    showLoading(false)
+                    Log.e("SecretaryAppointment", "Error fetching consultation logs: ${error.message}")
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Failed to load consultation logs",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            })
+    }
+
+    private fun checkConsultationsByLawyerAndClient(appointment: Appointment) {
+        val consultationsRef = database.child("consultations")
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val consultations = mutableListOf<Consultation>()
+
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                        if (consultation != null &&
+                            consultation.lawyerId == appointment.lawyerId &&
+                            consultation.clientName == appointment.fullName) {
+                            consultations.add(consultation)
+                        }
+                    }
+                }
+
+                if (consultations.isNotEmpty()) {
+                    // Now explicitly show dialog since button was clicked
+                    showConsultationLogsDialog(consultations)
+
+                    // Update UI text as well
+                    if (consultations.size == 1) {
+                        tvNoLogs.visibility = View.GONE
+                        tvLogs.visibility = View.VISIBLE
+                        tvLogs.text = "1 consultation log found with client ${appointment.fullName}"
+                    } else {
+                        tvNoLogs.visibility = View.GONE
+                        tvLogs.visibility = View.VISIBLE
+                        tvLogs.text = "${consultations.size} consultation logs found with client ${appointment.fullName}"
+                    }
+                } else {
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "No consultation logs found for this client",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error checking consultations: ${error.message}")
+            }
+        })
+    }
+
+    private fun showConsultationLogsDialog(consultations: List<Consultation>) {
+        // Sort consultations by date (newest first)
+        val sortedConsultations = consultations.sortedByDescending {
+            try {
+                val formatter = SimpleDateFormat("MM/dd/yyyy", Locale.getDefault())
+                formatter.parse(it.consultationDate)?.time ?: 0L
+            } catch (e: Exception) {
+                0L
+            }
+        }
+
+        val dialogBuilder = AlertDialog.Builder(this)
+        dialogBuilder.setTitle("Consultation Logs")
+
+        val logsText = StringBuilder()
+        for (consultation in sortedConsultations) {
+            logsText.append("Date: ${consultation.consultationDate}\n")
+            logsText.append("Time: ${consultation.consultationTime}\n")
+            logsText.append("Type: ${consultation.consultationType}\n")
+            logsText.append("Problem: ${consultation.problem}\n")
+            logsText.append("Notes: ${consultation.notes}\n\n")
+            logsText.append("--------------------\n\n")
+        }
+
+        dialogBuilder.setMessage(logsText.toString())
+        dialogBuilder.setPositiveButton("Close") { dialog, _ ->
+            dialog.dismiss()
+        }
+
+        dialogBuilder.show()
+
+        // Update UI to show summary
+        tvNoLogs.visibility = View.GONE
+        tvLogs.visibility = View.VISIBLE
+        if (consultations.size == 1) {
+            tvLogs.text = "1 consultation log available"
+        } else {
+            tvLogs.text = "${consultations.size} consultation logs available"
+        }
+    }
+
+    private fun findLawyerClientConversation(appointment: Appointment) {
+        showLoading(true)
+
+        // Check if this is a forwarded appointment
+        database.child("conversations")
+            .orderByChild("appointmentId")
+            .equalTo(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var found = false
+
+                    for (conversationSnapshot in snapshot.children) {
+                        // Check if this is a lawyer-client conversation
+                        val handledByLawyer = conversationSnapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                        val participantIds = conversationSnapshot.child("participantIds")
+
+                        if (handledByLawyer &&
+                            participantIds.child(appointment.lawyerId).exists() &&
+                            participantIds.child(appointment.clientId).exists()) {
+
+                            found = true
+                            lawyerClientConversationId = conversationSnapshot.key
+
+                            // Load a preview of the conversation
+                            loadConversationPreview(conversationSnapshot.key!!)
+
+                            // Open the conversation
+                            openLawyerClientConversation(conversationSnapshot.key!!)
+                            break
+                        }
+                    }
+
+                    if (!found) {
+                        showLoading(false)
+                        Snackbar.make(
+                            findViewById(android.R.id.content),
+                            "No lawyer-client conversation found for this appointment",
+                            Snackbar.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    showLoading(false)
+                    Log.e("SecretaryAppointment", "Error finding lawyer-client conversation: ${error.message}")
+                    Snackbar.make(
+                        findViewById(android.R.id.content),
+                        "Error finding lawyer-client conversation",
+                        Snackbar.LENGTH_SHORT
+                    ).show()
+                }
+            })
+    }
+
+    private fun loadConversationPreview(conversationId: String) {
+        database.child("conversations").child(conversationId).child("messages")
+            .limitToLast(10) // Increased limit to ensure we get enough non-system messages
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    showLoading(false)
+
+                    if (snapshot.exists()) {
+                        // Get messages and create preview
+                        val allMessages = mutableListOf<Message>()
+                        for (messageSnapshot in snapshot.children) {
+                            val message = messageSnapshot.getValue(Message::class.java)
+                            if (message != null) {
+                                allMessages.add(message)
+                            }
+                        }
+
+                        // Filter out system messages
+                        val nonSystemMessages = allMessages.filter { it.senderId != "system" }
+
+                        if (nonSystemMessages.isNotEmpty()) {
+                            // Take only the last 5 non-system messages for preview
+                            val previewMessages = nonSystemMessages.takeLast(5)
+
+                            // Update UI
+                            tvNoTranscript.visibility = View.GONE
+                            tvTranscript.visibility = View.VISIBLE
+
+                            // Format preview
+                            val preview = StringBuilder()
+                            preview.append("Conversation preview (last ${previewMessages.size} messages):\n\n")
+
+                            val dateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault())
+
+                            for (message in previewMessages) {
+                                val senderName = if (message.senderName != null) {
+                                    message.senderName
+                                } else if (message.senderId == currentAppointment?.lawyerId) {
+                                    "Lawyer"
+                                } else if (message.senderId == currentAppointment?.clientId) {
+                                    "Client"
+                                } else {
+                                    "Unknown"
+                                }
+
+                                preview.append("$senderName (${dateFormat.format(Date(message.timestamp))}): ${message.message}\n\n")
+                            }
+
+                            tvTranscript.text = preview.toString()
+                        } else if (allMessages.isNotEmpty()) {
+                            // If we have messages but they're all system messages
+                            tvNoTranscript.visibility = View.GONE
+                            tvTranscript.visibility = View.VISIBLE
+                            tvTranscript.text = "Conversation exists but only contains system messages."
+                        } else {
+                            tvNoTranscript.visibility = View.VISIBLE
+                            tvTranscript.visibility = View.GONE
+                        }
+                    } else {
+                        tvNoTranscript.visibility = View.VISIBLE
+                        tvTranscript.visibility = View.GONE
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    showLoading(false)
+                    Log.e("SecretaryAppointment", "Error loading conversation preview: ${error.message}")
+                }
+            })
+    }
+
+    private fun openLawyerClientConversation(conversationId: String) {
+        val intent = Intent(this, ChatActivity::class.java)
+        intent.putExtra("CONVERSATION_ID", conversationId)
+        intent.putExtra("VIEWING_MODE", true) // Add a flag to indicate this is view-only mode
+        startActivity(intent)
     }
 
     private fun forwardAppointmentToLawyer(appointment: Appointment) {
@@ -150,6 +464,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                         newConversationId,
                         currentProblem
                     ) {
+                        // Store the lawyer-client conversation ID for later use
+                        lawyerClientConversationId = newConversationId
+
                         // 7. Create notifications
                         createForwardingNotifications(
                             appointment,
@@ -170,6 +487,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                         tvStatus.setTextColor(resources.getColor(android.R.color.holo_blue_dark))
                         // Hide the forward button
                         cardViewForward.visibility = View.GONE
+
+                        // Load conversation preview
+                        loadConversationPreview(newConversationId)
                     }
                 }
             }
@@ -239,8 +559,6 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 }
             })
     }
-
-    // Update the closeSecretaryClientConversation method in SecretaryAppointmentDetailsActivity
 
     private fun closeSecretaryClientConversation(
         conversationId: String,
@@ -710,6 +1028,12 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                         currentAppointment = it
                         displayAppointmentDetails(it)
 
+                        // Check for consultation logs
+                        checkForConsultationLogs(it)
+
+                        // Check for conversation transcripts
+                        checkForConversationTranscripts(it)
+
                         // Show or hide action buttons based on status
                         when (it.status?.lowercase()) {
                             "pending" -> {
@@ -723,6 +1047,9 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                             "forwarded" -> {
                                 cardViewActions.visibility = View.GONE
                                 cardViewForward.visibility = View.GONE
+
+                                // If forwarded, try to find the lawyer-client conversation
+                                findAndLoadLawyerClientConversation(it)
                             }
                             else -> {
                                 cardViewActions.visibility = View.GONE
@@ -750,6 +1077,147 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                 ).show()
             }
         })
+    }
+
+    private fun checkForConsultationLogs(appointment: Appointment) {
+        // Query consultations for this appointment
+        val consultationsRef = database.child("consultations")
+        consultationsRef.orderByChild("appointmentId").equalTo(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        val consultationCount = snapshot.childrenCount.toInt()
+                        tvNoLogs.visibility = View.GONE
+                        tvLogs.visibility = View.VISIBLE
+
+                        if (consultationCount == 1) {
+                            tvLogs.text = "1 consultation log available"
+                        } else {
+                            tvLogs.text = "$consultationCount consultation logs available"
+                        }
+
+                        // REMOVE THIS - Don't show dialog here
+                        // showConsultationLogsDialog(consultations)
+                    } else {
+                        // Try checking if there are any consultations by lawyer ID and client name
+                        // But only to update the UI text, not to show dialog
+                        checkConsultationsByLawyerAndClientForUI(appointment)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryAppointment", "Error checking consultation logs: ${error.message}")
+                }
+            })
+    }
+
+    // Create a new method that only updates UI, doesn't show dialog
+    private fun checkConsultationsByLawyerAndClientForUI(appointment: Appointment) {
+        val consultationsRef = database.child("consultations")
+        consultationsRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val consultations = mutableListOf<Consultation>()
+
+                for (clientSnapshot in snapshot.children) {
+                    for (consultationSnapshot in clientSnapshot.children) {
+                        val consultation = consultationSnapshot.getValue(Consultation::class.java)
+                        if (consultation != null &&
+                            consultation.lawyerId == appointment.lawyerId &&
+                            consultation.clientName == appointment.fullName) {
+                            consultations.add(consultation)
+                        }
+                    }
+                }
+
+                if (consultations.isNotEmpty()) {
+                    // Update UI to show logs summary, but DON'T show dialog
+                    if (consultations.size == 1) {
+                        tvNoLogs.visibility = View.GONE
+                        tvLogs.visibility = View.VISIBLE
+                        tvLogs.text = "1 consultation log found with client ${appointment.fullName}"
+                    } else {
+                        tvNoLogs.visibility = View.GONE
+                        tvLogs.visibility = View.VISIBLE
+                        tvLogs.text = "${consultations.size} consultation logs found with client ${appointment.fullName}"
+                    }
+                } else {
+                    // No logs found, just update UI
+                    tvNoLogs.visibility = View.VISIBLE
+                    tvLogs.visibility = View.GONE
+                }
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("SecretaryAppointment", "Error checking consultations: ${error.message}")
+            }
+        })
+    }
+
+    private fun checkForConversationTranscripts(appointment: Appointment) {
+        // Check if this appointment has a lawyer-client conversation
+        database.child("conversations")
+            .orderByChild("appointmentId")
+            .equalTo(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (conversationSnapshot in snapshot.children) {
+                            // Check if this is a lawyer-client conversation
+                            val handledByLawyer = conversationSnapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                            val participantIds = conversationSnapshot.child("participantIds")
+
+                            if (handledByLawyer &&
+                                participantIds.child(appointment.lawyerId).exists() &&
+                                participantIds.child(appointment.clientId).exists()) {
+
+                                // This is a lawyer-client conversation, get the conversation ID
+                                lawyerClientConversationId = conversationSnapshot.key
+
+                                // Load conversation preview
+                                loadConversationPreview(conversationSnapshot.key!!)
+                                break
+                            }
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryAppointment", "Error checking for conversation transcripts: ${error.message}")
+                }
+            })
+    }
+
+    private fun findAndLoadLawyerClientConversation(appointment: Appointment) {
+        database.child("conversations")
+            .orderByChild("appointmentId")
+            .equalTo(appointment.appointmentId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    if (snapshot.exists()) {
+                        for (conversationSnapshot in snapshot.children) {
+                            // Check if this is a lawyer-client conversation
+                            val handledByLawyer = conversationSnapshot.child("handledByLawyer").getValue(Boolean::class.java) ?: false
+                            val participantIds = conversationSnapshot.child("participantIds")
+
+                            if (handledByLawyer &&
+                                participantIds.child(appointment.lawyerId).exists() &&
+                                participantIds.child(appointment.clientId).exists()) {
+
+                                // This is a lawyer-client conversation, get the conversation ID
+                                lawyerClientConversationId = conversationSnapshot.key
+
+                                // Load conversation preview
+                                loadConversationPreview(conversationSnapshot.key!!)
+                                break
+                            }
+                        }
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e("SecretaryAppointment", "Error finding lawyer-client conversation: ${error.message}")
+                }
+            })
     }
 
     private fun displayAppointmentDetails(appointment: Appointment) {
