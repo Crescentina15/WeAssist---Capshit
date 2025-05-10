@@ -179,6 +179,13 @@ class LawyerAppointmentHistory : Fragment() {
         val noAttachments = dialogView.findViewById<TextView>(R.id.tvNoAttachments)
         val attachmentsContainer = dialogView.findViewById<LinearLayout>(R.id.attachmentsContainer)
 
+
+        dialogView.findViewById<TextView>(R.id.tvProblemDetail).text = if (consultation.problem.isNotEmpty()) {
+            consultation.problem
+        } else {
+            "No problem description provided"
+        }
+
         if (consultation.attachments.isNotEmpty()) {
             attachmentsTitle.visibility = View.VISIBLE
             noAttachments.visibility = View.GONE
