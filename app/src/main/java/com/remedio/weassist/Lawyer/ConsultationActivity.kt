@@ -519,6 +519,9 @@ class ConsultationActivity : AppCompatActivity() {
                             progressBar.visibility = View.GONE
                             Toast.makeText(this@ConsultationActivity, "Consultation notes saved", Toast.LENGTH_SHORT).show()
 
+                            // Navigate back to dashboard
+                            finish()
+
                             // Log whether attachments were included
                             Log.d("ConsultationActivity", "Saved consultation with ${attachments.size} attachments")
                         }
@@ -562,6 +565,9 @@ class ConsultationActivity : AppCompatActivity() {
             .addOnSuccessListener {
                 progressBar.visibility = View.GONE
                 Toast.makeText(this, "Consultation notes saved (without attachments)", Toast.LENGTH_SHORT).show()
+
+                // Navigate back to dashboard
+                finish()
             }
             .addOnFailureListener { e ->
                 progressBar.visibility = View.GONE

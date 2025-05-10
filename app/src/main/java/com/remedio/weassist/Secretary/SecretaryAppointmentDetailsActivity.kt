@@ -477,8 +477,8 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
     }
 
     private fun loadConversationPreview(conversationId: String) {
+        // Remove the limitToLast(10) to fetch all messages
         database.child("conversations").child(conversationId).child("messages")
-            .limitToLast(10) // Increased limit to ensure we get enough non-system messages
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     showLoading(false)
@@ -493,25 +493,25 @@ class SecretaryAppointmentDetailsActivity : AppCompatActivity() {
                             }
                         }
 
-                        // Filter out system messages
+                        // Filter out system messages if needed
                         val nonSystemMessages = allMessages.filter { it.senderId != "system" }
 
                         if (nonSystemMessages.isNotEmpty()) {
-                            // Take only the last 5 non-system messages for preview
-                            val previewMessages = nonSystemMessages.takeLast(5)
-
-                            // Initially hide transcript but show button
+                            // Show all non-system messages instead of just the last 5
                             tvNoTranscript.visibility = View.GONE
                             tvTranscript.visibility = View.GONE  // Initially hidden
                             btnViewFullTranscript.visibility = View.VISIBLE
 
-                            // Format preview
+                            // Format all messages
                             val preview = StringBuilder()
-                            preview.append("Conversation preview (last ${previewMessages.size} messages):\n\n")
+                            preview.append("Full conversation (${nonSystemMessages.size} messages):\n\n")
 
                             val dateFormat = SimpleDateFormat("MM/dd/yyyy HH:mm", Locale.getDefault())
 
-                            for (message in previewMessages) {
+                            // Sort messages by timestamp to ensure chronological order
+                            val sortedMessages = nonSystemMessages.sortedBy { it.timestamp }
+
+                            for (message in sortedMessages) {
                                 val senderName = if (message.senderName != null) {
                                     message.senderName
                                 } else if (message.senderId == currentAppointment?.lawyerId) {
